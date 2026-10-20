@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ELYTerminal
+Comment=A terminal on GPUI and Ely
+Exec=elyterminal
+Icon=com.zacharyzhang.elyterminal
+Terminal=false
+Categories=System;TerminalEmulator;
+StartupWMClass=com.zacharyzhang.elyterminal
