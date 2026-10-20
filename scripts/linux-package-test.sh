@@ -96,7 +96,7 @@ case $package in
         [ "$(dpkg-query -W -f='${Version}' elyterminal)" = "$version" ] || fail "target version was not installed"
         echo "PASSED: DEB metadata-only upgrade fixture, $older_version to $version"
         ;;
-    *.rpm) dnf install -y --setopt=install_weak_deps=False "$package" ;;
+    *.rpm) dnf install -y --setopt=install_weak_deps=False --setopt=tsflags='' "$package" ;;
 esac
 payload ""
 case $package in
@@ -111,7 +111,7 @@ for program in git curl xdg-open; do command -v "$program" >/dev/null || fail "m
 sha256sum -c "$work/settings.sha256"
 case $package in
     *.deb) apt-get install -y --no-install-recommends --reinstall "$package" ;;
-    *.rpm) dnf reinstall -y --setopt=install_weak_deps=False "$package" ;;
+    *.rpm) dnf reinstall -y --setopt=install_weak_deps=False --setopt=tsflags='' "$package" ;;
 esac
 payload ""
 sha256sum -c "$work/settings.sha256"
