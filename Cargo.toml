@@ -44,6 +44,7 @@ wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 x11rb = { version = "0.13", features = ["randr"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
+xim-ctext = "=0.3.0"
 wayland-protocols = { version = "0.32", features = ["server", "staging"] }
 wayland-server = "0.31"
 
@@ -68,6 +69,9 @@ windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
+
+[patch.crates-io]
+xim-ctext = { path = "vendor/xim-ctext" }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

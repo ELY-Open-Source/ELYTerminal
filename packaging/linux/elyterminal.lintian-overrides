@@ -1,0 +1,3 @@
+# freetype-sys bundles FreeType when pkg-config finds less than 24.3.18,
+# as on the Ubuntu 22.04 build that keeps the glibc 2.35 baseline.
+elyterminal: embedded-library freetype usr/bin/elyterminal

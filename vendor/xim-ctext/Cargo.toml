@@ -1,0 +1,16 @@
+[package]
+name = "xim-ctext"
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "Compound text decoder with upstream CJK fixes backported for zed-xim"
+repository = "https://github.com/Riey/xim-rs"
+publish = false
+
+[dependencies]
+encoding_rs = "0.8.35"
+
+[features]
+default = ["std"]
+std = []

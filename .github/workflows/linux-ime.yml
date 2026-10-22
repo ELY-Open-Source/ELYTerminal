@@ -1,0 +1,53 @@
+name: Linux IME
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    timeout-minutes: 60
+    env:
+      CARGO_HOME: /root/.cargo
+      RUSTUP_HOME: /root/.rustup
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_INCREMENTAL: 0
+    steps:
+      - name: Prepare the clean Linux test environment
+        env:
+          HOME: /root
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential ca-certificates curl git \
+            pkg-config libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb1-dev libx11-xcb-dev libfontconfig-dev libfreetype-dev zsh fish xvfb
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+            sh -s -- -y --no-modify-path --default-toolchain none
+          echo /root/.cargo/bin >> "$GITHUB_PATH"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            /root/.cargo/registry
+            /root/.cargo/git
+            target
+          key: linux-ime-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'vendor/xim-ctext/**') }}
+          restore-keys: linux-ime-
+      - name: Check the application and decoder as a regular user
+        run: |
+          rustup toolchain install --no-self-update
+          useradd --create-home ci
+          chmod o+x /root
+          chown -R ci "$GITHUB_WORKSPACE" /root/.cargo /root/.rustup
+          runuser -u ci -- env HOME=/home/ci CARGO_HOME=/root/.cargo \
+            RUSTUP_HOME=/root/.rustup PATH="$PATH" sh -eu -c \
+            'scripts/check.sh; cargo test -p xim-ctext --locked; cargo build --locked'

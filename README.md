@@ -4,11 +4,53 @@ A terminal for macOS, Windows and Linux, in Rust on GPUI and Ely components. Ses
 
 ## Install
 
-A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) carries three builds.
+A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) carries builds for each platform.
 
 - macOS 11 or later, Apple silicon: open `ELYTerminal-VERSION.dmg` and drag ELYTerminal into Applications. The app is signed with Developer ID and notarized.
 - Windows 10 or later, x86_64: unzip `ELYTerminal-VERSION-windows-x86_64.zip` and run `elyterminal.exe`. It is unsigned; if SmartScreen stops it, press More info, then Run anyway.
-- Linux, x86_64, glibc 2.35 or later, with libxkbcommon, libxkbcommon-x11 and libxcb:
+- Linux, x86_64: choose a package below.
+
+### Linux
+
+Replace `VERSION` with the release's version. Linux builds need glibc 2.35 or
+later, an X11 or Wayland desktop and working graphics drivers. Native packages
+install the runtime libraries, desktop entry and icon through the package manager.
+The formats below can be built with `scripts/linux-packages.sh`. Use the assets
+actually listed for your selected release; packaging CI artifacts are separate
+downloads.
+
+On Ubuntu 22.04, Ubuntu 24.04 or Debian 12:
+
+```sh
+sudo apt install ./elyterminal_VERSION_amd64.deb
+```
+
+On Fedora 43:
+
+```sh
+sudo dnf install ./elyterminal-VERSION-1.x86_64.rpm
+```
+
+Install a newer package the same way to update. To remove it, use
+`sudo apt remove elyterminal` or `sudo dnf remove elyterminal`.
+Package operations leave `~/.config/ELYTerminal` alone.
+
+The AppImage runs without a system installation:
+
+```sh
+chmod +x ELYTerminal-VERSION-linux-x86_64.AppImage
+./ELYTerminal-VERSION-linux-x86_64.AppImage
+```
+
+It bundles the keyboard libraries, but uses the host's glibc, X11/Wayland and
+graphics libraries, and installed fonts. Install `git`, `curl` and `xdg-utils`
+on the host for Git, update checks and desktop links. Without FUSE, run
+`./ELYTerminal-VERSION-linux-x86_64.AppImage --appimage-extract-and-run`.
+Replace the file to update; delete it to uninstall. Other distributions and
+Wayland desktops need testing with their own graphics stack.
+
+The tarball remains available. Install libxkbcommon, libxkbcommon-x11, libxcb,
+the desktop's runtime libraries and the tools above first:
 
 ```sh
 tar -xzf ELYTerminal-VERSION-linux-x86_64.tar.gz
@@ -19,6 +61,8 @@ install -Dm644 com.zacharyzhang.elyterminal.svg -t ~/.local/share/icons/hicolor/
 ```
 
 The desktop entry runs `elyterminal`, so `~/.local/bin` must be on `PATH`.
+Repeat these commands with a newer tarball to update. To uninstall, remove
+the three installed files; settings stay in the config folder.
 
 ## Build and run
 
@@ -28,7 +72,7 @@ Rust 1.95.0, which `rust-toolchain.toml` pins; rustup installs it on the first b
 cargo run --release
 ```
 
-Each platform's script builds its release in `target/release`: on macOS, `scripts/mac-app.sh` builds `ELYTerminal.app`, with its icon, and a disk image of it; on Windows, `scripts/windows-zip.ps1` zips `elyterminal.exe`, its icon inside; on Linux, `scripts/linux-tar.sh` builds in Docker and packs the binary with its desktop entry and icon.
+Each platform's script builds its release in `target/release`: on macOS, `scripts/mac-app.sh` builds `ELYTerminal.app`, with its icon, and a disk image of it; on Windows, `scripts/windows-zip.ps1` zips `elyterminal.exe`, its icon inside; on Linux, `scripts/linux-packages.sh` builds once in Docker on Ubuntu 22.04 and packs the same binary as tar.gz, DEB, AppImage and RPM. `scripts/linux-tar.sh` still builds the tarball on its own. [Linux packaging](packaging/linux/README.md) covers individual scripts, validation and release uploads.
 
 On Linux, install the libraries gpui links first. On Debian and Ubuntu:
 

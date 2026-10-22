@@ -1783,6 +1783,7 @@ dependencies = [
  "wayland-server",
  "windows-sys 0.61.2",
  "x11rb",
+ "xim-ctext",
 ]
 
 [[package]]
@@ -8346,8 +8347,6 @@ checksum = "163b33ed8786455e2fa5d72f554057ce3f3182425434f756cd39c99839d88e23"
 [[package]]
 name = "xim-ctext"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ac61a7062c40f3c37b6e82eeeef835d5cc7824b632a72784a89b3963c33284c"
 dependencies = [
  "encoding_rs",
 ]
