@@ -23,6 +23,8 @@ trap 'rm -rf "$work"' EXIT
 mkdir "$work/$name"
 cp "$out/elyterminal" "$work/$name/"
 cp assets/icons/elyterminal.svg "$work/$name/$id.svg"
+mkdir "$work/$name/licenses"
+cp vendor/xim-ctext/LICENSE "$work/$name/licenses/xim-ctext-LICENSE"
 cat > "$work/$name/$id.desktop" <<EOF
 [Desktop Entry]
 Type=Application
