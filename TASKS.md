@@ -175,3 +175,7 @@ Progress truth. Top to bottom, one at a time. A task is ticked only after its co
 ## 35. Release
 
 - [x] T72 Release v0.1.8 with T67 to T71: version 0.1.8; the macOS disk image, the Windows zip and the Linux tarball, each from its script; the notes list what changed in English and Chinese; a short thanks on issues #3, #7, #10 and PRs #5, #8, #9, #11, then each closed; issue #2 closed without a word.
+
+## 36. The sessions column's switches
+
+- [x] T73 Settings › Terminal turns off either half of T70, which the owner asked for after 0.1.8: Drag sessions to reorder, a switch on by default, leaves a drag on a row moving nothing and the rows on `List`'s own gap; Session menu, a switch on by default, leaves a right press on a row opening nothing. A settings file without either field takes it on, so an older file still drags and still opens the menu. The owner turned both off and on in the app and found each took effect.

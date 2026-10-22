@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton, SegmentedControl},
+    lists::List,
     motion::Reorder,
     primitives::{FocusScope, IconName},
     shell::{ColumnShell, ResizeBorder, ShellColumn},
@@ -9,9 +10,10 @@ use ely_gpui_component::{
     typography::Caption,
 };
 use gpui::{
-    Action, App, AppContext, Context, Entity, FocusHandle, Focusable, InteractiveElement,
-    IntoElement, KeyBinding, ParentElement, Render, SharedString, StatefulInteractiveElement,
-    StyleRefinement, Styled, Subscription, Task, Window, actions, div, prelude::FluentBuilder,
+    Action, AnyElement, App, AppContext, Context, Entity, FocusHandle, Focusable,
+    InteractiveElement, IntoElement, KeyBinding, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, StyleRefinement, Styled, Subscription, Task, Window, actions, div,
+    prelude::FluentBuilder,
 };
 
 use crate::{
@@ -363,20 +365,34 @@ impl Render for Workspace {
             .children(shown);
         if settings.show_sessions {
             let home = dirs::home_dir();
-            let rows = self.sessions.iter().enumerate().map(|(index, session)| {
-                let active = index == self.active;
-                let pid = session.terminal.read(cx).pid();
-                let row =
-                    sessions::row(&workspace, index, session, active, home.as_deref(), now, cx);
-                (pid.to_string(), row)
-            });
-            let dragged = workspace.clone();
-            let list = rows.fold(
-                Reorder::new("session-rows").on_reorder(move |from, to, _, cx| {
-                    dragged.update(cx, |this, cx| this.reorder(from, to, cx))
-                }),
-                |list, (key, row)| list.row(key, div().pb_0p5().child(row)),
-            );
+            let rows: Vec<(String, AnyElement)> = self
+                .sessions
+                .iter()
+                .enumerate()
+                .map(|(index, session)| {
+                    let active = index == self.active;
+                    let pid = session.terminal.read(cx).pid();
+                    let row =
+                        sessions::row(&workspace, index, session, active, home.as_deref(), now, cx);
+                    (pid.to_string(), row.into_any_element())
+                })
+                .collect();
+            // A drag needs Reorder; without it the rows keep List's own gap.
+            let list = if settings.drag_sessions {
+                let dragged = workspace.clone();
+                rows.into_iter()
+                    .fold(
+                        Reorder::new("session-rows").on_reorder(move |from, to, _, cx| {
+                            dragged.update(cx, |this, cx| this.reorder(from, to, cx))
+                        }),
+                        |list, (key, row)| list.row(key, div().pb_0p5().child(row)),
+                    )
+                    .into_any_element()
+            } else {
+                List::new()
+                    .children(rows.into_iter().map(|(_, row)| row))
+                    .into_any_element()
+            };
             let new = IconButton::new("new-session", IconName::Plus)
                 .variant(ButtonVariant::Ghost)
                 .size(ControlSize::Sm)

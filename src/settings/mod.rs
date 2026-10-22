@@ -83,6 +83,10 @@ pub struct Settings {
     /// A check for a newer release at start and once a day.
     pub check_updates: bool,
     pub show_sessions: bool,
+    /// A drag on a session's row moves it to another place in the list.
+    pub drag_sessions: bool,
+    /// A right press on a session's row opens a menu that duplicates or closes it.
+    pub session_menu: bool,
     pub show_panel: bool,
     pub panel: PanelTab,
     /// The sessions and right columns' widths, in pixels, as their borders were dragged.
@@ -119,6 +123,8 @@ impl Default for Settings {
             ely_left: 140.0,
             check_updates: true,
             show_sessions: true,
+            drag_sessions: true,
+            session_menu: true,
             show_panel: true,
             panel: PanelTab::Git,
             sessions_width: 240.0,
@@ -247,6 +253,16 @@ mod tests {
     #[test]
     fn defaults_are_valid() {
         Settings::default().validate().expect("defaults pass");
+    }
+
+    #[test]
+    fn a_file_without_the_session_switches_leaves_them_on() {
+        let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+        assert!(settings.drag_sessions, "a drag reorders a row by default");
+        assert!(
+            settings.session_menu,
+            "a right press opens the menu by default"
+        );
     }
 
     #[test]

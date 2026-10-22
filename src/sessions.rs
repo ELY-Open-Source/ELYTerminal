@@ -17,6 +17,7 @@ use gpui::{
 };
 
 use crate::{
+    settings::SettingsStore,
     term::{Kind, Record, Records, State, TerminalView},
     workspace::{TITLE, Workspace},
 };
@@ -167,10 +168,14 @@ pub fn row(
                 .children(bell),
         )
     };
+    if !SettingsStore::get(cx).session_menu {
+        return item.into_any_element();
+    }
     let id = session.terminal.entity_id();
     ContextMenu::new(("session-menu", pid), menu::row(workspace, id))
         .w_full()
         .child(item)
+        .into_any_element()
 }
 
 /// The field a session's row renames it with; Escape drops what it holds.

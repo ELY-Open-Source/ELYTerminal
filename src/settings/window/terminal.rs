@@ -113,8 +113,30 @@ impl SettingsWindow {
             |settings, on| settings.copy_on_select = on,
         );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
+        let drag = switch(
+            &this,
+            "drag_sessions",
+            settings.drag_sessions,
+            |settings, on| settings.drag_sessions = on,
+        );
+        let menu = switch(
+            &this,
+            "session_menu",
+            settings.session_menu,
+            |settings, on| settings.session_menu = on,
+        );
         let section = section
             .row(SettingsRow::new("Copy on select").control(copy))
+            .row(
+                SettingsRow::new("Drag sessions to reorder")
+                    .description("A drag moves a row to another place in the list")
+                    .control(drag),
+            )
+            .row(
+                SettingsRow::new("Session menu")
+                    .description("A right press duplicates the row or closes it")
+                    .control(menu),
+            )
             .row(
                 SettingsRow::new("Ely")
                     .description("Peeks over the window, her face as your sessions are")
