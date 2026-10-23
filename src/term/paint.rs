@@ -1,4 +1,8 @@
+mod glyphs;
+
 use std::rc::Rc;
+
+use glyphs::draw;
 
 use alacritty_terminal::vte::ansi::CursorShape;
 use gpui::{
@@ -228,75 +232,6 @@ fn text(
 ) {
     let runs = runs(content, style, color, look, window);
     draw(content, &runs, origin, None, look, window);
-}
-
-fn shaping_runs(runs: &[TextRun]) -> Vec<TextRun> {
-    runs.iter()
-        .cloned()
-        .map(|mut run| {
-            // shortcut: ligatures may cross colors; restore boundaries when shaping is optimized.
-            run.color = gpui::black();
-            run
-        })
-        .collect()
-}
-
-/// Shapes `content` and paints each glyph on the cell's baseline below `top`; `force` sets every advance.
-fn draw(
-    content: &str,
-    runs: &[TextRun],
-    top: Point<Pixels>,
-    force: Option<Pixels>,
-    look: &Look,
-    window: &mut Window,
-) {
-    let shaped = window.text_system().shape_line(
-        content.to_string().into(),
-        look.size,
-        &shaping_runs(runs),
-        force,
-    );
-    let baseline = top.y + look.baseline;
-    for run in &shaped.runs {
-        for glyph in &run.glyphs {
-            let color = color_at(runs, glyph.index);
-            let at = point(
-                top.x + glyph.position.x,
-                baseline + upward(glyph.position.y),
-            );
-            let painted = if glyph.is_emoji {
-                window.paint_emoji(at, run.font_id, glyph.id, look.size)
-            } else {
-                window.paint_glyph(at, run.font_id, glyph.id, look.size, color)
-            };
-            if let Err(error) = painted {
-                log::error!("terminal: a glyph of `{content}` failed to paint: {error:#}");
-            }
-        }
-    }
-}
-
-/// The color of the run holding byte `index`.
-fn color_at(runs: &[TextRun], index: usize) -> Hsla {
-    let mut end = 0;
-    runs.iter()
-        .find(|run| {
-            end += run.len;
-            index < end
-        })
-        .expect("a glyph indexes its own text")
-        .color
-}
-
-/// CoreText gives glyph offsets growing upward; the screen grows downward.
-#[cfg(target_os = "macos")]
-fn upward(y: Pixels) -> Pixels {
-    -y
-}
-
-#[cfg(not(target_os = "macos"))]
-fn upward(y: Pixels) -> Pixels {
-    y
 }
 
 /// Paints a cell's text alone at `corner`: a drawn base as shapes, its marks over a no-break space.

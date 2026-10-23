@@ -32,35 +32,3 @@ fn icons_live_in_the_private_use_areas() {
     assert!(!private('a'));
     assert!(!private('中'));
 }
-
-#[test]
-fn shaping_ignores_colors_but_paint_keeps_them() {
-    let original = vec![
-        TextRun {
-            len: "中".len(),
-            font: gpui::font("JetBrains Mono"),
-            color: gpui::white(),
-            ..Default::default()
-        },
-        TextRun {
-            len: 2,
-            font: gpui::font("JetBrainsMono Nerd Font Mono").bold().italic(),
-            color: gpui::black(),
-            ..Default::default()
-        },
-    ];
-    let runs = original.clone();
-    let shaped = shaping_runs(&runs);
-    assert_eq!(shaped.len(), runs.len());
-    for (shaped, source) in shaped.iter().zip(&runs) {
-        let mut expected = source.clone();
-        expected.color = gpui::black();
-        assert_eq!(*shaped, expected);
-    }
-    assert_eq!(runs, original);
-    assert_eq!(color_at(&runs, 0), gpui::white());
-    assert_eq!(color_at(&runs, 2), gpui::white());
-    assert_eq!(color_at(&runs, 3), gpui::black());
-    assert_eq!(color_at(&runs, 4), gpui::black());
-    assert!(shaping_runs(&[]).is_empty());
-}
