@@ -230,6 +230,17 @@ fn text(
     draw(content, &runs, origin, None, look, window);
 }
 
+fn shaping_runs(runs: &[TextRun]) -> Vec<TextRun> {
+    runs.iter()
+        .cloned()
+        .map(|mut run| {
+            // shortcut: ligatures may cross colors; restore boundaries when shaping is optimized.
+            run.color = gpui::black();
+            run
+        })
+        .collect()
+}
+
 /// Shapes `content` and paints each glyph on the cell's baseline below `top`; `force` sets every advance.
 fn draw(
     content: &str,
@@ -239,10 +250,12 @@ fn draw(
     look: &Look,
     window: &mut Window,
 ) {
-    let shaped =
-        window
-            .text_system()
-            .shape_line(content.to_string().into(), look.size, runs, force);
+    let shaped = window.text_system().shape_line(
+        content.to_string().into(),
+        look.size,
+        &shaping_runs(runs),
+        force,
+    );
     let baseline = top.y + look.baseline;
     for run in &shaped.runs {
         for glyph in &run.glyphs {
@@ -452,39 +465,4 @@ fn paint_cursor(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::term::frame::{Row, Underline};
-
-    #[test]
-    fn spans_count_columns_not_bytes() {
-        let style = Style {
-            fg: gpui::black(),
-            bg: None,
-            bold: false,
-            italic: false,
-            underline: Underline::None,
-            underline_color: gpui::black(),
-            strike: false,
-        };
-        let bold = Style {
-            bold: true,
-            ..style
-        };
-        let row = Row {
-            text: "中 ab".into(),
-            runs: vec![(4, style), (2, bold)],
-            alone: Vec::new(),
-        };
-        let spans: Vec<_> = spans(&row).into_iter().map(|(at, n, _)| (at, n)).collect();
-        assert_eq!(spans, [(0, 2), (2, 2)]);
-    }
-
-    #[test]
-    fn icons_live_in_the_private_use_areas() {
-        assert!(private('\u{E0B0}'));
-        assert!(private('\u{F0035}'));
-        assert!(!private('a'));
-        assert!(!private('中'));
-    }
-}
+mod tests;
