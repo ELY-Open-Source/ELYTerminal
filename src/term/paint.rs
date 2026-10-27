@@ -12,6 +12,7 @@ use super::{
     frame::{Cursor, Frame, Style, Underline},
     view::TerminalView,
 };
+use crate::sessions;
 
 /// How the grid paints: font, cell, metrics and the cursor's colors.
 #[derive(Clone)]
@@ -106,6 +107,8 @@ fn paint_preedit(
     look: &Look,
     window: &mut Window,
 ) {
+    // gpui shapes no newline in a line of text, and a composition may hold one.
+    let text = composed(text);
     let cell = look.cell;
     let corner = origin + point(cell.width * column as f32, cell.height * row as f32);
     let style = Style {
@@ -117,14 +120,14 @@ fn paint_preedit(
         underline_color: look.fg,
         strike: false,
     };
-    let runs = runs(text, &style, look.fg, look, window);
+    let runs = runs(&text, &style, look.fg, look, window);
     let width = window
         .text_system()
-        .shape_line(text.to_string().into(), look.size, &runs, None)
+        .shape_line(text.as_str().into(), look.size, &runs, None)
         .width
         .max(cell.width);
     window.paint_quad(fill(Bounds::new(corner, size(width, cell.height)), look.bg));
-    draw(text, &runs, corner, None, look, window);
+    draw(&text, &runs, corner, None, look, window);
     decorate(corner, width, &style, look, window);
 }
 
@@ -228,6 +231,11 @@ fn text(
 ) {
     let runs = runs(content, style, color, look, window);
     draw(content, &runs, origin, None, look, window);
+}
+
+/// A composition on one line, as gpui shapes text: a newline becomes its picture.
+fn composed(text: &str) -> String {
+    sessions::one_line(text)
 }
 
 /// Shapes `content` and paints each glyph on the cell's baseline below `top`; `force` sets every advance.
@@ -486,5 +494,14 @@ mod tests {
         assert!(private('\u{F0035}'));
         assert!(!private('a'));
         assert!(!private('中'));
+    }
+
+    #[test]
+    fn a_composition_holds_no_newline_gpui_would_shape_as_lines() {
+        // gpui's shape_line asserts its text has no newline, so a composition
+        // with one used to panic the app while a Chinese IME was composing.
+        assert_eq!(composed("中文"), "中文");
+        assert_eq!(composed("a\nb"), "a␊b");
+        assert!(!composed("line\r\nbreak").contains('\n'));
     }
 }

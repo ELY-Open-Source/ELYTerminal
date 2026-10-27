@@ -82,6 +82,15 @@ impl MouseMode {
     }
 }
 
+/// What a wheel event sends: the tracking and format the reports go in.
+pub(super) fn asked(hidden: bool, tracking: Tracking, format: Format) -> (Tracking, Format) {
+    if hidden {
+        (Tracking::Button, Format::Sgr)
+    } else {
+        (tracking, format)
+    }
+}
+
 /// The bytes `report` sends; none when unasked for or past what the format holds.
 pub fn encode(report: &Report, mode: MouseMode) -> Option<Vec<u8>> {
     let clicked = matches!(
@@ -258,5 +267,25 @@ mod tests {
         assert_eq!(encode(&past, utf8), Some(wide));
         let far = report(LEFT, Gesture::Press, (2015, 0));
         assert_eq!(encode(&far, utf8), None);
+    }
+
+    #[test]
+    fn a_hidden_mouse_mode_asks_for_the_wheel_in_sgr() {
+        // ConPTY drops a program's DECSET, so the tap never learned it: the wheel goes as an SGR report, which ConPTY translates for the program.
+        assert_eq!(
+            asked(true, Tracking::Off, Format::X10),
+            (Tracking::Button, Format::Sgr)
+        );
+        // A mode the tap did read holds, whatever it asked for.
+        let seen = mode(Tracking::Normal, Format::Utf8);
+        assert_eq!(
+            asked(false, seen.tracking, seen.format),
+            (seen.tracking, seen.format)
+        );
+        // Shift holds the mouse for selecting, so the wheel stays the terminal's.
+        assert_eq!(
+            asked(false, Tracking::Off, Format::Sgr),
+            (Tracking::Off, Format::Sgr)
+        );
     }
 }

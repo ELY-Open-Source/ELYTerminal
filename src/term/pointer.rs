@@ -12,7 +12,7 @@ use gpui::{
 use super::{
     keys,
     links::link_at,
-    mouse::{self, Button, Gesture, MouseMode, Report, Tracking},
+    mouse::{self, Button, Format, Gesture, MouseMode, Report, Tracking},
     view::TerminalView,
     wheel,
 };
@@ -72,6 +72,18 @@ impl TerminalView {
         }
     }
 
+    /// The tracking and format a report goes in, over the alternate screen, when
+    /// ConPTY hid the program's mouse mode: it still takes the mouse, and ConPTY
+    /// translates an SGR report for it whether or not its DECSET survived.
+    fn conpty(&self, tracking: Tracking) -> (Tracking, Format, bool) {
+        let hidden = cfg!(windows)
+            && tracking == Tracking::Off
+            && !self.saw_mouse
+            && self.pty.term.lock().mode().contains(TermMode::ALT_SCREEN);
+        let (tracking, format) = mouse::asked(hidden, tracking, self.mouse.format);
+        (tracking, format, hidden)
+    }
+
     fn report(
         &mut self,
         button: Option<Button>,
@@ -79,6 +91,7 @@ impl TerminalView {
         cell: (usize, usize),
         modifiers: &Modifiers,
         tracking: Tracking,
+        format: Format,
     ) -> bool {
         let wheel = matches!(button, Some(Button::WheelUp | Button::WheelDown));
         // herdr's link key is Ctrl; on macOS Cmd stands for it, the wheel aside.
@@ -91,7 +104,6 @@ impl TerminalView {
             alt: modifiers.alt,
             ctrl: modifiers.control || link,
         };
-        let format = self.mouse.format;
         let Some(bytes) = mouse::encode(&report, MouseMode { tracking, format }) else {
             return false;
         };
@@ -115,6 +127,7 @@ impl TerminalView {
             event.modifiers.control
         };
         let tracking = self.tracking(&event.modifiers);
+        let (tracking, format, hidden) = self.conpty(tracking);
         // herdr opens its panes' links itself, whole where its drawing wraps them.
         let herdr = self.herdr && tracking != Tracking::Off;
         if event.button == MouseButton::Left && opens && herdr {
@@ -140,9 +153,16 @@ impl TerminalView {
                 cell,
                 &event.modifiers,
                 tracking,
+                format,
             ) && !self.pointer.pressed.contains(&pressed)
             {
                 self.pointer.pressed.push(pressed);
+            }
+            if hidden {
+                log::debug!(
+                    "terminal {}: ConPTY hides the mouse mode, so a press reports at {cell:?}",
+                    self.pty.pid
+                );
             }
             return;
         }
@@ -196,11 +216,19 @@ impl TerminalView {
             return;
         }
         let tracking = self.tracking(&event.modifiers);
+        let (tracking, format, _) = self.conpty(tracking);
         if tracking != Tracking::Off && self.pointer.last != Some(cell) {
             let held = [Button::Left, Button::Right, Button::Middle]
                 .into_iter()
                 .find(|button| self.pointer.pressed.contains(button));
-            self.report(held, Gesture::Motion, cell, &event.modifiers, tracking);
+            self.report(
+                held,
+                Gesture::Motion,
+                cell,
+                &event.modifiers,
+                tracking,
+                format,
+            );
         }
     }
 
@@ -263,7 +291,15 @@ impl TerminalView {
         if self.pointer.pressed.contains(&released) {
             self.pointer.pressed.retain(|held| *held != released);
             let tracking = self.mouse.tracking;
-            self.report(Some(released), Gesture::Release, cell, modifiers, tracking);
+            let (tracking, format, _) = self.conpty(tracking);
+            self.report(
+                Some(released),
+                Gesture::Release,
+                cell,
+                modifiers,
+                tracking,
+                format,
+            );
         }
     }
 
@@ -297,8 +333,8 @@ impl TerminalView {
             event.delta
         );
         let (cell, ..) = self.cell_at(event.position);
-        let tracking = self.tracking(&event.modifiers);
-        let mode = *self.pty.term.lock().mode();
+        let held = self.tracking(&event.modifiers);
+        let (tracking, format, hidden) = self.conpty(held);
         if tracking != Tracking::Off {
             let turn = if lines > 0 {
                 Button::WheelUp
@@ -306,10 +342,32 @@ impl TerminalView {
                 Button::WheelDown
             };
             for _ in 0..lines.unsigned_abs() {
-                self.report(Some(turn), Gesture::Press, cell, &event.modifiers, tracking);
+                self.report(
+                    Some(turn),
+                    Gesture::Press,
+                    cell,
+                    &event.modifiers,
+                    tracking,
+                    format,
+                );
             }
-        } else if mode.contains(TermMode::ALT_SCREEN | TermMode::ALTERNATE_SCROLL) {
-            let arrow: &[u8] = match (lines > 0, mode.contains(TermMode::APP_CURSOR)) {
+            if hidden {
+                log::debug!(
+                    "terminal {}: ConPTY hides the mouse mode, so the wheel reports {lines} lines",
+                    self.pty.pid
+                );
+            }
+        } else if self
+            .pty
+            .term
+            .lock()
+            .mode()
+            .contains(TermMode::ALT_SCREEN | TermMode::ALTERNATE_SCROLL)
+        {
+            let arrow: &[u8] = match (
+                lines > 0,
+                self.pty.term.lock().mode().contains(TermMode::APP_CURSOR),
+            ) {
                 (true, true) => b"\x1bOA",
                 (true, false) => b"\x1b[A",
                 (false, true) => b"\x1bOB",

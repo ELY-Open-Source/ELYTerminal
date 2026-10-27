@@ -66,6 +66,8 @@ pub struct TerminalView {
     pub(super) pointer: Pointer,
     /// The mouse mode, as the tap follows it.
     pub(super) mouse: MouseMode,
+    /// Whether the tap has ever read a mouse mode, so ConPTY is not hiding it.
+    pub(super) saw_mouse: bool,
     /// Keys go as Windows' records, as ConPTY asks.
     #[cfg(windows)]
     pub(super) win32: bool,
@@ -138,6 +140,7 @@ impl TerminalView {
             caret: Bounds::default(),
             pointer: Pointer::default(),
             mouse: MouseMode::default(),
+            saw_mouse: false,
             #[cfg(windows)]
             win32: false,
             herdr: false,
@@ -275,7 +278,10 @@ impl TerminalView {
                     cx.emit(TerminalEvent::Folder(folder));
                 }
                 PtyEvent::Term(event) => self.term_event(event, cx),
-                PtyEvent::Mouse(mode) => self.mouse = mode,
+                PtyEvent::Mouse(mode) => {
+                    self.mouse = mode;
+                    self.saw_mouse = true;
+                }
                 #[cfg(windows)]
                 PtyEvent::Win32(on) => self.win32 = on,
                 PtyEvent::Mark(Mark::Done(status), _) => self.finished(status, cx),
@@ -303,6 +309,7 @@ impl TerminalView {
                 PtyEvent::Reset => {
                     self.records.reset();
                     self.title.clear();
+                    self.saw_mouse = false;
                     cx.emit(TerminalEvent::Title(String::new()));
                     self.restate(cx);
                 }
