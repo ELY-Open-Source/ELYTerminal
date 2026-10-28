@@ -1,6 +1,6 @@
 # Website tasks
 
-Progress truth for this goal. Work in order. Each item needs a passing Herdr/Codex review before the next. Maximum three reviews per item.
+Progress truth for this goal. On 2026-10-28 the owner dropped the Bayer dither after the redesign; the site is ASCII alone. Work in order. Each item needs a passing Herdr/Codex review before the next. Maximum three reviews per item.
 
 - [x] W1 §1–2 — lock the visual architecture, release facts and deployment contracts. Verify: PRD, architecture review, official sources, current assets.
 - [x] W2 §6 — scaffold Vite and Three.js with the static page and local assets. Verify: clean install and production build.
