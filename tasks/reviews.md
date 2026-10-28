@@ -266,3 +266,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 3, 1244310: FAIL. A flag split by color, `\e[31m🇺\e[34m🇸`, put both halves in one cell; `👨🏾X` joined the modifier to the space holding the man's second cell, which shaped at the emoji font's width over X. Fixed in 4838df5: clusters stop at color sections, each shaped alone, and after a space, which in a row's text holds no mark. Shots match main for both; check.sh 303 tests, Linux 309 and 7 IME, Windows 288.
 - On 2026-10-28 the owner allowed T102 a fourth review.
 - Round 4, 4838df5: PASS. The reviewer drew 36 inputs and 52 comparisons on macOS and Linux, all as expected; each new test caught its mutation; check.sh passed with 303 tests.
+
+## T103
+
+- Round 1, 24cc492: FAIL. `conpty()?` sat inside `log::info!`, so `RUST_LOG=warn` skipped the check and a session started on the system's conhost, its mouse modes lost; the zip script's first comment ran twelve words. Fixed in 5ef7b5e: the check runs before the log line.
+- Round 2, 5ef7b5e: PASS. The reviewer ran 15 start cases on the PC: the bundled pair starts, a missing pair or one from PATH fails, under five log levels alike; the Windows suite passed.
