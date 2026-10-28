@@ -110,6 +110,8 @@ fn paint_preedit(
     look: &Look,
     window: &mut Window,
 ) {
+    // gpui shapes no newline; a composition may hold one.
+    let text = &crate::sessions::one_line(text);
     let cell = look.cell;
     let corner = origin + point(cell.width * column as f32, cell.height * row as f32);
     let style = Style {
