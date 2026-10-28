@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c0c0d" />
+    <script>
+      try {
+        const choice = localStorage.getItem('elyterminal-theme');
+        document.documentElement.dataset.theme = choice === 'light' || choice === 'dark'
+          ? choice
+          : matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.dataset.swarm = 'loading';
+      } catch (error) {
+        console.warn('ELYTerminal: theme preference unavailable', error);
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+    </script>
+    <title>ELYTerminal</title>
+    <link rel="icon" href="/ely.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <a class="skip-link" href="#content" data-en="Skip to content" data-zh="跳到主要内容">Skip to content</a>
+    <div id="stage" aria-hidden="true"></div>
+    <header class="site-header">
+      <a class="wordmark" href="#terminal" aria-label="ELYTerminal home" data-en-aria="ELYTerminal home" data-zh-aria="ELYTerminal 首页">ELYTerminal</a>
+      <nav aria-label="Primary" data-en-aria="Primary" data-zh-aria="主导航">
+        <a href="#sessions" data-en="Sessions" data-zh="会话">Sessions</a>
+        <a href="#git">Git</a>
+        <a href="#download" data-en="Download" data-zh="下载">Download</a>
+        <a href="https://github.com/ELY-Open-Source/ELYTerminal">GitHub</a>
+      </nav>
+      <div class="site-controls">
+        <button id="language-toggle" type="button" aria-label="Switch to Simplified Chinese">中文</button>
+        <button id="theme-toggle" type="button" aria-label="Switch to light theme"><span aria-hidden="true">◐</span></button>
+      </div>
+    </header>
+    <main id="content">
+      <section id="terminal" class="scene hero" aria-labelledby="product-name">
+        <div class="copy">
+          <h1 id="product-name"><span class="ely">ELY</span><span>Terminal</span></h1>
+          <div class="ely-slot" aria-hidden="true"></div>
+          <div class="transcript">
+            <p class="line dim">~/Projects/ELYTerminal <span class="branch">main</span></p>
+            <p class="line command"><span class="prompt">❯</span> <span class="typed">cargo run --release</span></p>
+            <p class="line dim">   Compiling elyterminal v0.1.9</p>
+            <p class="line dim">    Finished release profile</p>
+            <p class="line command"><span class="prompt">❯</span> <span class="typed">git status --short</span></p>
+            <p class="line"><span class="modified">M</span> src/term/view.rs</p>
+            <p class="line"><span class="added">A</span> website/index.html</p>
+          </div>
+        </div>
+        <div class="ely-still" aria-hidden="true">
+          <svg id="ely" viewBox="0 0 512 512" role="presentation" aria-hidden="true">
+            <defs>
+              <clipPath id="face-shape">
+                <path d="M178 164C178 116 212 94 256 94C300 94 334 116 334 164C334 202 312 228 284 238C274 242 264 244 256 244C248 244 238 242 228 238C200 228 178 202 178 164Z" />
+              </clipPath>
+            </defs>
+            <g id="ely-root">
+              <g id="hair-back">
+                <path fill="#EC86B5" d="M256 46C192 46 142 90 136 158C131 214 126 262 118 306C110 350 104 398 110 444C112 460 106 474 94 486C114 488 126 480 134 470C136 482 144 492 158 498C158 484 162 468 170 452L342 452C350 468 354 484 354 498C368 492 376 482 378 470C386 480 398 488 418 486C406 474 400 460 402 444C408 398 402 350 394 306C386 262 381 214 376 158C370 90 320 46 256 46Z" />
+                <path fill="#D9659A" d="M194 200C198 238 214 262 230 276L282 276C298 262 314 238 318 200Z" />
+              </g>
+              <g id="collar">
+                <path fill="#F7CDBE" d="M236 222L276 222L276 266C268 270 244 270 236 266Z" />
+                <path fill="#FFFFFF" d="M198 284C204 268 222 258 238 256L256 272L274 256C290 258 308 268 314 284Z" />
+                <path fill="#F05A97" d="M256 264C244 250 226 248 224 258C222 270 236 278 256 264Z" />
+                <path fill="#F05A97" d="M256 264C268 250 286 248 288 258C290 270 276 278 256 264Z" />
+                <circle cx="256" cy="264" r="8" fill="#D94683" />
+              </g>
+              <g id="head-front">
+                <g id="face">
+                  <path fill="#FFE7DC" d="M178 164C178 116 212 94 256 94C300 94 334 116 334 164C334 202 312 228 284 238C274 242 264 244 256 244C248 244 238 242 228 238C200 228 178 202 178 164Z" />
+                  <g clip-path="url(#face-shape)">
+                    <path fill="#F9D8CB" transform="translate(0 12)" d="M170 176C162 110 204 62 256 62C308 62 350 110 342 176Q328 152 318 134Q316 156 304 172Q298 150 286 130Q286 156 274 178Q268 150 256 128Q244 150 238 178Q226 156 226 130Q214 150 208 172Q196 156 194 134Q184 152 170 176Z" />
+                  </g>
+                </g>
+                <g id="eyes-open">
+                  <g id="eye-left">
+                    <g id="gaze-left">
+                      <ellipse cx="222" cy="188" rx="18" ry="23" fill="#A24FB9" />
+                      <ellipse cx="222" cy="198" rx="13.5" ry="11.5" fill="#EE84C4" />
+                      <ellipse cx="222" cy="190" rx="7.5" ry="10.5" fill="#5A2368" />
+                      <circle cx="215" cy="178" r="7" fill="#FFFFFF" />
+                      <circle cx="229" cy="199" r="3.2" fill="#FFFFFF" />
+                    </g>
+                    <path fill="#45233F" d="M194 182C195 168 208 159 224 159C234 159 241 164 244 172L240 173C236 168 231 165 224 165C214 165 207 172 204 183Z" />
+                    <path fill="none" stroke="#C2506F" stroke-width="2" stroke-linecap="round" opacity=".35" d="M215 212Q222 214 229 212" />
+                  </g>
+                  <g id="eye-right">
+                    <g id="gaze-right">
+                      <ellipse cx="290" cy="188" rx="18" ry="23" fill="#A24FB9" />
+                      <ellipse cx="290" cy="198" rx="13.5" ry="11.5" fill="#EE84C4" />
+                      <ellipse cx="290" cy="190" rx="7.5" ry="10.5" fill="#5A2368" />
+                      <circle cx="283" cy="178" r="7" fill="#FFFFFF" />
+                      <circle cx="297" cy="199" r="3.2" fill="#FFFFFF" />
+                    </g>
+                    <path fill="#45233F" d="M318 182C317 168 304 159 288 159C278 159 271 164 268 172L272 173C276 168 281 165 288 165C298 165 305 172 308 183Z" />
+                    <path fill="none" stroke="#C2506F" stroke-width="2" stroke-linecap="round" opacity=".35" d="M283 212Q290 214 297 212" />
+                  </g>
+                </g>
+                <g id="eyes-arcs" style="display: none">
+                  <path fill="none" stroke="#45233F" stroke-width="7" stroke-linecap="round" d="M205 197Q222 176 239 197" />
+                  <path fill="none" stroke="#45233F" stroke-width="7" stroke-linecap="round" d="M273 197Q290 176 307 197" />
+                </g>
+                <g id="blush-and-mouth">
+                  <ellipse cx="198" cy="216" rx="15" ry="8" fill="#FF8DAA" opacity=".55" />
+                  <ellipse cx="314" cy="216" rx="15" ry="8" fill="#FF8DAA" opacity=".55" />
+                  <path id="mouth-smile" fill="none" stroke="#C2506F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M244 222Q250 229 256 223Q262 229 268 222" />
+                  <path id="mouth-flat" style="display: none" fill="none" stroke="#C2506F" stroke-width="3.5" stroke-linecap="round" d="M249 225H263" />
+                  <ellipse id="mouth-gasp" style="display: none" cx="256" cy="226" rx="5.5" ry="7" fill="#C2506F" />
+                  <g id="mouth-grin" style="display: none">
+                    <path fill="#C2506F" d="M243 219Q256 241 269 219Z" />
+                    <path fill="#FF8DAA" d="M249 229Q256 236 263 229Q256 225 249 229Z" />
+                  </g>
+                </g>
+                <g id="side-locks">
+                  <path fill="#F7A6C9" d="M184 118C164 150 156 204 160 258C162 282 156 300 148 316C164 312 178 300 186 286C190 256 192 214 198 176C200 152 196 132 184 118Z" />
+                  <path fill="#F7A6C9" d="M328 118C348 150 356 204 352 258C350 282 356 300 364 316C348 312 334 300 326 286C322 256 320 214 314 176C312 152 316 132 328 118Z" />
+                </g>
+                <g id="bangs">
+                  <path fill="#F7A6C9" d="M170 176C162 110 204 62 256 62C308 62 350 110 342 176Q328 152 318 134Q316 156 304 172Q298 150 286 130Q286 156 274 178Q268 150 256 128Q244 150 238 178Q226 156 226 130Q214 150 208 172Q196 156 194 134Q184 152 170 176Z" />
+                  <path fill="#FFD1E4" d="M196 108C220 84 292 84 316 108C292 92 220 92 196 108Z" />
+                  <path fill="#F7A6C9" d="M250 66C238 40 252 18 280 20C264 28 258 44 262 64Z" />
+                  <path fill="#FFE48A" d="M318 86Q320 98 332 100Q320 102 318 114Q316 102 304 100Q316 98 318 86Z" />
+                </g>
+                <g id="mark-bang" opacity="0">
+                  <path fill="#FFB020" stroke="#45233F" stroke-width="3" d="M371 38L385 38L380 86L376 86Z" />
+                  <circle cx="378" cy="100" r="7" fill="#FFB020" stroke="#45233F" stroke-width="3" />
+                </g>
+                <g id="mark-sparkles" fill="#FFE48A" opacity="0">
+                  <path d="M140 70Q143 84 156 86Q143 88 140 102Q137 88 124 86Q137 84 140 70Z" />
+                  <path d="M380 52Q382 62 392 64Q382 66 380 76Q378 66 368 64Q378 62 380 52Z" />
+                </g>
+              </g>
+              <g id="held-terminal">
+                <rect x="128" y="278" width="256" height="180" rx="26" fill="#3D3654" />
+                <path fill="#FFFFFF" opacity=".15" d="M154 278H358C372 278 384 290 384 304V308C384 294 372 282 358 282H154C140 282 128 294 128 308V304C128 290 140 278 154 278Z" />
+                <rect x="144" y="300" width="224" height="142" rx="14" fill="#1D1A2C" />
+                <path fill="none" stroke="#FF9ECF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" d="M172 344L200 366L172 388" />
+                <rect x="212" y="378" width="46" height="12" rx="6" fill="#FFD1E4" />
+              </g>
+              <g id="finger-shadows">
+                <rect x="150" y="294" width="44" height="7" rx="3.5" fill="#000000" opacity=".3" />
+                <rect x="318" y="294" width="44" height="7" rx="3.5" fill="#000000" opacity=".3" />
+              </g>
+              <g id="hand-left">
+                <path fill="#FFE7DC" d="M150 296L150 280C150 272 161 272 161 280C161 270 172 270 172 279C172 270 183 270 183 280C183 272 194 272 194 281L194 296C194 300 150 300 150 296Z" />
+                <path fill="none" stroke="#F2BBA8" stroke-width="2" stroke-linecap="round" d="M161 282V294M172 281V294M183 282V294" />
+              </g>
+              <g id="hand-right">
+                <path fill="#FFE7DC" d="M318 296L318 281C318 272 329 272 329 280C329 270 340 270 340 279C340 270 351 270 351 280C351 272 362 272 362 280L362 296C362 300 318 300 318 296Z" />
+                <path fill="none" stroke="#F2BBA8" stroke-width="2" stroke-linecap="round" d="M329 282V294M340 281V294M351 282V294" />
+              </g>
+            </g>
+          </svg>
+        </div>
+      </section>
+      <section id="sessions" class="scene right" aria-labelledby="sessions-title">
+        <div class="copy">
+          <div class="ely-slot" aria-hidden="true"></div>
+          <h2 id="sessions-title" data-decode data-en="Sessions" data-zh="会话">Sessions</h2>
+          <ol class="sessions">
+          <li><span class="orb" data-state="done" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>zsh</strong> <span class="path">~/Projects/ELYTerminal</span><span class="sr-only" data-en="done" data-zh="完成">done</span></li>
+          <li aria-current="true"><span class="orb" data-state="working" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>codex</strong> <span class="path">~/Projects/Ely</span><span class="sr-only" data-en="working" data-zh="运行中">working</span></li>
+          <li><span class="orb" data-state="blocked" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>herdr</strong> <span class="path">~/Projects/AgentCompany</span><span class="sr-only" data-en="waiting" data-zh="等待中">waiting</span></li>
+          <li><span class="orb" data-state="error" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>cargo test</strong> <span class="path">~/Projects/alacritty</span><span class="sr-only" data-en="error" data-zh="出错">error</span></li>
+          <li><span class="orb" data-state="idle" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><strong>nvim</strong> <span class="path">~/Documents</span><span class="sr-only" data-en="idle" data-zh="空闲">idle</span></li>
+          </ol>
+          <div class="transcript">
+            <p class="line command"><span class="prompt">❯</span> <span class="typed">codex</span></p>
+            <p class="line">Reading src/term/view.rs</p>
+            <p class="line">Checking input and resize paths</p>
+            <p class="line dim">Working · 2m 14s</p>
+          </div>
+        </div>
+      </section>
+      <section id="git" class="scene" aria-labelledby="git-title">
+        <div class="copy">
+          <div class="ely-slot" aria-hidden="true"></div>
+          <h2 id="git-title" data-decode data-en="Git / Files" data-zh="Git / 文件">Git / Files</h2>
+          <div class="tabs" role="tablist" aria-label="Right panel" data-en-aria="Right panel" data-zh-aria="右侧面板">
+            <button id="git-tab" type="button" role="tab" aria-selected="true" aria-controls="git-panel" tabindex="0">Git</button>
+            <button id="files-tab" type="button" role="tab" aria-selected="false" aria-controls="files-panel" tabindex="-1" data-en="Files" data-zh="文件">Files</button>
+          </div>
+          <div id="git-panel" class="panel" role="tabpanel" aria-labelledby="git-tab">
+            <p class="branch">main</p>
+            <p class="dim"><span data-en="Unstaged" data-zh="未暂存">Unstaged</span> 2</p>
+            <p><span class="modified">M</span> src/term/view.rs</p>
+            <p><span class="modified">M</span> src/workspace.rs</p>
+            <p class="dim"><span data-en="Staged" data-zh="已暂存">Staged</span> 1</p>
+            <p><span class="added">A</span> website/index.html</p>
+          </div>
+          <div id="files-panel" class="panel" role="tabpanel" aria-labelledby="files-tab" hidden>
+<pre class="tree">~/Projects/ELYTerminal
+├── src/
+│   ├── term/
+│   │   ├── view.rs     <span class="modified">M</span>
+│   │   └── input.rs
+│   └── workspace.rs    <span class="modified">M</span>
+├── website/
+│   └── index.html      <span class="added">A</span>
+└── Cargo.toml</pre>
+          </div>
+          <div class="transcript">
+            <p class="line command"><span class="prompt">❯</span> <span class="typed">git diff --stat</span></p>
+            <p class="line">src/term/view.rs   | 24 <span class="added">+++</span><span class="deleted">---</span></p>
+            <p class="line">src/workspace.rs   |  8 <span class="added">+</span><span class="deleted">-</span></p>
+            <p class="line">website/index.html | 46 <span class="added">++++++++++++</span></p>
+            <p class="line dim">3 files changed, 62 insertions(+), 16 deletions(-)</p>
+          </div>
+        </div>
+      </section>
+      <section id="download" class="scene center" aria-labelledby="download-title">
+        <div class="copy">
+          <div class="ely-slot" aria-hidden="true"></div>
+          <h2 id="download-title" data-decode data-en="Download" data-zh="下载">Download</h2>
+          <a id="primary-download" class="download-primary" href="https://github.com/ELY-Open-Source/ELYTerminal/releases"><span aria-hidden="true">↓ </span><span id="primary-label" data-en="View releases" data-zh="查看发布">View releases</span></a>
+          <nav class="download-alternatives" aria-label="Download formats" data-en-aria="Download formats" data-zh-aria="下载格式">
+            <a data-download="macos" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/ELYTerminal-macos-arm64.dmg">macOS</a>
+            <a data-download="windows" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/ELYTerminal-windows-x86_64.zip">Windows</a>
+            <a data-download="appimage" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/ELYTerminal-linux-x86_64.AppImage">AppImage</a>
+            <a data-download="deb" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/elyterminal_amd64.deb">DEB</a>
+            <a data-download="rpm" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/elyterminal.x86_64.rpm">RPM</a>
+            <a data-download="tarball" href="https://github.com/ELY-Open-Source/ELYTerminal/releases/latest/download/ELYTerminal-linux-x86_64.tar.gz">tar.gz</a>
+          </nav>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,55 @@
+.orb {
+  display: inline-grid;
+  flex: none;
+  grid-template-columns: repeat(3, 4px);
+  grid-auto-rows: 4px;
+  gap: 1px;
+  width: 14px;
+  height: 14px;
+}
+
+.orb i {
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.orb[data-state="working"] { color: var(--pink); }
+.orb[data-state="blocked"] { color: var(--warning); }
+.orb[data-state="error"] { color: var(--danger); }
+.orb[data-state="done"] { color: var(--success); }
+.orb[data-state="idle"] { color: var(--muted); }
+
+/* Still shapes; type.js levels() holds the same numbers. */
+.orb[data-state="working"] i { opacity: 0.48; }
+.orb[data-state="working"] i:is(:nth-child(2), :nth-child(4), :nth-child(6), :nth-child(8)) { opacity: 0.68; }
+.orb[data-state="working"] i:is(:nth-child(5)) { opacity: 1; }
+.orb[data-state="blocked"] i { opacity: 1; }
+.orb[data-state="error"] i { opacity: 0.12; }
+.orb[data-state="error"] i:is(:nth-child(1), :nth-child(3), :nth-child(5), :nth-child(7), :nth-child(9)) { opacity: 1; }
+.orb[data-state="done"] i { opacity: 0.12; }
+.orb[data-state="done"] i:is(:nth-child(3), :nth-child(4), :nth-child(6), :nth-child(8)) { opacity: 1; }
+.orb[data-state="idle"] i { opacity: 0.6; }
+.orb[data-state="idle"] i:is(:nth-child(5)) { opacity: 0.12; }
+
+.orb[data-state][data-mark="pending"] i:nth-child(n) { opacity: 0.12; }
+
+.transcript[data-type] .line { opacity: 0; }
+
+.transcript[data-type] .typed {
+  position: relative;
+  display: inline-block;
+  clip-path: inset(0 calc((1 - var(--typed, 0)) * 100%) 0 0);
+}
+
+.transcript[data-type] .line[data-typing] .typed {
+  clip-path: inset(0 calc((1 - var(--typed, 0)) * 100% - 1ch) 0 0);
+}
+
+.transcript[data-type] .line[data-typing] .typed::after {
+  position: absolute;
+  inset-block: 0;
+  left: calc(var(--typed, 0) * 100%);
+  width: 1ch;
+  background: var(--pink);
+  content: "";
+}

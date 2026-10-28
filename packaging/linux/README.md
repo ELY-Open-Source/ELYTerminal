@@ -173,6 +173,8 @@ scripts/release-asset.sh target/release/ELYTerminal-VERSION-linux-x86_64.AppImag
 scripts/release-asset.sh target/release/elyterminal-VERSION-1.x86_64.rpm
 ```
 
-The helper replaces an asset with the same name. Check the version and target
-release before running it. The tarball remains part of the same release; no
-packaging workflow creates or publishes a release automatically.
+The helper replaces an asset with the same name and uploads its stable,
+versionless alias for the website. `--alias-only FILE` uploads only that alias.
+Check the version and target release before running it. The tarball remains part
+of the same release; no packaging workflow creates or publishes a release
+automatically.
