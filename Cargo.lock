@@ -1770,6 +1770,7 @@ dependencies = [
  "signal-hook",
  "sysinfo 0.39.6",
  "unicode-normalization",
+ "unicode-segmentation",
  "wayland-backend",
  "wayland-client",
  "wayland-protocols",

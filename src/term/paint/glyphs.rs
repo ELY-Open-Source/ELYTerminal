@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use gpui::{Pixels, Point, TextRun, Window, point};
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::Look;
 
@@ -27,31 +30,36 @@ fn sections<'a>(
         })
 }
 
-/// Each character's column, at its first byte.
-fn columns(content: &str) -> Vec<usize> {
+/// Each character's cluster column, at the character's first byte.
+fn anchors(content: &str) -> Vec<usize> {
     let mut map = vec![0; content.len()];
-    for (column, (byte, _)) in content.char_indices().enumerate() {
-        map[byte] = column;
+    let mut column = 0;
+    for (byte, cluster) in content.grapheme_indices(true) {
+        for (inner, _) in cluster.char_indices() {
+            map[byte + inner] = column;
+        }
+        column += cluster.chars().count();
     }
     map
 }
 
-/// Each glyph's x: its character's column, keeping logical order.
+/// Each glyph's x: its cluster's column, its offset within kept.
 fn places(
-    columns: &[usize],
+    anchors: &[usize],
     start: usize,
     glyphs: &[(usize, Pixels)],
     cell: Pixels,
 ) -> Vec<Pixels> {
-    let mut first: Option<(usize, Pixels)> = None;
+    let mut left: HashMap<usize, Pixels> = HashMap::new();
+    for &(index, x) in glyphs {
+        let at = left.entry(anchors[start + index]).or_insert(x);
+        *at = (*at).min(x);
+    }
     glyphs
         .iter()
         .map(|&(index, x)| {
-            let base = match first {
-                Some((at, base)) if at == index => base,
-                _ => first.insert((index, x)).1,
-            };
-            cell * columns[start + index] as f32 + (x - base)
+            let column = anchors[start + index];
+            cell * column as f32 + (x - left[&column])
         })
         .collect()
 }
@@ -66,14 +74,14 @@ pub(super) fn draw(
     window: &mut Window,
 ) {
     let baseline = top.y + look.baseline;
-    let columns = columns(content);
+    let anchors = anchors(content);
     let (mut start, mut pen) = (0, top.x);
     for (text, runs) in sections(content, runs) {
         let shaped = window.text_system().shape_line(
             text.to_string().into(),
             look.size,
             &shaping_runs(runs),
-            force,
+            None,
         );
         let color = runs[0].color;
         let glyphs: Vec<_> = shaped
@@ -87,7 +95,7 @@ pub(super) fn draw(
                     .iter()
                     .map(|(_, g)| (g.index, g.position.x))
                     .collect();
-                let xs = places(&columns, start, &at, cell);
+                let xs = places(&anchors, start, &at, cell);
                 xs.into_iter().map(|x| top.x + x).collect()
             }
             None => glyphs.iter().map(|(_, g)| pen + g.position.x).collect(),
