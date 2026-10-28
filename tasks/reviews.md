@@ -271,3 +271,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 24cc492: FAIL. `conpty()?` sat inside `log::info!`, so `RUST_LOG=warn` skipped the check and a session started on the system's conhost, its mouse modes lost; the zip script's first comment ran twelve words. Fixed in 5ef7b5e: the check runs before the log line.
 - Round 2, 5ef7b5e: PASS. The reviewer ran 15 start cases on the PC: the bundled pair starts, a missing pair or one from PATH fails, under five log levels alike; the Windows suite passed.
+
+## T104
+
+- Round 1, 0639ab0: FAIL. The READMEs named conpty.dll, OpenConsole.exe and LICENSE-conpty in a zip whose v0.1.9 holds elyterminal.exe alone; both features pages pointed "below" to a link press now on the keys page. Fixed in 7ed2327.
+- Round 2, 7ed2327: PASS. The install line matches v0.1.9's zip, both features pages link their keys page, and 26 relative links resolve.
