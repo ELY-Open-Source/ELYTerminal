@@ -30,15 +30,24 @@ fn sections<'a>(
         })
 }
 
-/// Each character's cluster column, at the character's first byte.
-fn anchors(content: &str) -> Vec<usize> {
+/// Each character's cluster column; clusters stop at sections and spaces.
+fn anchors(content: &str, runs: &[TextRun]) -> Vec<usize> {
     let mut map = vec![0; content.len()];
-    let mut column = 0;
-    for (byte, cluster) in content.grapheme_indices(true) {
-        for (inner, _) in cluster.char_indices() {
-            map[byte + inner] = column;
+    let (mut byte, mut column) = (0, 0);
+    for (text, _) in sections(content, runs) {
+        for cluster in text.graphemes(true) {
+            let parts = match cluster.strip_prefix(' ') {
+                Some(rest) if !rest.is_empty() => [" ", rest],
+                _ => [cluster, ""],
+            };
+            for part in parts.into_iter().filter(|part| !part.is_empty()) {
+                for (inner, _) in part.char_indices() {
+                    map[byte + inner] = column;
+                }
+                byte += part.len();
+                column += part.chars().count();
+            }
         }
-        column += cluster.chars().count();
     }
     map
 }
@@ -74,7 +83,7 @@ pub(super) fn draw(
     window: &mut Window,
 ) {
     let baseline = top.y + look.baseline;
-    let anchors = anchors(content);
+    let anchors = anchors(content, runs);
     let (mut start, mut pen) = (0, top.x);
     for (text, runs) in sections(content, runs) {
         let shaped = window.text_system().shape_line(
