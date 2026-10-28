@@ -258,3 +258,18 @@ fn a_file_starts_a_session_in_its_folder() {
         "a listed folder keeps itself, even if it has gone"
     );
 }
+
+#[test]
+fn a_menu_request_goes_out_once() {
+    let mut files = Files::new(PathBuf::from("/tmp"));
+    let at = gpui::point(gpui::px(3.), gpui::px(4.));
+    files.menu = Some(MenuAsk {
+        n: 7,
+        at: Some(at),
+        path: PathBuf::from("/tmp/a"),
+        here: PathBuf::from("/tmp"),
+    });
+    assert_eq!(files.request(), Some((7, at)));
+    assert_eq!(files.request(), None, "a hidden column must not reopen it");
+    assert!(files.menu.is_some(), "the open menu keeps its items");
+}

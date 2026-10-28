@@ -130,7 +130,8 @@ pub struct Here(pub PathBuf);
 /// A right press waiting to open Files' menu.
 struct MenuAsk {
     n: u64,
-    at: Point<Pixels>,
+    /// The press's point, until a render hands it on.
+    at: Option<Point<Pixels>>,
     path: PathBuf,
     here: PathBuf,
 }
@@ -258,7 +259,7 @@ impl Files {
                 log::info!("files: menu for {}", path.display());
                 self.menu = Some(MenuAsk {
                     n,
-                    at,
+                    at: Some(at),
                     here: here_folder(&path, folder),
                     path,
                 });
@@ -266,6 +267,12 @@ impl Files {
             }
             None => log::warn!("files: {of} to open a menu is gone"),
         }
+    }
+
+    /// The menu's request, once: a remounted menu would replay it.
+    fn request(&mut self) -> Option<(u64, Point<Pixels>)> {
+        let ask = self.menu.as_mut()?;
+        Some((ask.n, ask.at.take()?))
     }
 
     /// The path a tree key stands for: the root, or an entry read.
@@ -350,7 +357,7 @@ impl Render for Files {
             Some(ask) => menu::row(&cx.entity(), ask.path.clone(), ask.here.clone(), cx),
             None => Menu::new(),
         };
-        let request = self.menu.as_ref().map(|ask| (ask.n, ask.at));
+        let request = self.request();
         ContextMenu::new(("files-menu", self.generation), items)
             .manual(request)
             .size_full()
