@@ -95,6 +95,7 @@ Ghostty is the bar for what the terminal does. ELYTerminal owns its engine on `a
 - A switch at the top, centered below the title bar: Git, Files.
 - Files shows the active session's working directory as a tree, folders first, Git status colors on names.
 - Double press: a folder opens, a file opens in the system's default app.
+- A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. Off by default; off, a right press opens nothing.
 - It reloads when the session reports a new directory and at each prompt.
 
 ## 9. Right panel: Git
@@ -127,6 +128,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Copy on select.
   - Drag sessions to reorder: a switch, on by default; off, a drag on a session's row moves nothing.
   - Session menu: a switch, on by default; off, a right press on a session's row opens nothing.
+  - Files menu: a switch, off by default; off, a right press on a Files name opens nothing.
   - Ely: a switch.
   - Check for updates automatically: a switch, on by default, which checks at start and once a day.
   - Updates: what the last check found, and Check now; a newer release brings Download, which opens its page, and one an automatic check finds posts a notification.

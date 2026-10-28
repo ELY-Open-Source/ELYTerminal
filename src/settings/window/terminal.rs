@@ -37,7 +37,7 @@ const OPTIONS: [(OptionAsAlt, &str, &str); 4] = [
 const PLACES: usize = 8;
 
 impl SettingsWindow {
-    /// Shell, start in, scrollback, Option as Alt and natural text editing on macOS, copy on select, session and Files menus, Ely and updates, then the shortcuts.
+    /// The terminal's settings in order, then the shortcuts.
     pub(super) fn terminal(&self, cx: &Context<Self>) -> Div {
         let settings = SettingsStore::get(cx);
         let this = cx.entity();
@@ -127,12 +127,9 @@ impl SettingsWindow {
             settings.session_menu,
             |settings, on| settings.session_menu = on,
         );
-        let files_menu = switch(
-            &this,
-            "files_menu",
-            settings.files_menu,
-            |settings, on| settings.files_menu = on,
-        );
+        let files_menu = switch(&this, "files_menu", settings.files_menu, |settings, on| {
+            settings.files_menu = on
+        });
         let section = section
             .row(SettingsRow::new(word("et.terminal.copy_on_select")).control(copy))
             .row(

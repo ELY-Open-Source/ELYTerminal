@@ -13,11 +13,11 @@ use ely_gpui_component::{
     primitives::IconName,
 };
 use gpui::{
-    AppContext, Context, Entity, IntoElement, ParentElement, Pixels, Point, Render, SharedString,
-    Styled, Task, Window,
+    AppContext, Context, EventEmitter, IntoElement, ParentElement, Pixels, Point, Render,
+    SharedString, Styled, Task, Window,
 };
 
-use crate::{git, sessions, settings::SettingsStore, workspace::Workspace};
+use crate::{git, sessions, settings::SettingsStore};
 
 mod menu;
 
@@ -113,14 +113,19 @@ fn key(path: &Path) -> SharedString {
     }
 }
 
-/// The folder a new session starts in: a listed folder, or a file's parent.
+/// New session here's folder: itself, or a file's parent.
 pub(super) fn here_folder(path: &Path, folder: bool) -> PathBuf {
     if folder {
         path.to_path_buf()
     } else {
-        path.parent().unwrap_or(path).to_path_buf()
+        path.parent()
+            .expect("a listed file lies in a folder")
+            .to_path_buf()
     }
 }
+
+/// New session here: the folder it starts in.
+pub struct Here(pub PathBuf);
 
 /// A right press waiting to open Files' menu.
 struct MenuAsk {
@@ -143,9 +148,10 @@ pub struct Files {
     dirty: HashSet<PathBuf>,
     reading: Task<()>,
     checking: Task<()>,
-    workspace: Option<Entity<Workspace>>,
     menu: Option<MenuAsk>,
 }
+
+impl EventEmitter<Here> for Files {}
 
 impl Files {
     pub fn new(root: PathBuf) -> Self {
@@ -158,25 +164,16 @@ impl Files {
             dirty: HashSet::new(),
             reading: Task::ready(()),
             checking: Task::ready(()),
-            workspace: None,
             menu: None,
         }
-    }
-
-    /// The workspace that opens a session from a Files path.
-    pub fn with_workspace(mut self, workspace: Entity<Workspace>) -> Self {
-        self.workspace = Some(workspace);
-        self
     }
 
     /// Shows `folder`, read afresh with its marks; a new folder starts a new tree.
     pub fn show(&mut self, folder: &Path, cx: &mut Context<Self>) {
         if folder != self.root {
             log::info!("files: the tree shows {}", folder.display());
-            let workspace = self.workspace.clone();
             *self = Self {
                 generation: self.generation + 1,
-                workspace,
                 ..Self::new(folder.to_path_buf())
             };
         }
@@ -276,7 +273,7 @@ impl Files {
         self.named(of).map(|(path, _)| path)
     }
 
-    /// The path a tree key stands for, and whether the tree listed it as a folder.
+    /// A tree key's path, and whether it is a folder.
     fn named(&self, of: &str) -> Option<(PathBuf, bool)> {
         if key(&self.root).as_ref() == of {
             return Some((self.root.clone(), true));
@@ -284,7 +281,7 @@ impl Files {
         self.listings.iter().find_map(|(folder, listing)| {
             listing.iter().flatten().find_map(|entry| {
                 let path = folder.join(&entry.name);
-                (key(&path).as_ref() == of).then(|| (path, entry.folder))
+                (key(&path).as_ref() == of).then_some((path, entry.folder))
             })
         })
     }
@@ -344,18 +341,13 @@ impl Render for Files {
             }
             None => log::warn!("files: {key} to open is gone"),
         });
-        let Some(workspace) = self
-            .workspace
-            .clone()
-            .filter(|_| SettingsStore::get(cx).files_menu)
-        else {
+        if !SettingsStore::get(cx).files_menu {
             return tree.size_full().into_any_element();
-        };
-        let tree = tree.on_context(move |key, at, _, cx| {
-            asked.update(cx, |files, cx| files.ask(key, at, cx))
-        });
+        }
+        let tree = tree
+            .on_context(move |key, at, _, cx| asked.update(cx, |files, cx| files.ask(key, at, cx)));
         let items = match &self.menu {
-            Some(ask) => menu::row(&workspace, ask.path.clone(), ask.here.clone(), cx),
+            Some(ask) => menu::row(&cx.entity(), ask.path.clone(), ask.here.clone(), cx),
             None => Menu::new(),
         };
         let request = self.menu.as_ref().map(|ask| (ask.n, ask.at));

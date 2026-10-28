@@ -47,7 +47,7 @@ impl Workspace {
         self.open(&shell, Start::In(folder), Some(index + 1), window, cx);
     }
 
-    /// A session of the shown shell, in `folder`, after the shown row.
+    /// The shown shell in `folder`, right after the shown row.
     pub fn here(&mut self, folder: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
         let Some(shell) = self
             .sessions

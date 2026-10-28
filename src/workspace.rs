@@ -18,7 +18,7 @@ use gpui::{
 
 use crate::{
     blur::Blur,
-    files::Files,
+    files::{Files, Here},
     git::panel::{Acted, GitPanel},
     menus,
     sessions::{self, Session, orb},
@@ -104,6 +104,7 @@ pub struct Workspace {
     ticking: Option<Task<()>>,
     _settings: Subscription,
     _acted: Subscription,
+    _here: Subscription,
 }
 
 impl Workspace {
@@ -121,8 +122,10 @@ impl Workspace {
             let folder = this.sessions[this.active].folder.clone();
             this.files.update(cx, |files, cx| files.show(&folder, cx));
         });
-        let host = cx.entity();
-        let files = cx.new(|_| Files::new(launch.cwd.clone()).with_workspace(host));
+        let files = cx.new(|_| Files::new(launch.cwd.clone()));
+        let here = cx.subscribe_in(&files, window, |this, _, Here(folder), window, cx| {
+            this.here(folder.clone(), window, cx)
+        });
         let mut workspace = Self {
             focus: cx.focus_handle(),
             sessions: Vec::new(),
@@ -137,6 +140,7 @@ impl Workspace {
                 cx.notify();
             }),
             _acted: acted,
+            _here: here,
         };
         workspace.add(pty, events, launch, window, cx);
         workspace.select(0, window, cx);
