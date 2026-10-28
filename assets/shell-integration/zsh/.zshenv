@@ -39,7 +39,7 @@ if [[ -o interactive ]]; then
   }
   _ely_mark() {
     if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
-      PS1=$'%{\e]133;A\a%}'$PS1$'%{\e]133;B\a%}'
+      PS1=$'%{\e]133;A;aid=elyterminal\a%}'$PS1$'%{\e]133;B\a%}'
     fi
     # sched's command leaves its status for the prompt.
     builtin return ${1:-0}

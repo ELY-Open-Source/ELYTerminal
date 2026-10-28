@@ -1,4 +1,7 @@
-use ely_gpui_component::forms::{Copy, Paste, SelectAll};
+use ely_gpui_component::{
+    forms::{Copy, Paste, SelectAll},
+    i18n::text,
+};
 use gpui::{App, InteractiveElement, KeyBinding, Menu, MenuItem, OsAction, actions};
 
 use crate::{
@@ -12,56 +15,57 @@ actions!(
     [Quit, Bigger, Smaller, ResetSize, Minimize, Zoom]
 );
 
-/// The PRD's menu bar.
-pub fn menus() -> Vec<Menu> {
-    let menu = |name: &str, items| Menu {
-        name: name.to_string().into(),
+/// The PRD's menu bar, in the interface's language.
+pub fn menus(cx: &App) -> Vec<Menu> {
+    let word = |key: &str| text(cx, key, &[]);
+    let menu = |name, items| Menu {
+        name,
         items,
         disabled: false,
     };
     vec![
         menu(
-            "ELYTerminal",
+            "ELYTerminal".into(),
             vec![
-                MenuItem::action("Settings…", OpenSettings),
+                MenuItem::action(word("et.menu.settings"), OpenSettings),
                 MenuItem::separator(),
-                MenuItem::action("Quit ELYTerminal", Quit),
+                MenuItem::action(word("et.menu.quit"), Quit),
             ],
         ),
         menu(
-            "Shell",
+            word("et.menu.shell"),
             vec![
-                MenuItem::action("New Session", NewSession),
-                MenuItem::action("Close Session", CloseSession),
+                MenuItem::action(word("et.menu.new_session"), NewSession),
+                MenuItem::action(word("et.menu.close_session"), CloseSession),
             ],
         ),
         menu(
-            "Edit",
+            word("et.menu.edit"),
             vec![
-                MenuItem::os_action("Copy", Copy, OsAction::Copy),
-                MenuItem::os_action("Paste", Paste, OsAction::Paste),
-                MenuItem::os_action("Select All", SelectAll, OsAction::SelectAll),
+                MenuItem::os_action(word("et.menu.copy"), Copy, OsAction::Copy),
+                MenuItem::os_action(word("et.menu.paste"), Paste, OsAction::Paste),
+                MenuItem::os_action(word("et.menu.select_all"), SelectAll, OsAction::SelectAll),
                 MenuItem::separator(),
-                MenuItem::action("Find", Find),
+                MenuItem::action(word("et.menu.find"), Find),
             ],
         ),
         menu(
-            "View",
+            word("et.menu.view"),
             vec![
-                MenuItem::action("Toggle Sessions", ToggleSessions),
-                MenuItem::action("Toggle Right Panel", TogglePanel),
+                MenuItem::action(word("et.menu.toggle_sessions"), ToggleSessions),
+                MenuItem::action(word("et.menu.toggle_panel"), TogglePanel),
                 MenuItem::separator(),
-                MenuItem::action("Bigger", Bigger),
-                MenuItem::action("Smaller", Smaller),
-                MenuItem::action("Reset Size", ResetSize),
+                MenuItem::action(word("et.menu.bigger"), Bigger),
+                MenuItem::action(word("et.menu.smaller"), Smaller),
+                MenuItem::action(word("et.menu.reset_size"), ResetSize),
             ],
         ),
         // macOS lists the open windows here itself.
         menu(
-            "Window",
+            word("et.menu.window"),
             vec![
-                MenuItem::action("Minimize", Minimize),
-                MenuItem::action("Zoom", Zoom),
+                MenuItem::action(word("et.menu.minimize"), Minimize),
+                MenuItem::action(word("et.menu.zoom"), Zoom),
             ],
         ),
     ]
@@ -92,7 +96,7 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &Bigger, cx| zoom::step(Some(1.0), cx));
     cx.on_action(|_: &Smaller, cx| zoom::step(Some(-1.0), cx));
     cx.on_action(|_: &ResetSize, cx| zoom::step(None, cx));
-    cx.set_menus(menus());
+    cx.set_menus(menus(cx));
 }
 
 /// Minimize and Zoom, which only a window answers.

@@ -51,14 +51,14 @@ fn run(script: &str, size: (usize, usize)) -> Ran {
         while let Some(event) = events.next().await {
             match event {
                 PtyEvent::Folder(folder) => folders.push(folder),
-                PtyEvent::Mark(mark) => marks.push(mark),
-                PtyEvent::Status(status) => statuses.push(Some(status)),
+                PtyEvent::Mark(mark, _) => marks.push(mark),
+                PtyEvent::Status(status, _) => statuses.push(Some(status)),
                 PtyEvent::Reset => {
                     said.push("reset".to_string());
                     statuses.push(None);
                 }
                 PtyEvent::Title(title) => said.push(format!("title {title}")),
-                PtyEvent::Ask(ask) => {
+                PtyEvent::Ask(ask, _) => {
                     if let Ask::Show(notice) = &ask {
                         said.push(format!("show {}", notice.title));
                     }
@@ -247,7 +247,7 @@ fn the_foreground_is_the_program_s_own_group() {
     let (pty, _events) =
         spawn(&launch, (20, 4), (8, 16), config(&Settings::default())).expect("sh starts");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while pty.foreground().ok() != Some(pty.pid as i32) {
+    while pty.foreground().ok().flatten() != Some(pty.pid as i32) {
         assert!(
             std::time::Instant::now() < deadline,
             "{:?}",

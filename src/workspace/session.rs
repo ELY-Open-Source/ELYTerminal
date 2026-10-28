@@ -1,34 +1,32 @@
-use std::path::PathBuf;
-
 use gpui::{Context, EntityId, Window};
 
 use super::Workspace;
 use crate::{
-    settings::{SettingsStore, StartIn},
+    settings::{self, SettingsStore, StartIn},
     term::{
         config,
-        shell::{ShellIntegration, launch},
+        shell::{ShellIntegration, Start, launch},
         spawn,
     },
 };
 
 impl Workspace {
-    /// A session of the shell the settings name, in home or the shown session's folder.
+    /// A session of the set shell, where Start in says.
     pub(super) fn new_session(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(home) = dirs::home_dir() else {
-            log::error!("app: no home folder, so no new session");
-            return;
-        };
         let settings = SettingsStore::get(cx);
-        let folder = match settings.start_in {
-            StartIn::Home => home,
+        let start = match settings.start_in {
+            StartIn::Home => Start::Home,
             StartIn::Session => self
                 .sessions
                 .get(self.active)
-                .map_or(home, |session| session.folder.clone()),
+                .map_or(Start::Home, |session| Start::In(session.folder.clone())),
+            StartIn::Folder => match settings::start_folder(&settings.start_folder) {
+                Ok(folder) => Start::In(folder),
+                Err(error) => return log::error!("app: no new session: {error:#}"),
+            },
         };
         let shell = settings.shell.clone();
-        self.open(&shell, folder, None, window, cx);
+        self.open(&shell, start, None, window, cx);
     }
 
     /// Session `id` again: the shell it runs, in the folder it last reported.
@@ -44,20 +42,20 @@ impl Workspace {
             return;
         };
         log::info!("app: session {id:?} duplicates into {}", folder.display());
-        self.open(&shell, folder, Some(index + 1), window, cx);
+        self.open(&shell, Start::In(folder), Some(index + 1), window, cx);
     }
 
-    /// A session of `shell` in `folder`, at `at` or the list's end, and shown.
+    /// Shows a `shell` session from `start`, at `at` or last.
     fn open(
         &mut self,
         shell: &str,
-        folder: PathBuf,
+        start: Start,
         at: Option<usize>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let settings = SettingsStore::get(cx);
-        let started = launch(shell, folder, &cx.global::<ShellIntegration>().0)
+        let started = launch(shell, start, &cx.global::<ShellIntegration>().0)
             .and_then(|launch| Ok((spawn(&launch, (80, 24), (8, 16), config(settings))?, launch)));
         match started {
             Ok(((pty, events), launch)) => {

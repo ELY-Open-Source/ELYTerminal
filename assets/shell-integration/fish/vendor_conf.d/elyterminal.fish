@@ -43,7 +43,7 @@ if status is-interactive
             function fish_prompt
                 # First, so the user's prompt sees the command's status.
                 set -l text (_ely_user_prompt | string collect -N)
-                contains A $_ely_marks; and printf '\e]133;A\a'
+                contains A $_ely_marks; and printf '\e]133;A;aid=elyterminal\a'
                 printf '%s\e]133;B\a' "$text"
             end
         end

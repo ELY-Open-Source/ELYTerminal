@@ -148,7 +148,7 @@ fn mouse_modes_read_through_controls_as_the_parser_does() {
 
 /// The folder `body` names as Unix reads it.
 fn unix(body: &[u8]) -> Option<PathBuf> {
-    folder_on(body, false)
+    folder::folder_on(body, false)
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn other_hosts_and_bad_uris_give_none() {
 
 #[test]
 fn windows_reads_a_drive_or_a_share_wsl_s_among_them() {
-    let windows = |body: &str| folder_on(body.as_bytes(), true);
+    let windows = |body: &str| folder::folder_on(body.as_bytes(), true);
     let wsl = r"\\wsl.localhost\Ubuntu\home\a b";
     let share = windows("file:////wsl.localhost/Ubuntu/home/a%20b");
     assert_eq!(share, Some(PathBuf::from(wsl)));
@@ -320,4 +320,164 @@ fn win32_input_mode_follows_conptys_ask_until_a_full_reset() {
     assert!(!modes.win32);
     modes.feed(b"\x1b[?9001h\x1bc");
     assert!(!modes.win32, "a full reset ends it");
+}
+
+/// A pty reading `chunks`, then nothing, as alacritty's Windows reader.
+struct Chunks {
+    chunks: std::collections::VecDeque<Vec<u8>>,
+    /// Reads that found nothing.
+    dry: usize,
+    sink: io::Sink,
+}
+
+impl Chunks {
+    fn tapped(chunks: impl IntoIterator<Item = Vec<u8>>) -> Tapped<Self> {
+        let (sender, _) = futures::channel::mpsc::unbounded();
+        let chunks = chunks.into_iter().collect();
+        let pty = Self {
+            chunks,
+            dry: 0,
+            sink: io::sink(),
+        };
+        Tapped::new(pty, sender, 1)
+    }
+}
+
+impl io::Read for Chunks {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let Some(mut chunk) = self.chunks.pop_front() else {
+            self.dry += 1;
+            return Ok(0);
+        };
+        let count = chunk.len().min(buf.len());
+        buf[..count].copy_from_slice(&chunk[..count]);
+        if count < chunk.len() {
+            self.chunks.push_front(chunk.split_off(count));
+        }
+        Ok(count)
+    }
+}
+
+impl EventedReadWrite for Chunks {
+    type Reader = Self;
+    type Writer = io::Sink;
+
+    unsafe fn register(&mut self, _: &Arc<Poller>, _: Event, _: PollMode) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reregister(&mut self, _: &Arc<Poller>, _: Event, _: PollMode) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn deregister(&mut self, _: &Arc<Poller>) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reader(&mut self) -> &mut Self {
+        self
+    }
+
+    fn writer(&mut self) -> &mut io::Sink {
+        &mut self.sink
+    }
+}
+
+#[test]
+fn a_read_passes_nothing_only_once_its_pty_ran_dry() {
+    let mut buf = vec![0; 1 << 20];
+    // An escape cut after its ESC.
+    let mut tapped = Chunks::tapped([b"\x1b".to_vec(), b"[31mred".to_vec()]);
+    let got = io::Read::read(&mut tapped, &mut buf).expect("a read");
+    assert_eq!(&buf[..got], b"\x1b[31mred");
+    assert_eq!(tapped.inner.dry, 1);
+    // A mark held whole past a read's room.
+    let mark = [b"\x1b]133;A;".as_slice(), &[b'k'; 3000], b"\x07ok"].concat();
+    let mut tapped = Chunks::tapped(mark.chunks(700).map(<[u8]>::to_vec));
+    let got = io::Read::read(&mut tapped, &mut buf).expect("a read");
+    assert!(buf[..got].ends_with(b"ok"), "the mark and what follows it");
+    assert_eq!(tapped.inner.dry, 1);
+}
+
+#[test]
+fn an_escape_held_at_a_full_read_goes_on_with_the_next_full_one() {
+    let mut buf = vec![0; 1 << 20];
+    let take = (buf.len() - prompts::SLACK) / prompts::GROWTH;
+    let stream = [
+        vec![b'x'; take - 1],
+        b"\x1b[0m".to_vec(),
+        vec![b'y'; 2 * take],
+    ]
+    .concat();
+    let mut tapped = Chunks::tapped([stream]);
+    let first = io::Read::read(&mut tapped, &mut buf).expect("a read");
+    assert_eq!(first, take - 1, "the ESC waits");
+    let second = io::Read::read(&mut tapped, &mut buf).expect("a read");
+    let full = (buf.len() - 1 - prompts::SLACK) / prompts::GROWTH;
+    assert_eq!(second, 1 + full, "the ESC and a full read");
+    assert_eq!(&buf[..4], b"\x1b[0m");
+}
+
+#[cfg(windows)]
+#[test]
+fn a_turn_s_bytes_with_more_waiting_wake_the_event_loop_once() {
+    let mut tapped = Chunks::tapped((0..64).map(|_| vec![b'a'; 4096]));
+    let poller = Arc::new(Poller::new().expect("a poller"));
+    unsafe { tapped.register(&poller, Event::readable(0), PollMode::Level) }.expect("registered");
+    let mut buf = vec![0; 1 << 20];
+    let mut events = polling::Events::new();
+    let mut passed = 0;
+    while passed < TURN {
+        events.clear();
+        poller
+            .wait(&mut events, Some(std::time::Duration::ZERO))
+            .expect("a wait");
+        assert!(events.is_empty(), "woken after {passed} bytes");
+        passed += io::Read::read(&mut tapped, &mut buf).expect("a read");
+    }
+    events.clear();
+    poller
+        .wait(&mut events, Some(std::time::Duration::ZERO))
+        .expect("a wait");
+    let woken: Vec<Event> = events.iter().collect();
+    assert_eq!(woken.len(), 1);
+    assert!(woken[0].readable);
+    assert_eq!(woken[0].key, alacritty_terminal::tty::PTY_READ_WRITE_TOKEN);
+}
+
+#[test]
+fn only_the_session_s_own_named_prompt_names_its_shell() {
+    let (events, mut heard) = futures::channel::mpsc::unbounded();
+    let (mut kitty, mut titles, mut named, mut last) =
+        (Kitty::default(), Titles::default(), false, None);
+    let mut prompt = |body: &[u8], group: i32, named: &mut bool| {
+        let found = Found::Osc(body, body.len());
+        report(
+            found,
+            &events,
+            10,
+            &mut last,
+            (&mut kitty, &mut titles, named),
+            &|| Some(group),
+            &|_, _| false,
+        );
+        match heard.try_recv() {
+            Ok(PtyEvent::Mark(_, holder)) => holder,
+            other => panic!("no mark: {other:?}"),
+        }
+    };
+    // A nested zsh names its prompts in its own group.
+    assert_eq!(
+        prompt(b"133;A;aid=elyterminal", 20, &mut named),
+        Holder::Shell
+    );
+    assert!(!named);
+    // Back in fish, its unnamed prompt is the shell's.
+    assert_eq!(prompt(b"133;A", 10, &mut named), Holder::Shell);
+    assert_eq!(
+        prompt(b"133;A;aid=elyterminal", 10, &mut named),
+        Holder::Shell
+    );
+    assert!(named);
+    assert_eq!(prompt(b"133;A", 10, &mut named), Holder::Unknown);
 }

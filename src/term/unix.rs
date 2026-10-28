@@ -51,6 +51,22 @@ impl Pty {
     }
 }
 
+/// `master`'s foreground group; none once none holds the terminal.
+pub(super) fn foreground(master: &File) -> io::Result<Option<i32>> {
+    match unsafe { libc::tcgetpgrp(master.as_raw_fd()) } {
+        -1 => Err(io::Error::last_os_error()),
+        0 => Ok(None),
+        group => Ok(Some(group)),
+    }
+}
+
+mod process;
+#[cfg(all(test, target_os = "linux"))]
+pub(super) use process::installed;
+#[cfg(all(test, target_os = "macos"))]
+pub(super) use process::procargs;
+pub(super) use process::{args, inner, launch, lone, name, path};
+
 /// Starts `program`, or the login shell, in `cwd` on a new pty of `size`.
 pub(crate) fn spawn(
     program: Option<&(String, Vec<String>)>,

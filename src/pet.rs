@@ -6,22 +6,19 @@ mod macos;
 mod rig;
 #[cfg(test)]
 mod tests;
+mod wayland;
 #[cfg(windows)]
 mod windows;
 #[cfg(target_os = "linux")]
 mod x11;
 
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use gpui::{
-    App, AppContext as _, Bounds, Context, Decorations, DispatchPhase, InteractiveElement,
-    IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels,
-    Point, Render, Styled, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
-    WindowHandle, WindowKind, WindowOptions, canvas, div, point, popup, px, size,
+    App, AppContext as _, Bounds, Context, DispatchPhase, InteractiveElement, IntoElement,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point,
+    Render, Styled, Subscription, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
+    WindowKind, WindowOptions, canvas, div, point, popup, px, size,
 };
 
 #[cfg(target_os = "macos")]
@@ -40,9 +37,6 @@ use crate::{settings::SettingsStore, workspace::Workspace};
 const WIDTH: f32 = 112.0;
 const HEAD: f32 = 107.4;
 const ROOM: f32 = 16.0;
-/// How often she checks her Wayland anchor against the main window.
-const CHECK: Duration = Duration::from_millis(500);
-
 /// The pane edge her bottom stands on: the top, or the bottom, inside the window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Edge {
@@ -82,31 +76,40 @@ pub fn follow(main: WindowHandle<Workspace>, cx: &mut App) {
     let shown: Shown = Rc::default();
     let sync = {
         let shown = shown.clone();
-        move |cx: &mut App| {
-            let open = *shown.borrow();
-            match (SettingsStore::get(cx).ely, open) {
-                (true, None) => *shown.borrow_mut() = open_pet(main, cx),
-                (false, Some(pet)) => {
-                    *shown.borrow_mut() = None;
-                    close(pet, "as the settings say", cx);
-                }
-                _ => {}
-            }
-        }
+        move |cx: &mut App| present(main, &shown, cx)
     };
     sync(cx);
     cx.observe_global::<SettingsStore>(sync).detach();
-    // gpui hears a change of state alone as no change of bounds, and sends an unseen popup no frames.
     if main
         .update(cx, |_, window, _| wayland(window))
         .is_ok_and(|wayland| wayland)
     {
-        cx.spawn(async move |cx| {
-            while cx.update(|cx| reanchor(main, &shown, cx)).is_ok() {
-                cx.background_executor().timer(CHECK).await;
-            }
-        })
-        .detach();
+        wayland::follow(main, shown, cx);
+    }
+}
+
+/// Opens or closes her per settings; on Wayland, per activation.
+fn present(main: WindowHandle<Workspace>, shown: &Shown, cx: &mut App) {
+    let state = main.update(cx, |_, window, _| {
+        (wayland(window), window.is_window_active())
+    });
+    let Ok((wayland, active)) = state else {
+        return log::debug!("pet: the main window had gone");
+    };
+    let wanted = SettingsStore::get(cx).ely;
+    let open = *shown.borrow();
+    match (wanted && (active || !wayland), open) {
+        (true, None) => *shown.borrow_mut() = open_pet(main, cx),
+        (false, Some(pet)) => {
+            *shown.borrow_mut() = None;
+            let why = if wanted {
+                "while the main window is inactive"
+            } else {
+                "as the settings say"
+            };
+            close(pet, why, cx);
+        }
+        _ => {}
     }
 }
 
@@ -141,49 +144,6 @@ fn edge(room: f32) -> Edge {
     }
 }
 
-/// The edge she stands on over a Wayland window, whose place no client knows: the bottom while it is full screen, maximized or tiled at its top.
-fn wayland_edge(window: &Window) -> Edge {
-    let tiled = matches!(window.window_decorations(), Decorations::Client { tiling } if tiling.top);
-    if tiled || window.is_fullscreen() || window.is_maximized() {
-        Edge::Bottom
-    } else {
-        Edge::Top
-    }
-}
-
-/// Where she stands over a Wayland window: the edge, and her anchor counted from the pane's top left, as gpui's popups count.
-fn wayland_spot(window: &Window, at: f32) -> (Edge, Point<Pixels>) {
-    let pane = pane(window);
-    let edge = wayland_edge(window);
-    let y = match edge {
-        Edge::Top => px(0.),
-        Edge::Bottom => pane.size.height - px(1.),
-    };
-    (edge, point(px(left(pane.size.width, at)), y))
-}
-
-/// Opens her again over a Wayland `main` once its size or state moves the anchor her popup opened at, which never moves.
-fn reanchor(main: WindowHandle<Workspace>, shown: &Shown, cx: &mut App) -> anyhow::Result<()> {
-    let at = SettingsStore::get(cx).ely_left;
-    let spot = main.update(cx, |_, window, _| wayland_spot(window, at))?;
-    let Some(pet) = *shown.borrow() else {
-        return Ok(());
-    };
-    if pet
-        .read(cx)
-        .is_ok_and(|pet| (pet.edge, pet.anchor) == (spot.0, Some(spot.1)))
-    {
-        return Ok(());
-    }
-    close(
-        pet,
-        "to stand where the window's size or state, or a drag, puts her",
-        cx,
-    );
-    *shown.borrow_mut() = open_pet(main, cx);
-    Ok(())
-}
-
 /// Opens her window on `main`'s pane: a popup Wayland's compositor places, else a window kept there.
 fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHandle<Pet>> {
     let kept = SettingsStore::get(cx).ely_left;
@@ -192,7 +152,7 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
             window.bounds(),
             pane(window),
             wayland(window),
-            wayland_spot(window, kept),
+            wayland::spot(window, kept),
         )
     })?;
     let at = left(pane.size.width, kept);

@@ -98,6 +98,8 @@ pub struct TerminalView {
     focused: bool,
     blinking: bool,
     shown: bool,
+    /// The kitty keyboard flags, as the parser last left them.
+    kitty: TermMode,
     _events: Task<()>,
     _blink: Task<()>,
     _herdr: Task<()>,
@@ -155,6 +157,7 @@ impl TerminalView {
             focused: false,
             blinking: false,
             shown: true,
+            kitty: TermMode::empty(),
             _events: Self::pump(events, cx),
             _blink: Self::blink(cx),
             _herdr: super::herdr::follow(cx),
@@ -263,6 +266,9 @@ impl TerminalView {
             .iter()
             .any(|event| matches!(event, PtyEvent::Term(Event::Wakeup)));
         for event in events {
+            if let PtyEvent::Mark(mark, holder) = &event {
+                self.records.mark(mark, *holder);
+            }
             match event {
                 PtyEvent::Folder(folder) => {
                     self.reports += 1;
@@ -272,24 +278,22 @@ impl TerminalView {
                 PtyEvent::Mouse(mode) => self.mouse = mode,
                 #[cfg(windows)]
                 PtyEvent::Win32(on) => self.win32 = on,
-                PtyEvent::Mark(Mark::Done(status)) => self.finished(status, cx),
-                // A new prompt ends what was working, waiting or idle; done and error stay.
-                PtyEvent::Mark(Mark::Prompt(click)) => {
+                PtyEvent::Mark(Mark::Done(status), _) => self.finished(status, cx),
+                PtyEvent::Mark(Mark::Prompt(click), _) => {
                     self.shell = Shell::Prompting(click);
-                    self.records.prompt();
                     self.restate(cx);
                 }
-                PtyEvent::Mark(Mark::Output) => {
+                PtyEvent::Mark(Mark::Output, _) => {
                     self.ran = Some(Instant::now());
                     self.shell = Shell::Busy;
                 }
-                PtyEvent::Mark(Mark::Input) => self.shell = self.shell.reads(),
-                PtyEvent::Status(status) => {
-                    self.status(status);
+                PtyEvent::Mark(Mark::Input, _) => self.shell = self.shell.reads(),
+                PtyEvent::Status(status, owner) => {
+                    self.status(status, owner);
                     self.restate(cx);
                 }
-                PtyEvent::Ask(ask) => {
-                    self.ask(ask, cx);
+                PtyEvent::Ask(ask, owner) => {
+                    self.ask(ask, owner, cx);
                     self.restate(cx);
                 }
                 PtyEvent::Title(title) => {
@@ -302,6 +306,13 @@ impl TerminalView {
                     cx.emit(TerminalEvent::Title(String::new()));
                     self.restate(cx);
                 }
+            }
+        }
+        if drawn {
+            let kitty = *self.pty.term.lock().mode() & TermMode::KITTY_KEYBOARD_PROTOCOL;
+            if kitty != self.kitty {
+                log::debug!("terminal {}: kitty keyboard flags {kitty:?}", self.pty.pid);
+                self.kitty = kitty;
             }
         }
         // ponytail: a full search per output batch while find is open; search only new lines if it lags.

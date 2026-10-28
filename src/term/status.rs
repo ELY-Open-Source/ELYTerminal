@@ -4,7 +4,7 @@ use base64::{
     engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
 };
 
-use super::notify::Progress;
+use super::{marks::Mark, notify::Progress};
 
 /// What a program says it is doing, OSC 7501.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -191,26 +191,36 @@ fn text(value: &str, key: &str, encoded: usize, decoded: usize) -> Result<String
     Ok(text)
 }
 
-/// The records one terminal keeps, by id, each with when it was last reported.
+/// A prompt's holder: the named shell, a group, or unknown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Holder {
+    Shell,
+    Group(i32),
+    Unknown,
+}
+
+/// A terminal's records by id, with time and reporting group.
 #[derive(Default)]
 pub struct Records {
-    list: Vec<(String, Record, u64)>,
+    list: Vec<(String, Record, u64, Option<i32>)>,
     clock: u64,
     /// A program has reported through OSC 7501 since the last full reset, so OSC 9;4 maps no more.
     reported: bool,
     /// The state a row showed at the last note.
     shows: Option<State>,
+    /// Commands open between C and D, for an unknown holder.
+    commands: u32,
 }
 
 impl Records {
-    /// A program's report: replaces the record at `id` whole.
-    pub fn report(&mut self, id: String, record: Record) {
+    /// `owner`'s report replaces the record at `id` whole.
+    pub fn report(&mut self, id: String, record: Record, owner: Option<i32>) {
         self.reported = true;
-        self.put(id, record);
+        self.put(id, record, owner);
     }
 
     /// OSC 9;4 as the root record, until a program reports through OSC 7501.
-    pub fn progress(&mut self, progress: Progress) {
+    pub fn progress(&mut self, progress: Progress, owner: Option<i32>) {
         if self.reported {
             log::debug!("status: OSC 9;4 passed by, a program reports through OSC 7501");
             return;
@@ -227,10 +237,10 @@ impl Records {
             Progress::Remove => self.list.retain(|(id, ..)| !id.is_empty()),
             // Paused work is work still, its progress kept.
             Progress::Set(value) | Progress::Pause(value) => {
-                self.put(String::new(), root(State::Working, value))
+                self.put(String::new(), root(State::Working, value), owner)
             }
-            Progress::Indeterminate => self.put(String::new(), root(State::Working, None)),
-            Progress::Error(_) => self.put(String::new(), root(State::Error, None)),
+            Progress::Indeterminate => self.put(String::new(), root(State::Working, None), owner),
+            Progress::Error(_) => self.put(String::new(), root(State::Error, None), owner),
         }
     }
 
@@ -238,14 +248,14 @@ impl Records {
     pub fn herdr(&mut self, agents: &[(String, Record)]) -> bool {
         let held = self.list.iter().filter(|(id, ..)| id.starts_with(HERDR));
         if held
-            .map(|(id, record, _)| (id, record))
+            .map(|(id, record, ..)| (id, record))
             .eq(agents.iter().map(|(id, record)| (id, record)))
         {
             return false;
         }
         self.list.retain(|(id, ..)| !id.starts_with(HERDR));
         for (id, record) in agents {
-            self.put(id.clone(), record.clone());
+            self.put(id.clone(), record.clone(), None);
         }
         true
     }
@@ -254,12 +264,13 @@ impl Records {
     pub fn reset(&mut self) {
         self.list.clear();
         self.reported = false;
+        self.commands = 0;
     }
 
-    fn put(&mut self, id: String, record: Record) {
+    fn put(&mut self, id: String, record: Record, owner: Option<i32>) {
         self.clock += 1;
         if let Some(entry) = self.list.iter_mut().find(|(at, ..)| *at == id) {
-            *entry = (id, record, self.clock);
+            *entry = (id, record, self.clock, owner);
             return;
         }
         if self.list.len() == RECORDS {
@@ -269,7 +280,7 @@ impl Records {
             let (gone, ..) = self.list.remove(oldest);
             log::debug!("status: record {gone:?} goes, the one updated longest ago");
         }
-        self.list.push((id, record, self.clock));
+        self.list.push((id, record, self.clock, owner));
     }
 
     /// A program's clear: drops the record at `id` and every one under it; with none, all.
@@ -285,16 +296,39 @@ impl Records {
         }
     }
 
-    /// A new prompt: working, blocked and idle records go, done and error stay.
-    pub fn prompt(&mut self) {
-        self.list
-            .retain(|(_, record, _)| matches!(record.state, State::Done | State::Error));
+    /// Shell prompts drop live records; program prompts keep their own.
+    pub fn mark(&mut self, mark: &Mark, holder: Holder) {
+        match mark {
+            Mark::Output => self.commands = self.commands.saturating_add(1),
+            Mark::Done(_) => self.commands = self.commands.saturating_sub(1),
+            Mark::Prompt(_) => {
+                if holder == Holder::Shell {
+                    self.commands = 0;
+                }
+                let inside = self.commands > 0;
+                let before = self.list.len();
+                self.list.retain(|(_, record, _, owner)| {
+                    matches!(record.state, State::Done | State::Error)
+                        || match (holder, owner) {
+                            (Holder::Shell, _) => false,
+                            (Holder::Group(group), Some(owner)) => group == *owner,
+                            // Without groups to compare, C and D count the commands.
+                            _ => inside,
+                        }
+                });
+                log::debug!(
+                    "status: a prompt held by {holder:?} drops {} records",
+                    before - self.list.len()
+                );
+            }
+            Mark::Input => {}
+        }
     }
 
     /// The user typed: done and error records are seen and go, but herdr's, which herdr marks seen; true when any went.
     pub fn seen(&mut self) -> bool {
         let before = self.list.len();
-        self.list.retain(|(id, record, _)| {
+        self.list.retain(|(id, record, ..)| {
             id.starts_with(HERDR) || !matches!(record.state, State::Done | State::Error)
         });
         self.list.len() != before
@@ -313,9 +347,9 @@ impl Records {
         .find_map(|state| {
             self.list
                 .iter()
-                .filter(|(_, record, _)| record.state == state)
-                .max_by_key(|(.., at)| *at)
-                .map(|(id, record, _)| (id.as_str(), record))
+                .filter(|(_, record, ..)| record.state == state)
+                .max_by_key(|(_, _, at, _)| *at)
+                .map(|(id, record, ..)| (id.as_str(), record))
         })
     }
 
@@ -336,7 +370,7 @@ impl Records {
     pub fn iter(&self) -> impl Iterator<Item = (&str, &Record)> {
         self.list
             .iter()
-            .map(|(id, record, _)| (id.as_str(), record))
+            .map(|(id, record, ..)| (id.as_str(), record))
     }
 
     /// The app of the record at `id`: its own, else its nearest ancestor's, the root's last; herdr's agents have none.
@@ -347,7 +381,7 @@ impl Records {
                 .list
                 .iter()
                 .find(|(name, ..)| name == at)
-                .and_then(|(_, record, _)| record.app.as_deref());
+                .and_then(|(_, record, ..)| record.app.as_deref());
             if app.is_some() || at.is_empty() || at.starts_with(HERDR) {
                 return app;
             }

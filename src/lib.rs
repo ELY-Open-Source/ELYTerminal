@@ -2,6 +2,7 @@ pub mod app;
 pub mod blur;
 pub mod files;
 pub mod git;
+pub mod i18n;
 pub mod menus;
 pub mod pet;
 pub mod sessions;

@@ -242,6 +242,18 @@ mod tests {
     }
 
     #[test]
+    fn an_edit_that_splits_a_wide_char_clears_it_whole_in_the_erase_ground() {
+        let (frame, _) = shown("A单中BC\x1b[1;3H\x1b[2P".as_bytes());
+        assert_eq!(frame.text(), "A  BC");
+        let (frame, _) = shown("A单BC\x1b[1;3H\x1b[4hX".as_bytes());
+        assert_eq!(frame.text(), "A X BC");
+        let (frame, ink) = shown("A\x1b[44m单\x1b[0mBC\x1b[1;2H\x1b[42m\x1b[X".as_bytes());
+        assert_eq!(frame.text(), "A  BC");
+        let (bytes, ground) = frame.rows[0].runs[1];
+        assert_eq!((bytes, ground.bg), (2, Some(ink.ansi[2])));
+    }
+
+    #[test]
     fn combining_marks_stay_on_their_cell() {
         let (frame, _) = shown("e\u{301}x".as_bytes());
         assert_eq!(frame.text(), "e\u{301}x");

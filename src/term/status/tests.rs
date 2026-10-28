@@ -1,5 +1,8 @@
 use super::*;
-use crate::term::notify::Progress;
+use crate::term::{
+    marks::{Click, Mark},
+    notify::Progress,
+};
 
 fn encoded(text: &[u8]) -> String {
     BASE64.encode(text)
@@ -112,18 +115,18 @@ fn kind_progress_and_app_count_only_where_the_spec_has_them() {
 #[test]
 fn records_replace_and_clear_as_the_spec_says() {
     let mut records = Records::default();
-    records.report(String::new(), record(State::Working, Some("deploy")));
-    records.report("us-east".into(), record(State::Working, None));
-    records.report("us-east/push".into(), record(State::Blocked, None));
-    records.report("us-easter".into(), record(State::Done, Some("other")));
-    records.report("us-east".into(), record(State::Done, None));
+    records.report(String::new(), record(State::Working, Some("deploy")), None);
+    records.report("us-east".into(), record(State::Working, None), None);
+    records.report("us-east/push".into(), record(State::Blocked, None), None);
+    records.report("us-easter".into(), record(State::Done, Some("other")), None);
+    records.report("us-east".into(), record(State::Done, None), None);
     let ids: Vec<&str> = records.list.iter().map(|(id, ..)| id.as_str()).collect();
     assert_eq!(ids, ["", "us-east", "us-east/push", "us-easter"]);
     let east = records
         .list
         .iter()
         .find(|(id, ..)| id == "us-east")
-        .map(|(_, record, _)| record.clone());
+        .map(|(_, record, ..)| record.clone());
     assert_eq!(
         east,
         Some(record(State::Done, None)),
@@ -143,7 +146,7 @@ fn records_replace_and_clear_as_the_spec_says() {
 #[test]
 fn herdr_s_agents_replace_their_own_records_alone() {
     let mut records = Records::default();
-    records.report("build".into(), record(State::Working, None));
+    records.report("build".into(), record(State::Working, None), None);
     // A program's id ends at a colon, so `herdr:w1:p1` names its record `herdr`.
     for body in [
         &b"state=done:id=herdr/build"[..],
@@ -152,7 +155,7 @@ fn herdr_s_agents_replace_their_own_records_alone() {
         let Some(Status::Report(id, done)) = said(body) else {
             panic!("a program's report");
         };
-        records.report(id, done);
+        records.report(id, done, None);
     }
     let ids = |records: &Records| -> Vec<String> {
         records.list.iter().map(|(id, ..)| id.clone()).collect()
@@ -195,8 +198,19 @@ fn herdr_s_agents_replace_their_own_records_alone() {
     );
 }
 
+/// The records' ids, oldest first.
+fn kept(records: &Records) -> Vec<&str> {
+    records.list.iter().map(|(id, ..)| id.as_str()).collect()
+}
+
+/// omp's process group.
+const OMP: i32 = 200;
+
+/// The shell's own process group.
+const SHELL: i32 = 100;
+
 #[test]
-fn a_new_prompt_leaves_done_and_error() {
+fn a_shell_s_prompt_leaves_done_and_error_though_programs_reported() {
     let mut records = Records::default();
     for (id, state) in [
         ("a", State::Idle),
@@ -205,21 +219,111 @@ fn a_new_prompt_leaves_done_and_error() {
         ("d", State::Blocked),
         ("e", State::Error),
     ] {
-        records.report(id.into(), record(state, None));
+        records.report(id.into(), record(state, None), Some(OMP));
     }
-    records.prompt();
-    let ids: Vec<&str> = records.list.iter().map(|(id, ..)| id.as_str()).collect();
-    assert_eq!(ids, ["c", "e"]);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Shell);
+    assert_eq!(kept(&records), ["c", "e"]);
+}
+
+#[test]
+fn a_program_s_own_prompts_keep_what_it_reported_while_it_holds_the_terminal() {
+    let mut records = Records::default();
+    // omp reports work, then marks messages A, B, C, D;0.
+    records.report(
+        String::new(),
+        record(State::Working, Some("omp")),
+        Some(OMP),
+    );
+    for _ in 0..3 {
+        for mark in [
+            Mark::Prompt(Click::Arrows),
+            Mark::Input,
+            Mark::Output,
+            Mark::Done(Some(0)),
+        ] {
+            records.mark(&mark, Holder::Group(OMP));
+        }
+    }
+    assert_eq!(kept(&records), [""]);
+    // omp ends, even mid-command; the shell's named prompt follows.
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Shell);
+    assert!(kept(&records).is_empty());
+}
+
+#[test]
+fn an_unnamed_prompt_drops_what_a_group_no_longer_holding_the_terminal_reported() {
+    // fish's own prompt after omp died, or a nested shell's.
+    let mut records = Records::default();
+    records.report("a".into(), record(State::Working, None), Some(OMP));
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Group(SHELL));
+    assert!(kept(&records).is_empty());
+}
+
+#[test]
+fn a_shell_without_job_control_keeps_its_program_s_work_until_it_names_itself() {
+    // PowerShell's program shares its group, so its holder is unknown.
+    let mut records = Records::default();
+    records.mark(&Mark::Output, Holder::Unknown);
+    records.report(String::new(), record(State::Working, None), Some(SHELL));
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Unknown);
+    assert_eq!(kept(&records), [""]);
+    records.mark(&Mark::Done(Some(0)), Holder::Unknown);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Shell);
+    assert!(kept(&records).is_empty());
+}
+
+#[test]
+fn a_named_prompt_closes_commands_left_open() {
+    let mut records = Records::default();
+    // A program died between its C and D.
+    records.mark(&Mark::Output, Holder::Unknown);
+    records.mark(&Mark::Output, Holder::Unknown);
+    records.mark(&Mark::Done(Some(130)), Holder::Unknown);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Shell);
+    records.report("a".into(), record(State::Working, None), None);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Unknown);
+    assert!(kept(&records).is_empty());
+}
+
+#[test]
+fn without_a_holder_a_prompt_inside_a_running_command_keeps_the_records() {
+    // Windows has no foreground group: C and D count commands.
+    let mut records = Records::default();
+    records.mark(&Mark::Output, Holder::Unknown);
+    records.report(String::new(), record(State::Working, Some("omp")), None);
+    for mark in [
+        Mark::Prompt(Click::Arrows),
+        Mark::Input,
+        Mark::Output,
+        Mark::Done(Some(0)),
+        Mark::Prompt(Click::Arrows),
+    ] {
+        records.mark(&mark, Holder::Unknown);
+    }
+    assert_eq!(kept(&records), [""]);
+    records.mark(&Mark::Done(Some(0)), Holder::Unknown);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Unknown);
+    assert!(kept(&records).is_empty());
+}
+
+#[test]
+fn a_full_reset_closes_a_command_left_open() {
+    let mut records = Records::default();
+    records.mark(&Mark::Output, Holder::Unknown);
+    records.reset();
+    records.report("a".into(), record(State::Working, None), None);
+    records.mark(&Mark::Prompt(Click::Arrows), Holder::Unknown);
+    assert!(kept(&records).is_empty());
 }
 
 #[test]
 fn past_the_cap_the_record_updated_longest_ago_goes() {
     let mut records = Records::default();
     for at in 0..RECORDS {
-        records.report(format!("r{at}"), record(State::Working, None));
+        records.report(format!("r{at}"), record(State::Working, None), None);
     }
-    records.report("r0".into(), record(State::Done, None));
-    records.report("new".into(), record(State::Working, None));
+    records.report("r0".into(), record(State::Done, None), None);
+    records.report("new".into(), record(State::Working, None), None);
     assert_eq!(records.list.len(), RECORDS);
     assert!(
         records.list.iter().all(|(id, ..)| id != "r1"),
@@ -273,25 +377,25 @@ fn osc_9_4_maps_to_the_root_record_until_a_program_reports() {
             .list
             .iter()
             .find(|(id, ..)| id.is_empty())
-            .map(|(_, record, _)| (record.state, record.progress))
+            .map(|(_, record, ..)| (record.state, record.progress))
     };
     let mut records = Records::default();
-    records.progress(Progress::Set(Some(40)));
+    records.progress(Progress::Set(Some(40)), None);
     assert_eq!(root(&records), Some((State::Working, Some(40))));
-    records.progress(Progress::Pause(Some(5)));
+    records.progress(Progress::Pause(Some(5)), None);
     assert_eq!(root(&records), Some((State::Working, Some(5))));
-    records.progress(Progress::Indeterminate);
+    records.progress(Progress::Indeterminate, None);
     assert_eq!(root(&records), Some((State::Working, None)));
-    records.progress(Progress::Error(Some(9)));
+    records.progress(Progress::Error(Some(9)), None);
     assert_eq!(root(&records), Some((State::Error, None)));
-    records.progress(Progress::Remove);
+    records.progress(Progress::Remove, None);
     assert_eq!(root(&records), None);
-    records.report("a".into(), record(State::Idle, None));
-    records.progress(Progress::Set(Some(1)));
+    records.report("a".into(), record(State::Idle, None), None);
+    records.progress(Progress::Set(Some(1)), None);
     assert_eq!(root(&records), None, "a program reports through OSC 7501");
     records.reset();
     assert!(records.list.is_empty());
-    records.progress(Progress::Set(Some(2)));
+    records.progress(Progress::Set(Some(2)), None);
     assert_eq!(
         root(&records),
         Some((State::Working, Some(2))),
@@ -308,25 +412,25 @@ fn a_row_shows_the_most_pressing_record_the_last_reported_in_its_state() {
             .shown()
             .map(|(_, record)| (record.state, record.kind))
     };
-    records.report("a".into(), record(State::Idle, None));
+    records.report("a".into(), record(State::Idle, None), None);
     assert_eq!(shown(&records), Some((State::Idle, None)));
-    records.report("b".into(), record(State::Done, None));
+    records.report("b".into(), record(State::Done, None), None);
     assert_eq!(shown(&records), Some((State::Done, None)));
-    records.report("c".into(), record(State::Working, None));
+    records.report("c".into(), record(State::Working, None), None);
     assert_eq!(shown(&records), Some((State::Working, None)));
-    records.report("d".into(), record(State::Error, None));
+    records.report("d".into(), record(State::Error, None), None);
     assert_eq!(shown(&records), Some((State::Error, None)));
     let asks = |kind| Record {
         kind: Some(kind),
         ..record(State::Blocked, None)
     };
-    records.report("e".into(), asks(Kind::Auth));
-    records.report("f".into(), asks(Kind::Question));
+    records.report("e".into(), asks(Kind::Auth), None);
+    records.report("f".into(), asks(Kind::Question), None);
     assert_eq!(
         shown(&records),
         Some((State::Blocked, Some(Kind::Question)))
     );
-    records.report("e".into(), asks(Kind::Auth));
+    records.report("e".into(), asks(Kind::Auth), None);
     assert_eq!(
         shown(&records),
         Some((State::Blocked, Some(Kind::Auth))),
@@ -337,12 +441,12 @@ fn a_row_shows_the_most_pressing_record_the_last_reported_in_its_state() {
 #[test]
 fn a_record_without_an_app_takes_its_nearest_ancestor_s() {
     let mut records = Records::default();
-    records.report("us/east".into(), record(State::Working, None));
+    records.report("us/east".into(), record(State::Working, None), None);
     assert_eq!(records.app("us/east"), None);
-    records.report(String::new(), record(State::Working, Some("deploy")));
-    records.report("us".into(), record(State::Working, Some("push")));
-    records.report("us/east/a".into(), record(State::Working, None));
-    records.report("eu/west".into(), record(State::Working, None));
+    records.report(String::new(), record(State::Working, Some("deploy")), None);
+    records.report("us".into(), record(State::Working, Some("push")), None);
+    records.report("us/east/a".into(), record(State::Working, None), None);
+    records.report("eu/west".into(), record(State::Working, None), None);
     assert_eq!(
         records.app("us/east/a"),
         Some("push"),
@@ -366,9 +470,9 @@ fn a_record_without_an_app_takes_its_nearest_ancestor_s() {
 #[test]
 fn typing_sees_done_and_error_but_herdr_s() {
     let mut records = Records::default();
-    records.report("a".into(), record(State::Done, None));
-    records.report("b".into(), record(State::Error, None));
-    records.report("c".into(), record(State::Working, None));
+    records.report("a".into(), record(State::Done, None), None);
+    records.report("b".into(), record(State::Error, None), None);
+    records.report("c".into(), record(State::Working, None), None);
     assert!(records.herdr(&[("herdr:w1:p1".into(), record(State::Done, None))]));
     assert!(records.seen());
     let ids: Vec<&str> = records.iter().map(|(id, _)| id).collect();
@@ -380,14 +484,14 @@ fn typing_sees_done_and_error_but_herdr_s() {
 fn each_change_of_the_state_a_row_shows_is_noted() {
     let mut records = Records::default();
     assert!(!records.restate(), "none shows yet");
-    records.report(String::new(), record(State::Blocked, None));
+    records.report(String::new(), record(State::Blocked, None), None);
     assert!(records.restate());
-    records.report(String::new(), record(State::Working, None));
+    records.report(String::new(), record(State::Working, None), None);
     assert!(records.restate());
-    records.report(String::new(), record(State::Blocked, None));
+    records.report(String::new(), record(State::Blocked, None), None);
     assert!(records.restate(), "waiting again after work in one output");
     assert_eq!(records.shows(), Some(State::Blocked));
-    records.report("b".into(), record(State::Working, None));
+    records.report("b".into(), record(State::Working, None), None);
     assert!(!records.restate(), "the row shows what it showed");
     records.reset();
     assert!(records.restate());

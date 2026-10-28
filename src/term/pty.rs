@@ -11,7 +11,14 @@ use alacritty_terminal::{
 };
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 
-use super::{drop::Quote, marks::Mark, mouse::MouseMode, notify::Ask, status::Status, tap::Tapped};
+use super::{
+    drop::Quote,
+    marks::Mark,
+    mouse::MouseMode,
+    notify::Ask,
+    status::{Holder, Status},
+    tap::Tapped,
+};
 use crate::settings::{CursorStyle, Settings};
 
 /// What a session hears from its pty.
@@ -20,11 +27,12 @@ pub enum PtyEvent {
     Term(Event),
     Folder(PathBuf),
     Mouse(MouseMode),
-    Mark(Mark),
-    /// A program's status, OSC 7501.
-    Status(Status),
-    /// A notification or progress, OSC 9, 777 or 99.
-    Ask(Ask),
+    /// An OSC 133 mark, and who held the terminal then.
+    Mark(Mark, Holder),
+    /// OSC 7501 status, with the group holding the terminal then.
+    Status(Status, Option<i32>),
+    /// OSC 9, 777 or 99, with the terminal's group then.
+    Ask(Ask, Option<i32>),
     /// A title a program set, in the output's order: OSC 0 or 2, or the title stack's pop.
     Title(String),
     /// A full reset, `ESC c`.
@@ -160,13 +168,12 @@ pub fn spawn(
     };
     let grid = TermSize::new(size.num_cols.into(), size.num_lines.into());
     let term = Arc::new(FairMutex::new(Term::new(config, &grid, listener.clone())));
-    let event_loop = EventLoop::new(
-        term.clone(),
-        listener,
-        Tapped::new(raw, sender, pid),
-        true,
-        false,
-    )?;
+    let tapped = Tapped::new(raw, sender, pid);
+    #[cfg(unix)]
+    let tapped = tapped.holding(master.try_clone().map_err(|error| {
+        anyhow::anyhow!("pty {pid}: no copy of the master for the tap: {error}")
+    })?);
+    let event_loop = EventLoop::new(term.clone(), listener, tapped, true, false)?;
     let notifier = Notifier(event_loop.channel());
     event_loop.spawn();
     Ok((
@@ -225,10 +232,9 @@ impl Pty {
 
 #[cfg(unix)]
 impl Pty {
-    /// The process group the program runs in the foreground.
-    pub fn foreground(&self) -> std::io::Result<i32> {
-        let group = rustix_openpty::rustix::termios::tcgetpgrp(&self.master)?;
-        Ok(group.as_raw_nonzero().get())
+    /// The foreground process group; none once none holds the terminal.
+    pub fn foreground(&self) -> std::io::Result<Option<i32>> {
+        super::unix::foreground(&self.master)
     }
 }
 

@@ -6,7 +6,7 @@ use alacritty_terminal::{
 };
 use gpui::{
     ClipboardItem, Context, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    Pixels, Point, ScrollDelta, ScrollWheelEvent, Size, Window,
+    Pixels, Point, ScrollWheelEvent, Size, Window,
 };
 
 use super::{
@@ -14,11 +14,9 @@ use super::{
     links::link_at,
     mouse::{self, Button, Gesture, MouseMode, Report, Tracking},
     view::TerminalView,
+    wheel,
 };
 use crate::settings::SettingsStore;
-
-/// Lines one wheel notch scrolls, as Ghostty's discrete wheel.
-const NOTCH: f32 = 3.;
 
 /// Where the grid sits, and what the mouse is doing to it.
 #[derive(Default)]
@@ -34,8 +32,8 @@ pub struct Pointer {
     pressed: Vec<Button>,
     /// The cell of the last report; motion inside it sends nothing.
     last: Option<(usize, usize)>,
-    /// Wheel travel short of a line.
-    rest: Pixels,
+    /// Wheel travel short of a line, in lines.
+    rest: f32,
 }
 
 fn button(button: MouseButton) -> Option<Button> {
@@ -280,16 +278,24 @@ impl TerminalView {
             return;
         }
         cx.stop_propagation();
-        self.pointer.rest += match event.delta {
-            ScrollDelta::Pixels(delta) => delta.y,
-            ScrollDelta::Lines(delta) => height * delta.y * NOTCH,
+        let rows = self.pty.term.lock().screen_lines();
+        let rest = &mut self.pointer.rest;
+        let Some(lines) = wheel::lines(rest, event, height, rows, wheel::settings) else {
+            return;
         };
-        let lines = (self.pointer.rest / height).trunc() as i32;
         if lines == 0 {
             return;
         }
-        self.pointer.rest -= height * lines as f32;
-        log::trace!("terminal {}: wheel {lines} lines", self.pty.pid);
+        let shift = if event.modifiers.shift {
+            " with Shift"
+        } else {
+            ""
+        };
+        log::trace!(
+            "terminal {}: wheel {:?}{shift}, {lines} lines",
+            self.pty.pid,
+            event.delta
+        );
         let (cell, ..) = self.cell_at(event.position);
         let tracking = self.tracking(&event.modifiers);
         let mode = *self.pty.term.lock().mode();

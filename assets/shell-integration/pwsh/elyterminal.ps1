@@ -16,7 +16,7 @@ function global:prompt {
         [Console]::Write("$esc]133;D;$code$bel")
         $global:ElyRan = $false
     }
-    [Console]::Write("$esc]133;A$bel")
+    [Console]::Write("$esc]133;A;aid=elyterminal$bel")
     # The user's prompt sees a failed command's $? still.
     if (-not $ok) { Write-Error '' -ErrorAction Ignore }
     $text = & $global:ElyPrompt

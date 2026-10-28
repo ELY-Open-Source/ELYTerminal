@@ -3,6 +3,7 @@ use std::path::Path;
 use ely_gpui_component::{
     feedback::Alert,
     git::{ChangeSection, Changed, ChangesList, CommitInput, CommitList, DiffViewer},
+    i18n::text,
     lists::GitStatus,
     overlays::{ConfirmDialog, Dialog},
     primitives::{Icon, IconName, Severity},
@@ -70,8 +71,8 @@ fn rows(changes: &[Change]) -> Vec<Changed> {
     changes.iter().take(LISTED).map(row).collect()
 }
 
-/// How many changes the list holds, if it leaves some out.
-fn cut(repo: &Repo) -> Option<String> {
+/// Listed and total changes, when the list leaves some out.
+fn cut(repo: &Repo) -> Option<(usize, usize)> {
     let sections = [
         &repo.conflicted,
         &repo.staged,
@@ -83,19 +84,17 @@ fn cut(repo: &Repo) -> Option<String> {
         .iter()
         .map(|changes| changes.len().min(LISTED))
         .sum();
-    (listed < total).then(|| format!("{listed} of {total} changes listed."))
+    (listed < total).then_some((listed, total))
 }
 
-/// What discarding `change` costs, in words.
+/// The key of what discarding `change` costs.
 fn loss(change: &Change, section: ChangeSection) -> &'static str {
     match (section, change.status) {
-        (ChangeSection::Untracked, _) if is_folder(&change.path) => {
-            "Its untracked files are deleted."
-        }
+        (ChangeSection::Untracked, _) if is_folder(&change.path) => "et.git.loss_folder",
         (ChangeSection::Untracked, _) | (_, GitStatus::Added | GitStatus::Renamed) => {
-            "It is deleted."
+            "et.git.loss_file"
         }
-        _ => "Its unstaged changes are lost.",
+        _ => "et.git.loss_changes",
     }
 }
 
@@ -111,19 +110,19 @@ fn head(repo: &Repo) -> (IconName, String) {
     }
 }
 
-/// What a diff from `section` shows, as the changes list names it.
+/// Ely's key for what a diff from `section` shows.
 fn compared(section: ChangeSection) -> &'static str {
     match section {
-        ChangeSection::Conflicted => "Conflicts",
-        ChangeSection::Staged => "Staged changes",
-        ChangeSection::Unstaged => "Changes",
-        ChangeSection::Untracked => "Untracked",
-        ChangeSection::Ignored => "Ignored",
+        ChangeSection::Conflicted => "git.changes.conflicted",
+        ChangeSection::Staged => "git.changes.staged",
+        ChangeSection::Unstaged => "git.changes.unstaged",
+        ChangeSection::Untracked => "git.changes.untracked",
+        ChangeSection::Ignored => "git.changes.ignored",
     }
 }
 
 /// A small heading, as the changes list draws its own.
-fn heading(text: &'static str, cx: &App) -> Div {
+fn heading(words: SharedString, cx: &App) -> Div {
     let theme = cx.theme();
     div()
         .px_2()
@@ -131,7 +130,7 @@ fn heading(text: &'static str, cx: &App) -> Div {
         .text_size(theme.text_size(TextSize::Xs))
         .font_weight(FontWeight::MEDIUM)
         .text_color(theme.colors.fg_muted)
-        .child(text)
+        .child(words)
 }
 
 impl GitPanel {
@@ -140,7 +139,8 @@ impl GitPanel {
         let diff = self.diff.as_ref()?;
         let path = shown(&diff.change.path);
         let (close, pick) = (cx.entity(), cx.entity());
-        let dialog = Dialog::new("git-diff", compared(diff.section), move |_, cx| {
+        let title = text(cx, compared(diff.section), &[]);
+        let dialog = Dialog::new("git-diff", title, move |_, cx| {
             close.update(cx, |panel, cx| {
                 log::debug!("git panel: the diff closes");
                 panel.diff = None;
@@ -162,7 +162,7 @@ impl GitPanel {
             ),
             Err(note) => dialog
                 .child(div().font_weight(FontWeight::MEDIUM).child(path))
-                .child(Caption::new(*note)),
+                .child(Caption::new(text(cx, note, &[]))),
         })
     }
 
@@ -170,8 +170,13 @@ impl GitPanel {
     fn discard_dialog(&self, cx: &Context<Self>) -> Option<ConfirmDialog> {
         let (change, section) = self.discarding.clone()?;
         let (close, confirm) = (cx.entity(), cx.entity());
-        let title = format!("Discard {}?", shown(&change.path));
-        let dialog = ConfirmDialog::new("git-discard", title, loss(&change, section), {
+        let title = text(
+            cx,
+            "et.git.discard_title",
+            &[("path", &shown(&change.path))],
+        );
+        let cost = text(cx, loss(&change, section), &[]);
+        let dialog = ConfirmDialog::new("git-discard", title, cost, {
             move |_, cx| {
                 close.update(cx, |panel, cx| {
                     panel.discarding = None;
@@ -185,7 +190,7 @@ impl GitPanel {
         };
         Some(
             dialog
-                .confirm("Discard")
+                .confirm(text(cx, "et.git.discard", &[]))
                 .destructive()
                 .on_confirm(confirmed),
         )
@@ -197,9 +202,12 @@ impl Render for GitPanel {
         let root = div().size_full().flex().flex_col().gap_2();
         let (repo, commits) = match &self.state {
             State::Reading => return root,
-            State::Outside => return root.child(Caption::new("Not a Git repository.").px_2()),
+            State::Outside => {
+                return root.child(Caption::new(text(cx, "et.git.outside", &[])).px_2());
+            }
             State::Failed(error) => {
-                let failed = Alert::new("git-failed", Severity::Danger, "Status failed");
+                let failed = text(cx, "et.git.status_failed", &[]);
+                let failed = Alert::new("git-failed", Severity::Danger, failed);
                 return root.child(failed.body(error.clone()));
             }
             State::Read(repo, commits) => (repo, commits.clone()),
@@ -217,7 +225,7 @@ impl Render for GitPanel {
             .child(div().min_w_0().child(Ellipsis::new(name.clone())));
         let error = self.error.as_ref().map(|(what, said)| {
             let dismiss = cx.entity();
-            Alert::new("git-error", Severity::Danger, *what)
+            Alert::new("git-error", Severity::Danger, text(cx, what, &[]))
                 .body(said.clone())
                 .on_dismiss(move |_, cx| {
                     dismiss.update(cx, |panel, cx| {
@@ -261,11 +269,19 @@ impl Render for GitPanel {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
-                    .children(cut(repo).map(|cut| Caption::new(cut).px_2()))
+                    .children(cut(repo).map(|(listed, total)| {
+                        let (listed, total) = (listed.to_string(), total.to_string());
+                        let counts = [("listed", listed.as_str()), ("total", total.as_str())];
+                        Caption::new(text(cx, "et.git.listed", &counts)).px_2()
+                    }))
                     .child(changes),
             )
             .child(message)
-            .children(recent.is_some().then(|| heading("Commits", cx)))
+            .children(
+                recent
+                    .is_some()
+                    .then(|| heading(text(cx, "et.git.commits", &[]), cx)),
+            )
             .children(recent)
             .children(self.diff_dialog(cx))
             .children(self.discard_dialog(cx))
@@ -277,6 +293,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+    use crate::{i18n, settings::Language};
 
     #[test]
     fn a_shown_path_is_one_line_and_one_to_a_path() {
@@ -312,6 +329,8 @@ mod tests {
             from: None,
             status,
         };
+        let english = i18n::catalogs(Language::English);
+        let loss = |change: &Change, section| english.text(loss(change, section), &[]).to_string();
         let untracked = ChangeSection::Untracked;
         let folder = change("notes/", GitStatus::Untracked);
         assert_eq!(loss(&folder, untracked), "Its untracked files are deleted.");
@@ -348,8 +367,7 @@ mod tests {
         assert_eq!(cut(&repo), None);
         repo.unstaged = changes(LISTED + 100);
         assert_eq!(rows(&repo.unstaged).len(), LISTED);
-        let said = format!("{} of {} changes listed.", LISTED + 2, LISTED + 102);
-        assert_eq!(cut(&repo), Some(said));
+        assert_eq!(cut(&repo), Some((LISTED + 2, LISTED + 102)));
     }
 
     #[test]

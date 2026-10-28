@@ -203,7 +203,8 @@ fn herdr_answers_over_its_socket() {
 #[cfg(unix)]
 #[test]
 fn a_process_reads_with_its_path_arguments_variables_and_folder() {
-    use super::unix::{cwd, launch, path};
+    use super::unix::cwd;
+    use crate::term::unix::{launch, path};
     use std::fs;
     let pid = std::process::id() as i32;
     let read = path(pid).expect("its path");
@@ -234,7 +235,7 @@ fn only_herdr_s_program_is_read() {
 #[cfg(target_os = "linux")]
 #[test]
 fn an_updated_herdr_still_names_itself() {
-    use super::unix::installed;
+    use crate::term::unix::installed;
     let deleted = PathBuf::from("/home/u/.local/bin/herdr (deleted)");
     assert_eq!(
         installed(deleted),
@@ -249,7 +250,7 @@ fn an_updated_herdr_still_names_itself() {
 #[cfg(target_os = "macos")]
 #[test]
 fn macos_lays_out_the_arguments_after_the_program_s_path() {
-    use super::unix::procargs;
+    use crate::term::unix::procargs;
     let mut buffer = 2i32.to_ne_bytes().to_vec();
     buffer.extend_from_slice(b"/usr/local/bin/herdr\0\0\0\0herdr\0\0HOME=/h\0X=a=b\0\0\0");
     let (args, env) = procargs(&buffer).expect("it parses");
@@ -323,7 +324,7 @@ fn a_server_or_a_command_beside_herdr_s_client_is_passed_by() {
 #[cfg(windows)]
 #[test]
 fn a_windows_process_reads_with_its_name_arguments_and_variables() {
-    use super::windows::{launch, processes};
+    use crate::term::procs::{launch, processes};
     let pid = std::process::id();
     let exe = std::env::current_exe().expect("this test's path");
     let name = exe.file_name().expect("this test's name");

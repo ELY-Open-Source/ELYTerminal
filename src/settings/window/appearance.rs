@@ -1,38 +1,60 @@
+mod cards;
+
 use std::ops::RangeInclusive;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, IconButton},
-    forms::{FontPicker, NumberInput, RadioCard, Slider, Switch, TextInput},
-    layout::SimpleGrid,
+    forms::{FontPicker, NumberInput, Slider, Switch, TextInput},
+    i18n::text,
     primitives::IconName,
     settings::{SettingsRow, SettingsSection},
-    theme::{ActiveTheme, ControlSize, Mix, Radius, TextSize},
+    theme::{ActiveTheme, ControlSize, Radius, TextSize},
 };
 use gpui::{
-    App, Context, Div, Entity, Hsla, ParentElement, SharedString, Styled, Window, div, prelude::*,
-    px, relative, rems,
+    App, Context, Div, Entity, ParentElement, SharedString, Styled, Window, div, prelude::*, px,
+    relative,
 };
 
+use self::cards::grid;
 use super::{SettingsWindow, choice, set, switch};
 use crate::{
-    settings::{CursorStyle, FONT_SIZE, LINE_HEIGHT, OPACITY, PADDING, Settings, SettingsStore},
+    settings::{
+        CursorStyle, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings, SettingsStore,
+    },
     themes::{self, TerminalTheme},
 };
 
-/// Each cursor style, its key and its name.
+/// Each cursor style, its key and its name's key.
 const CURSORS: [(CursorStyle, &str, &str); 4] = [
-    (CursorStyle::Block, "block", "Block"),
-    (CursorStyle::Bar, "bar", "Bar"),
-    (CursorStyle::Underline, "underline", "Underline"),
-    (CursorStyle::Hollow, "hollow", "Hollow"),
+    (CursorStyle::Block, "block", "et.cursor.block"),
+    (CursorStyle::Bar, "bar", "et.cursor.bar"),
+    (CursorStyle::Underline, "underline", "et.cursor.underline"),
+    (CursorStyle::Hollow, "hollow", "et.cursor.hollow"),
+];
+
+/// Each language, its key, and its own name's key.
+const LANGUAGES: [(Language, &str, &str); 2] = [
+    (Language::English, "en-US", "et.language.english"),
+    (Language::SimplifiedChinese, "zh-CN", "et.language.chinese"),
 ];
 
 impl SettingsWindow {
-    /// The theme, font, cursor and window rows.
+    /// The language, theme, font, cursor and window rows.
     pub(super) fn appearance(&self, window: &Window, cx: &Context<Self>) -> Div {
         let settings = SettingsStore::get(cx);
         let theme = cx.theme();
         let this = cx.entity();
+        let word = |key: &str| text(cx, key, &[]);
+        let language = choice(
+            &this,
+            "language",
+            &LANGUAGES,
+            settings.language,
+            |settings, language| settings.language = language,
+            cx,
+        );
+        let language = SettingsSection::new(word("et.appearance.language"))
+            .row(SettingsRow::new(word("et.appearance.interface")).control(language));
         let separate = settings.dark_theme.is_some();
         let dark = Switch::new("dark_theme", separate).on_change({
             let this = this.clone();
@@ -46,12 +68,13 @@ impl SettingsWindow {
                 );
             }
         });
-        let light = separate.then_some("Light");
-        let mut themes = SettingsSection::new("Theme")
+        let light = separate.then(|| word("et.appearance.light"));
+        let mut themes = SettingsSection::new(word("et.appearance.theme"))
             .row(grid(&this, light, false, settings, window, cx))
-            .row(SettingsRow::new("Separate dark theme").control(dark));
+            .row(SettingsRow::new(word("et.appearance.separate_dark")).control(dark));
         if separate {
-            themes = themes.row(grid(&this, Some("Dark"), true, settings, window, cx));
+            let dark = Some(word("et.appearance.dark"));
+            themes = themes.row(grid(&this, dark, true, settings, window, cx));
         }
         let family = FontPicker::new("font_family", &self.font)
             .selected(settings.font_family.clone())
@@ -74,52 +97,63 @@ impl SettingsWindow {
                     }
                 }
             });
-        let fallbacks = SettingsRow::new("Fallbacks")
-            .description("Tried in order for characters the family lacks")
+        let fallbacks = SettingsRow::new(word("et.appearance.fallbacks"))
+            .description(word("et.appearance.fallbacks_hint"))
             .control(self.fallback_list(cx));
-        let font = SettingsSection::new("Font")
-            .row(SettingsRow::new("Family").control(div().w(theme.prose_width()).child(family)))
+        let family = div().w(theme.prose_width()).child(family);
+        let font = SettingsSection::new(word("et.appearance.font"))
+            .row(SettingsRow::new(word("et.appearance.family")).control(family))
             .row(fallbacks)
-            .row(SettingsRow::new("Size").control(self.number(
-                "font_size",
-                settings.font_size,
-                &FONT_SIZE,
-                (1.0, 1),
-                |settings, size| settings.font_size = size,
-                cx,
-            )))
-            .row(SettingsRow::new("Line height").control(self.number(
-                "line_height",
-                settings.line_height,
-                &LINE_HEIGHT,
-                (0.05, 2),
-                |settings, height| settings.line_height = height,
-                cx,
-            )))
-            .row(SettingsRow::new("Ligatures").control(switch(
-                &this,
-                "ligatures",
-                settings.ligatures,
-                |settings, on| settings.ligatures = on,
-            )));
+            .row(
+                SettingsRow::new(word("et.appearance.size")).control(self.number(
+                    "font_size",
+                    settings.font_size,
+                    &FONT_SIZE,
+                    (1.0, 1),
+                    |settings, size| settings.font_size = size,
+                    cx,
+                )),
+            )
+            .row(
+                SettingsRow::new(word("et.appearance.line_height")).control(self.number(
+                    "line_height",
+                    settings.line_height,
+                    &LINE_HEIGHT,
+                    (0.05, 2),
+                    |settings, height| settings.line_height = height,
+                    cx,
+                )),
+            )
+            .row(
+                SettingsRow::new(word("et.appearance.ligatures")).control(switch(
+                    &this,
+                    "ligatures",
+                    settings.ligatures,
+                    |settings, on| settings.ligatures = on,
+                )),
+            );
         let style = choice(
             &this,
             "cursor_style",
             &CURSORS,
             settings.cursor_style,
             |settings, style| settings.cursor_style = style,
+            cx,
         );
         let active = themes::active(settings, window.appearance(), cx);
         let lit = self.lit || !settings.cursor_blink;
-        let cursor = SettingsSection::new("Cursor")
-            .row(SettingsRow::new("Style").control(style))
-            .row(SettingsRow::new("Blink").control(switch(
-                &this,
-                "cursor_blink",
-                settings.cursor_blink,
-                |settings, on| settings.cursor_blink = on,
-            )))
-            .row(SettingsRow::new("Preview").control(prompt(settings, &active, lit, cx)));
+        let preview = prompt(settings, &active, lit, cx);
+        let cursor = SettingsSection::new(word("et.appearance.cursor"))
+            .row(SettingsRow::new(word("et.appearance.style")).control(style))
+            .row(
+                SettingsRow::new(word("et.appearance.blink")).control(switch(
+                    &this,
+                    "cursor_blink",
+                    settings.cursor_blink,
+                    |settings, on| settings.cursor_blink = on,
+                )),
+            )
+            .row(SettingsRow::new(word("et.appearance.preview")).control(preview));
         let opacity = percent(settings.background_opacity);
         let slider = Slider::new("background_opacity", opacity)
             .range(percent(*OPACITY.start()), percent(*OPACITY.end()))
@@ -145,34 +179,39 @@ impl SettingsWindow {
                     .text_size(theme.text_size(TextSize::Sm))
                     .child(format!("{opacity}%")),
             );
-        let background = SettingsSection::new("Window")
-            .row(SettingsRow::new("Background opacity").control(opacity))
-            .row(SettingsRow::new("Background blur").control(switch(
+        let background = SettingsSection::new(word("et.appearance.window"))
+            .row(SettingsRow::new(word("et.appearance.opacity")).control(opacity))
+            .row(SettingsRow::new(word("et.appearance.blur")).control(switch(
                 &this,
                 "background_blur",
                 settings.background_blur,
                 |settings, on| settings.background_blur = on,
             )))
-            .row(SettingsRow::new("Horizontal padding").control(self.number(
-                "padding_x",
-                settings.padding_x,
-                &PADDING,
-                (1.0, 0),
-                |settings, padding| settings.padding_x = padding,
-                cx,
-            )))
-            .row(SettingsRow::new("Vertical padding").control(self.number(
-                "padding_y",
-                settings.padding_y,
-                &PADDING,
-                (1.0, 0),
-                |settings, padding| settings.padding_y = padding,
-                cx,
-            )));
+            .row(
+                SettingsRow::new(word("et.appearance.padding_x")).control(self.number(
+                    "padding_x",
+                    settings.padding_x,
+                    &PADDING,
+                    (1.0, 0),
+                    |settings, padding| settings.padding_x = padding,
+                    cx,
+                )),
+            )
+            .row(
+                SettingsRow::new(word("et.appearance.padding_y")).control(self.number(
+                    "padding_y",
+                    settings.padding_y,
+                    &PADDING,
+                    (1.0, 0),
+                    |settings, padding| settings.padding_y = padding,
+                    cx,
+                )),
+            );
         div()
             .flex()
             .flex_col()
             .gap_6()
+            .child(language)
             .child(themes)
             .child(font)
             .child(cursor)
@@ -195,10 +234,11 @@ impl SettingsWindow {
         let width = cx.theme().prose_width();
         let row = |index: usize, picker: FontPicker, remove: IconButton| {
             let tip = if index < families.len() {
-                "Remove"
+                "et.appearance.remove"
             } else {
-                "Cancel"
+                "et.appearance.cancel"
             };
+            let tip = text(cx, tip, &[]);
             div()
                 .flex()
                 .items_start()
@@ -244,7 +284,7 @@ impl SettingsWindow {
             });
             row(next, picker, cancel)
         } else {
-            let add = Button::new("add_fallback", "Add fallback")
+            let add = Button::new("add_fallback", text(cx, "et.appearance.add_fallback", &[]))
                 .icon(IconName::Plus)
                 .size(ControlSize::Sm)
                 .on_click({
@@ -347,102 +387,6 @@ fn percent(fraction: f32) -> f64 {
 
 fn fraction(percent: f64) -> f32 {
     (percent / 100.) as f32
-}
-
-/// Omarchy's theme where followed, then every built-in, as cards; `dark` picks the dark system's.
-fn grid(
-    this: &Entity<SettingsWindow>,
-    title: Option<&'static str>,
-    dark: bool,
-    settings: &Settings,
-    window: &Window,
-    cx: &App,
-) -> Div {
-    let theme = cx.theme();
-    let (field, chosen) = if dark {
-        ("dark_theme", settings.dark_theme.as_deref())
-    } else {
-        ("theme", Some(settings.theme.as_str()))
-    };
-    let omarchy = cx.try_global::<themes::Omarchy>().map(|omarchy| &omarchy.0);
-    let cards = omarchy.into_iter().chain(themes::all()).map(|each| {
-        let (id, this) = (each.id, this.clone());
-        let key = SharedString::from(format!("{field}-{id}"));
-        RadioCard::new(key, chosen == Some(id), each.name)
-            .preview(preview(each, cx))
-            .on_select(move |_, cx| {
-                set(&this, format!("{field} is {id}"), cx, |settings| {
-                    if dark {
-                        settings.dark_theme = Some(id.into());
-                    } else {
-                        settings.theme = id.into();
-                    }
-                });
-            })
-    });
-    let rem = window.rem_size();
-    let (min, gap) = (
-        theme.label_width().to_pixels(rem),
-        rems(0.75).to_pixels(rem),
-    );
-    div()
-        .flex()
-        .flex_col()
-        .gap_2()
-        .py_3()
-        .border_b_1()
-        .border_color(theme.colors.border)
-        .children(title.map(|title| div().text_size(theme.text_size(TextSize::Sm)).child(title)))
-        .child(
-            SimpleGrid::new(SharedString::from(format!("{field}-grid")), min, gap).children(cards),
-        )
-}
-
-/// A small window in `theme`'s colors: the sessions strip, then a prompt, its output and the cursor.
-fn preview(theme: &TerminalTheme, cx: &App) -> Div {
-    let (bg, fg) = (theme.background, theme.foreground);
-    let bar = |color: Hsla, width: f32| div().h_1().w(relative(width)).rounded_full().bg(color);
-    let prompt = |end: Div| {
-        let dot = div()
-            .flex_none()
-            .size_1p5()
-            .rounded_full()
-            .bg(theme.ansi[2]);
-        div().flex().items_center().gap_1().child(dot).child(end)
-    };
-    let strip = div()
-        .w(relative(0.2))
-        .h_full()
-        .flex()
-        .flex_col()
-        .items_center()
-        .gap_1()
-        .pt_2()
-        .bg(bg.mix(&fg, 0.06))
-        .children([0.6, 0.3, 0.3].map(|alpha| bar(fg.opacity(alpha), 0.6)));
-    let lines = div()
-        .flex_1()
-        .flex()
-        .flex_col()
-        .justify_center()
-        .gap_1()
-        .px_2()
-        .child(prompt(bar(fg, 0.5)))
-        .child(bar(theme.ansi[4], 0.75))
-        .child(bar(theme.ansi[5], 0.55))
-        .child(prompt(div().flex_none().w_1p5().h_2p5().bg(theme.cursor)));
-    let chrome = cx.theme();
-    div()
-        .w_full()
-        .aspect_ratio(2.)
-        .flex()
-        .overflow_hidden()
-        .rounded(chrome.radius(Radius::Sm))
-        .border_1()
-        .border_color(chrome.colors.border)
-        .bg(bg)
-        .child(strip)
-        .child(lines)
 }
 
 /// A prompt in the terminal's theme and font, its cursor drawn as the terminal draws it.

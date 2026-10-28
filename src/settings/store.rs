@@ -110,31 +110,37 @@ pub fn save(path: &Path, settings: &Settings) -> anyhow::Result<()> {
     text.push('\n');
     let count = SAVES.fetch_add(1, Ordering::Relaxed);
     let temp = path.with_extension(format!("json.{}-{count}.tmp", std::process::id()));
-    let written = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .and_then(|mut file| {
-            file.write_all(text.as_bytes())?;
-            file.sync_all()
+    let written = write_new(&temp, &text).and_then(|()| {
+        fs::rename(&temp, path).with_context(|| {
+            format!(
+                "settings: cannot rename {} over {}",
+                temp.display(),
+                path.display()
+            )
         })
-        .and_then(|()| fs::rename(&temp, path));
+    });
     if let Err(error) = written {
         if temp.exists()
             && let Err(left) = fs::remove_file(&temp)
         {
             log::error!("settings: {} stays behind: {left}", temp.display());
         }
-        return Err(error).with_context(|| {
-            format!(
-                "settings: cannot write {} through {}",
-                path.display(),
-                temp.display()
-            )
-        });
+        return Err(error);
     }
     log::info!("settings: saved {}", path.display());
     Ok(())
+}
+
+/// Creates new `temp` and writes `text` to the disk.
+fn write_new(temp: &Path, text: &str) -> anyhow::Result<()> {
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(temp)
+        .with_context(|| format!("settings: cannot create {}", temp.display()))?;
+    file.write_all(text.as_bytes())
+        .and_then(|()| file.sync_all())
+        .with_context(|| format!("settings: cannot write {}", temp.display()))
 }
 
 /// Saves made by this process, so each temp file has its own name.
@@ -201,6 +207,18 @@ mod tests {
         assert_eq!(settings.scrollback % 1000, 49);
         let left: Vec<_> = fs::read_dir(&folder).expect("folder").collect();
         assert_eq!(left.len(), 1, "only settings.json remains");
+        fs::remove_dir_all(folder).expect("cleanup");
+    }
+
+    #[test]
+    fn a_failed_rename_names_its_step_and_leaves_no_temp() {
+        let folder = folder("rename");
+        let path = folder.join("settings.json");
+        fs::create_dir_all(path.join("inside")).expect("a folder where the file goes");
+        let error = save(&path, &Settings::default()).expect_err("the folder is in the way");
+        assert!(format!("{error:#}").contains("cannot rename"), "{error:#}");
+        let left: Vec<_> = fs::read_dir(&folder).expect("folder").collect();
+        assert_eq!(left.len(), 1, "only the folder in the way remains");
         fs::remove_dir_all(folder).expect("cleanup");
     }
 

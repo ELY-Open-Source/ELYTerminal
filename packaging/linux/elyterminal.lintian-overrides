@@ -1,0 +1,2 @@
+# freetype-sys bundles FreeType below 24.3.18, as on Ubuntu 22.04.
+elyterminal: embedded-library freetype usr/bin/elyterminal

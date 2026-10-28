@@ -10,7 +10,7 @@ use gpui::{
 #[cfg(target_os = "macos")]
 use crate::term::mac;
 use crate::{
-    blur, menus,
+    blur, i18n, menus,
     settings::{self, SettingsStore},
     term::{ICONS, Launch, MONO, config, input, shell::ShellIntegration, spawn},
     themes, updates,
@@ -23,7 +23,7 @@ const SETTLE: Duration = Duration::from_millis(500);
 /// The id the macOS bundle and Linux desktop entry share.
 pub const APP_ID: &str = "com.zacharyzhang.elyterminal";
 
-/// Fonts, settings, integration scripts and the chosen font, each checked before a window opens.
+/// Fonts, settings, language and scripts, checked before any window.
 pub fn start(cx: &mut App) -> anyhow::Result<()> {
     cx.text_system()
         .add_fonts(vec![
@@ -45,6 +45,7 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
         );
     }
     SettingsStore::init(cx)?;
+    i18n::init(cx);
     updates::start(cx);
     ShellIntegration::init(cx)?;
     input::bind_keys(cx);
@@ -130,6 +131,9 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
         ..Default::default()
     };
     let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(SettingsStore::get(cx)))?;
+    // Windows' wheel settings, read where gpui reads its own.
+    #[cfg(windows)]
+    crate::term::keep_wheel()?;
     let window = cx.open_window(options, |window, cx| {
         window.set_app_id(APP_ID);
         window

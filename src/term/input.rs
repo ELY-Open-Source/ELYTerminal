@@ -90,6 +90,11 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) {
         if event.prefer_character_input {
+            log::debug!(
+                "terminal {}: {:?} types through the layout, a dead key or a character its modifiers make",
+                self.pty.pid,
+                event.keystroke
+            );
             return;
         }
         let facts = self.facts(&event.keystroke);
@@ -329,6 +334,20 @@ fn held(keystroke: &Keystroke, facts: Facts) -> Held {
 }
 
 impl EntityInputHandler for TerminalView {
+    /// False while Option as Alt claims the current key's Option.
+    #[cfg(target_os = "macos")]
+    fn accepts_text_input(&self, _: &mut Window, cx: &mut Context<Self>) -> bool {
+        let Some((left_option, right_option)) = super::mac::held_options() else {
+            return true;
+        };
+        let facts = Facts {
+            left_option,
+            right_option,
+            ..Facts::default()
+        };
+        !Self::alt_is_meta(facts, cx)
+    }
+
     fn text_for_range(
         &mut self,
         _: Range<usize>,

@@ -1,0 +1,97 @@
+name: Linux packages
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check shell syntax
+        run: |
+          for script in scripts/linux-*.sh packaging/linux/AppRun; do sh -n "$script"; done
+          git diff --check
+      - name: Read the current package version
+        run: |
+          . scripts/linux-common.sh
+          linux_version
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Reuse Cargo downloads and release compilation
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            target/linux-cargo
+            target/linux-build
+            target/linux-tools
+          key: linux-x86_64-rust-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'packaging/linux/Dockerfile', 'scripts/linux-appimage.sh') }}
+          restore-keys: linux-x86_64-rust-
+      - name: Build the shared binary and four packages
+        run: scripts/linux-packages.sh
+      - name: Lint packaging scripts
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src elyterminal-release \
+            sh -c 'shellcheck -x scripts/linux-*.sh packaging/linux/AppRun'
+      - name: Lint the DEB
+        run: |
+          docker run --rm -v "$PWD/target/release:/packages:ro" elyterminal-release \
+            lintian --fail-on error "/packages/elyterminal_${PACKAGE_VERSION}_amd64.deb"
+      - name: Verify package checksums
+        run: |
+          cd target/release
+          sha256sum -c "ELYTerminal-$PACKAGE_VERSION-linux-x86_64.sha256"
+      - name: Validate the AppImage without FUSE
+        run: |
+          docker run --rm \
+            -v "$PWD/target/release:/packages:ro" \
+            -v "$PWD/scripts/linux-package-test.sh:/test.sh:ro" \
+            elyterminal-release sh /test.sh "/packages/ELYTerminal-$PACKAGE_VERSION-linux-x86_64.AppImage"
+      - name: Install, reinstall and remove the DEB on its target systems
+        run: |
+          for image in ubuntu:22.04 ubuntu:24.04 debian:12; do
+            docker run --rm \
+              -v "$PWD/target/release:/packages:ro" \
+              -v "$PWD/scripts/linux-package-test.sh:/test.sh:ro" \
+              "$image" sh /test.sh "/packages/elyterminal_${PACKAGE_VERSION}_amd64.deb"
+          done
+      - name: Install, reinstall and remove the RPM on Fedora
+        run: |
+          docker run --rm \
+            -v "$PWD/target/release:/packages:ro" \
+            -v "$PWD/scripts/linux-package-test.sh:/test.sh:ro" \
+            fedora:43 sh /test.sh "/packages/elyterminal-$PACKAGE_VERSION-1.x86_64.rpm"
+      - name: Run the installed DEB and AppImage GUI on Ubuntu 22.04
+        run: |
+          docker build --build-arg TEST_UID="$(id -u)" \
+            -f packaging/linux/Dockerfile.test -t elyterminal-gui-test packaging/linux
+          mkdir -p target/linux-validation
+          for package in "elyterminal_${PACKAGE_VERSION}_amd64.deb" "ELYTerminal-$PACKAGE_VERSION-linux-x86_64.AppImage"; do
+            docker run --rm --init -e LINUX_GUI_TEST=1 -e LINUX_TEST_OUTPUT=/validation \
+              -v "$PWD/target/release:/packages:ro" -v "$PWD/scripts:/tests:ro" \
+              -v "$PWD/target/linux-validation:/validation" \
+              elyterminal-gui-test sh /tests/linux-package-test.sh "/packages/$package"
+          done
+      - name: Keep the packages for review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ELYTerminal-linux-x86_64
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          path: |
+            target/release/ELYTerminal-${{ env.PACKAGE_VERSION }}-linux-x86_64.tar.gz
+            target/release/elyterminal_${{ env.PACKAGE_VERSION }}_amd64.deb
+            target/release/ELYTerminal-${{ env.PACKAGE_VERSION }}-linux-x86_64.AppImage
+            target/release/elyterminal-${{ env.PACKAGE_VERSION }}-1.x86_64.rpm
+            target/release/ELYTerminal-${{ env.PACKAGE_VERSION }}-linux-x86_64.sha256
+            target/linux-validation/**/app.log
+            target/linux-validation/**/window.png

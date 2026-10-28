@@ -6,6 +6,7 @@ use std::{
 use ely_gpui_component::{
     buttons::{ButtonVariant, IconButton},
     forms::{Input, TextInput},
+    i18n::{I18n, text},
     lists::ListItem,
     menus::ContextMenu,
     primitives::{Icon, IconName, Tooltip},
@@ -17,6 +18,7 @@ use gpui::{
 };
 
 use crate::{
+    settings::SettingsStore,
     term::{Kind, Record, Records, State, TerminalView},
     workspace::{TITLE, Workspace},
 };
@@ -141,7 +143,7 @@ pub fn row(
             IconButton::new(("close-session", pid), IconName::X)
                 .variant(ButtonVariant::Ghost)
                 .size(ControlSize::Sm)
-                .tooltip("Close session")
+                .tooltip(text(cx, "et.session.close", &[]))
                 .on_click(move |_, window, cx| {
                     cx.stop_propagation();
                     close.update(cx, |this, cx| this.close(index, window, cx))
@@ -167,10 +169,14 @@ pub fn row(
                 .children(bell),
         )
     };
+    if !SettingsStore::get(cx).session_menu {
+        return item.into_any_element();
+    }
     let id = session.terminal.entity_id();
-    ContextMenu::new(("session-menu", pid), menu::row(workspace, id))
+    ContextMenu::new(("session-menu", pid), menu::row(workspace, id, cx))
         .w_full()
         .child(item)
+        .into_any_element()
 }
 
 /// The field a session's row renames it with; Escape drops what it holds.
@@ -225,7 +231,8 @@ fn mark(session: &Session, now: Instant, cx: &App) -> Option<AnyElement> {
     let tip = Tooltip::rich(move |window, cx| {
         let lines = watched.upgrade().map_or_else(Vec::new, |terminal| {
             let view = terminal.read(cx);
-            hover(view.records(), view.ended().filter(|&code| code != 0))
+            let failed = view.ended().filter(|&code| code != 0);
+            hover(view.records(), failed, cx.global::<I18n>())
         });
         let room = window.viewport_size().height - rems(3.).to_pixels(window.rem_size());
         div()
@@ -252,51 +259,57 @@ fn mark(session: &Session, now: Instant, cx: &App) -> Option<AnyElement> {
 }
 
 /// What hover shows: a line for each record, ten at most, then a failed command's status.
-pub fn hover(records: &Records, failed: Option<i32>) -> Vec<SharedString> {
+pub fn hover(records: &Records, failed: Option<i32>, words: &I18n) -> Vec<SharedString> {
     let mut lines: Vec<SharedString> = records
         .iter()
         .take(LISTED)
-        .map(|(id, record)| line(records, id, record).into())
+        .map(|(id, record)| line(records, id, record, words).into())
         .collect();
     let more = records.iter().count().saturating_sub(LISTED);
     if more > 0 {
-        lines.push(format!("{more} more").into());
+        lines.push(words.text("et.status.more", &[("count", &more.to_string())]));
     }
     if let Some(code) = failed {
-        lines.push(format!("Last command exited with {code}").into());
+        lines.push(words.text("et.status.exited", &[("code", &code.to_string())]));
     }
     lines
 }
 
 /// A record as hover and notifications say it: its state, then its app, title and message.
-pub fn line(records: &Records, id: &str, record: &Record) -> String {
+pub fn line(records: &Records, id: &str, record: &Record, words: &I18n) -> String {
     let parts = [
         records.app(id),
         record.title.as_deref(),
         record.msg.as_deref(),
     ];
     let said: Vec<String> = parts.into_iter().flatten().map(plain).collect();
-    let state = label(record);
+    let state = label(record, words);
     if said.is_empty() {
-        state
+        state.to_string()
     } else {
-        format!("{state}: {}", said.join(" · "))
+        let said = said.join(" · ");
+        words
+            .text("et.status.line", &[("state", &state), ("said", &said)])
+            .to_string()
     }
 }
 
 /// A record's state, as hover names it.
-fn label(record: &Record) -> String {
-    match (record.state, record.kind, record.progress) {
-        (State::Idle, ..) => "Idle".into(),
-        (State::Working, _, Some(value)) => format!("Working, {value}%"),
-        (State::Working, ..) => "Working".into(),
-        (State::Blocked, Some(Kind::Permission), _) => "Waiting for permission".into(),
-        (State::Blocked, Some(Kind::Question), _) => "Waiting for an answer".into(),
-        (State::Blocked, Some(Kind::Auth), _) => "Waiting for a login".into(),
-        (State::Blocked, None, _) => "Waiting".into(),
-        (State::Done, ..) => "Done".into(),
-        (State::Error, ..) => "Error".into(),
-    }
+fn label(record: &Record, words: &I18n) -> SharedString {
+    let key = match (record.state, record.kind, record.progress) {
+        (State::Idle, ..) => "et.status.idle",
+        (State::Working, _, Some(value)) => {
+            return words.text("et.status.working_at", &[("value", &value.to_string())]);
+        }
+        (State::Working, ..) => "et.status.working",
+        (State::Blocked, Some(Kind::Permission), _) => "et.status.permission",
+        (State::Blocked, Some(Kind::Question), _) => "et.status.question",
+        (State::Blocked, Some(Kind::Auth), _) => "et.status.auth",
+        (State::Blocked, None, _) => "et.status.waiting",
+        (State::Done, ..) => "et.status.done",
+        (State::Error, ..) => "et.status.error",
+    };
+    words.text(key, &[])
 }
 
 /// A program's text as hover shows it: on one line, 120 characters at most, without what could disguise it.
@@ -330,154 +343,4 @@ fn invisible(c: char) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn folders_under_home_read_from_a_tilde() {
-        let home = PathBuf::from("/Users/ely");
-        let shown = |folder: &str| shown(Path::new(folder), Some(&home));
-        assert_eq!(shown("/Users/ely"), "~");
-        assert_eq!(
-            shown("/Users/ely/src/app"),
-            format!("~{MAIN_SEPARATOR}src/app")
-        );
-        assert_eq!(
-            shown("/Users/elyse"),
-            "/Users/elyse",
-            "a sibling is no child"
-        );
-        assert_eq!(shown("/tmp"), "/tmp");
-        assert_eq!(
-            shown("/Users/ely/line\nbreak"),
-            format!("~{MAIN_SEPARATOR}line␊break")
-        );
-    }
-
-    #[test]
-    fn control_characters_show_as_their_pictures() {
-        assert_eq!(one_line("a\nb\tc\rd\0e\u{7f}"), "a␊b␉c␍d␀e␡");
-        assert_eq!(one_line("café ✓"), "café ✓", "printable text stays");
-    }
-
-    #[test]
-    fn closing_shows_the_next_session_or_keeps_the_shown_one() {
-        assert_eq!(after_close(2, 0, 3), 1, "one before it went");
-        assert_eq!(after_close(1, 1, 3), 1, "it went: the next one");
-        assert_eq!(after_close(3, 3, 3), 2, "the last went: the one before");
-        assert_eq!(after_close(1, 2, 3), 1, "one after it went");
-    }
-
-    #[test]
-    fn the_mark_shows_the_most_pressing_look() {
-        let record = |state, progress| Record {
-            state,
-            kind: None,
-            progress,
-            app: None,
-            title: None,
-            msg: None,
-        };
-        let waiting = look(Some(&record(State::Blocked, None)), true);
-        assert_eq!(
-            waiting,
-            Some(Look::Waiting),
-            "waiting outranks a failed command"
-        );
-        let working = look(Some(&record(State::Working, Some(40))), false);
-        assert_eq!(working, Some(Look::Working(Some(40))));
-        let idle = record(State::Idle, None);
-        assert_eq!(
-            look(Some(&idle), true),
-            Some(Look::Error),
-            "a failed command outranks idle"
-        );
-        assert_eq!(look(Some(&idle), false), Some(Look::Idle));
-        assert_eq!(
-            look(Some(&record(State::Done, None)), true),
-            Some(Look::Done)
-        );
-        assert_eq!(
-            look(Some(&record(State::Error, None)), false),
-            Some(Look::Error)
-        );
-        assert_eq!(look(None, false), None);
-    }
-
-    #[test]
-    fn hover_shows_a_program_s_text_as_text() {
-        assert_eq!(plain("evil\u{202e}txt.exe"), "eviltxt.exe");
-        assert_eq!(
-            plain("a\u{200b}b\u{feff}c\u{e0041}d\u{85}e\u{2066}f"),
-            "abcdef"
-        );
-        assert_eq!(
-            plain("👨\u{200d}💻 two\nlines"),
-            "👨\u{200d}💻 two␊lines",
-            "joiners stay"
-        );
-        assert_eq!(plain(&"x".repeat(SHORT)), "x".repeat(SHORT));
-        assert_eq!(
-            plain(&"é".repeat(SHORT + 1)),
-            format!("{}…", "é".repeat(SHORT))
-        );
-    }
-
-    #[test]
-    fn hover_lists_each_record_with_its_app_then_a_failed_command() {
-        let record =
-            |state: State, kind: Option<Kind>, progress: Option<u8>, texts: [Option<&str>; 3]| {
-                let [app, title, msg] = texts.map(|text| text.map(String::from));
-                Record {
-                    state,
-                    kind,
-                    progress,
-                    app,
-                    title,
-                    msg,
-                }
-            };
-        let mut records = Records::default();
-        records.report(
-            String::new(),
-            record(
-                State::Working,
-                None,
-                Some(40),
-                [Some("deploy"), None, Some("Deploying")],
-            ),
-        );
-        records.report(
-            "eu".into(),
-            record(
-                State::Blocked,
-                Some(Kind::Permission),
-                None,
-                [None, Some("EU West"), Some("Approve?")],
-            ),
-        );
-        records.report(
-            "eu/db".into(),
-            record(State::Done, None, None, [Some("db"), None, None]),
-        );
-        let lines: Vec<String> = hover(&records, Some(2))
-            .iter()
-            .map(ToString::to_string)
-            .collect();
-        assert_eq!(
-            lines,
-            [
-                "Working, 40%: deploy · Deploying",
-                "Waiting for permission: deploy · EU West · Approve?",
-                "Done: db",
-                "Last command exited with 2"
-            ]
-        );
-        for at in 0..LISTED {
-            records.report(format!("r{at}"), record(State::Idle, None, None, [None; 3]));
-        }
-        let lines = hover(&records, None);
-        assert_eq!(lines.len(), LISTED + 1);
-        assert_eq!(lines[LISTED].to_string(), "3 more");
-    }
-}
+mod tests;

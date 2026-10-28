@@ -54,6 +54,15 @@ pub(crate) fn read(body: &[u8]) -> Option<Mark> {
     }
 }
 
+/// Whether an A or N body names our integration, `aid=elyterminal`.
+pub(crate) fn named(body: &[u8]) -> bool {
+    matches!(body.first(), Some(b'A' | b'N'))
+        && body
+            .split(|&byte| byte == b';')
+            .skip(1)
+            .any(|option| option == b"aid=elyterminal")
+}
+
 /// How A's options say its line takes a click; arrows without `click_events`.
 fn click(options: &[u8]) -> Click {
     let value = options
@@ -94,6 +103,17 @@ fn status(options: &[u8]) -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_prompt_names_elyterminal_s_shell_by_aid() {
+        assert!(named(b"A;aid=elyterminal"));
+        assert!(named(b"A;click_events=1;aid=elyterminal"));
+        assert!(named(b"N;aid=elyterminal"));
+        assert!(!named(b"A"));
+        assert!(!named(b"A;aid=42"));
+        assert!(!named(b"A;aid=elyterminals"));
+        assert!(!named(b"D;0;aid=elyterminal"));
+    }
 
     #[test]
     fn each_mark_reads_with_its_options_as_ghostty_reads_it() {

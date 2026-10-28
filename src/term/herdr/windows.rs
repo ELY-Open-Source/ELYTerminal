@@ -3,30 +3,21 @@ use std::{
     ffi::{OsStr, OsString},
     fs::{File, OpenOptions},
     io,
-    os::windows::{
-        ffi::{OsStrExt, OsStringExt},
-        fs::OpenOptionsExt,
-        io::{AsRawHandle, FromRawHandle, OwnedHandle},
-    },
+    os::windows::{ffi::OsStrExt, fs::OpenOptionsExt},
     path::{Path, PathBuf},
 };
 
 use anyhow::Context as _;
-use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use windows_sys::Win32::{
-    Foundation::{ERROR_NO_MORE_FILES, ERROR_PIPE_BUSY, INVALID_HANDLE_VALUE},
-    Storage::FileSystem::SECURITY_IDENTIFICATION,
-    System::{
-        Diagnostics::ToolHelp::{
-            CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
-            TH32CS_SNAPPROCESS,
-        },
-        Pipes::WaitNamedPipeW,
-    },
+    Foundation::ERROR_PIPE_BUSY, Storage::FileSystem::SECURITY_IDENTIFICATION,
+    System::Pipes::WaitNamedPipeW,
 };
 
 use super::{Invocation, WAIT, follows};
-use crate::term::Pty;
+use crate::term::{
+    Pty,
+    procs::{launch, processes},
+};
 
 pub(super) type Pid = u32;
 
@@ -69,41 +60,6 @@ pub(super) fn herdrs(processes: &[(Pid, Pid, String)], root: Pid) -> Vec<Pid> {
     found
 }
 
-/// Every process: its id, its parent's, and its executable's name.
-pub(super) fn processes() -> io::Result<Vec<(Pid, Pid, String)>> {
-    // SAFETY: a plain call; its handle is owned below.
-    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-    if snapshot == INVALID_HANDLE_VALUE {
-        return Err(io::Error::last_os_error());
-    }
-    // SAFETY: the handle is new and ours.
-    let snapshot = unsafe { OwnedHandle::from_raw_handle(snapshot) };
-    let mut entry = PROCESSENTRY32W {
-        dwSize: size_of::<PROCESSENTRY32W>() as u32,
-        ..Default::default()
-    };
-    let mut processes = Vec::new();
-    // SAFETY: `entry` holds the size it names.
-    let mut read = unsafe { Process32FirstW(snapshot.as_raw_handle(), &mut entry) };
-    while read != 0 {
-        let name = entry.szExeFile.split(|unit| *unit == 0).next();
-        processes.push((
-            entry.th32ProcessID,
-            entry.th32ParentProcessID,
-            String::from_utf16_lossy(name.unwrap_or_default()),
-        ));
-        // SAFETY: as above.
-        read = unsafe { Process32NextW(snapshot.as_raw_handle(), &mut entry) };
-    }
-    let error = io::Error::last_os_error();
-    // The list ends with ERROR_NO_MORE_FILES.
-    if error.raw_os_error() == Some(ERROR_NO_MORE_FILES as i32) {
-        Ok(processes)
-    } else {
-        Err(error)
-    }
-}
-
 /// The socket of the herdr server whose terminal client is among `herdrs`; a server or a command is passed by.
 pub(super) fn client(herdrs: Program) -> anyhow::Result<Option<PathBuf>> {
     pick(herdrs.into_iter().map(|pid| (pid, launch(pid))))
@@ -128,46 +84,6 @@ pub(super) fn pick(
         }
     }
     unread.map_or(Ok(None), Err)
-}
-
-/// The arguments and variables of process `pid`; names fold to upper case, as Windows matches them.
-pub(super) fn launch(pid: Pid) -> io::Result<Invocation> {
-    let id = sysinfo::Pid::from_u32(pid);
-    let mut system = System::new();
-    let read = ProcessRefreshKind::nothing()
-        .with_cmd(UpdateKind::Always)
-        .with_environ(UpdateKind::Always);
-    system.refresh_processes_specifics(ProcessesToUpdate::Some(&[id]), true, read);
-    let process = system
-        .process(id)
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "the process is gone"))?;
-    // sysinfo leaves a list empty when it does not read; every process has both.
-    if process.cmd().is_empty() || process.environ().is_empty() {
-        return Err(io::Error::other(
-            "its command line or variables do not read",
-        ));
-    }
-    let args = process
-        .cmd()
-        .iter()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .collect();
-    let env = process
-        .environ()
-        .iter()
-        .filter_map(|pair| variable(pair))
-        .collect();
-    Ok((args, env))
-}
-
-/// A `NAME=value` variable, its name in upper case; its value keeps its units.
-fn variable(pair: &OsStr) -> Option<(String, OsString)> {
-    let pair: Vec<u16> = pair.encode_wide().collect();
-    let at = pair.iter().position(|unit| *unit == u16::from(b'='))?;
-    Some((
-        String::from_utf16_lossy(&pair[..at]).to_ascii_uppercase(),
-        OsString::from_wide(&pair[at + 1..]),
-    ))
 }
 
 /// herdr's folder without `XDG_CONFIG_HOME`, as herdr finds it on Windows.

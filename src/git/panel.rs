@@ -6,8 +6,9 @@ use std::{
 use ely_gpui_component::{
     forms::TextInput,
     git::{ChangeAction, ChangeSection, Commit, DiffLayout, Stretch},
+    i18n::{I18n, text},
 };
-use gpui::{AppContext, Context, Entity, EventEmitter, SharedString, Task, Window};
+use gpui::{AppContext, Context, Entity, EventEmitter, SharedString, Subscription, Task, Window};
 
 use self::view::{is_folder, shown};
 use super::{Change, Repo};
@@ -26,7 +27,7 @@ enum State {
     Read(Repo, Rc<Vec<Commit>>),
 }
 
-/// An open diff: its file, the section it came from, and its lines or why there are none.
+/// An open diff: file, section, lines or why none.
 struct Diff {
     change: Change,
     section: ChangeSection,
@@ -53,7 +54,7 @@ pub struct GitPanel {
     state: State,
     /// Where `state` was read: an action waits until it is `folder`.
     read: PathBuf,
-    /// The last action's failure: what failed, and what git said.
+    /// The last action's failure: what failed, and git's words.
     error: Option<(&'static str, SharedString)>,
     subject: Entity<TextInput>,
     body: Entity<TextInput>,
@@ -65,17 +66,22 @@ pub struct GitPanel {
     opening: Task<()>,
     /// The last action asked; each waits for the one before it.
     acting: Task<()>,
+    _language: Subscription,
 }
 
 impl EventEmitter<Acted> for GitPanel {}
 
 impl GitPanel {
     pub fn new(folder: PathBuf, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let subject = cx.new(|cx| TextInput::new(window, cx).placeholder("Summary"));
+        let (summary, description) = (
+            text(cx, "et.git.summary", &[]),
+            text(cx, "et.git.description", &[]),
+        );
+        let subject = cx.new(|cx| TextInput::new(window, cx).placeholder(summary));
         let body = cx.new(|cx| {
             TextInput::new(window, cx)
                 .multi_line(3, 6)
-                .placeholder("Description")
+                .placeholder(description)
         });
         Self {
             read: folder.clone(),
@@ -91,7 +97,19 @@ impl GitPanel {
             reading: Task::ready(()),
             opening: Task::ready(()),
             acting: Task::ready(()),
+            _language: cx.observe_global::<I18n>(Self::speak),
         }
+    }
+
+    /// Words its fields again in the language just chosen.
+    fn speak(&mut self, cx: &mut Context<Self>) {
+        let (subject, body) = (self.subject.clone(), self.body.clone());
+        subject.update(cx, |input, cx| {
+            input.set_placeholder(text(cx, "et.git.summary", &[]), cx)
+        });
+        body.update(cx, |input, cx| {
+            input.set_placeholder(text(cx, "et.git.description", &[]), cx)
+        });
     }
 
     /// Shows `folder`'s repository, read afresh; a new folder drops what the old one had open.
@@ -230,11 +248,11 @@ impl GitPanel {
         match action {
             ChangeAction::Stage => {
                 let work = move |top: &Path| super::stage(top, &[change]);
-                self.act("Stage failed", top, work, |_, _| {}, cx)
+                self.act("et.git.stage_failed", top, work, |_, _| {}, cx)
             }
             ChangeAction::Unstage => {
                 let work = move |top: &Path| super::unstage(top, &[change]);
-                self.act("Unstage failed", top, work, |_, _| {}, cx)
+                self.act("et.git.unstage_failed", top, work, |_, _| {}, cx)
             }
             ChangeAction::Discard => {
                 self.discarding = Some((change, section));
@@ -253,11 +271,11 @@ impl GitPanel {
         if stage {
             let changes = repo.unstaged.clone();
             let work = move |top: &Path| super::stage(top, &changes);
-            self.act("Stage failed", top, work, |_, _| {}, cx);
+            self.act("et.git.stage_failed", top, work, |_, _| {}, cx);
         } else {
             let changes = repo.staged.clone();
             let work = move |top: &Path| super::unstage(top, &changes);
-            self.act("Unstage failed", top, work, |_, _| {}, cx);
+            self.act("et.git.unstage_failed", top, work, |_, _| {}, cx);
         }
     }
 
@@ -268,7 +286,7 @@ impl GitPanel {
         let top = repo.top.clone();
         log::info!("git panel: discarding {} confirmed", change.path.display());
         let work = move |top: &Path| super::discard(top, &change, section);
-        self.act("Discard failed", top, work, |_, _| {}, cx);
+        self.act("et.git.discard_failed", top, work, |_, _| {}, cx);
     }
 
     /// Commits what is staged with the typed message; on success the fields that still hold it empty.
@@ -300,7 +318,7 @@ impl GitPanel {
                 panel.amend = false;
             }
         };
-        self.act("Commit failed", top, work, then, cx);
+        self.act("et.git.commit_failed", top, work, then, cx);
     }
 
     /// Opens `change`'s diff as `section` holds it, once git gives it.
@@ -315,7 +333,7 @@ impl GitPanel {
         // Git keeps an untracked folder whole, so it has no lines.
         if section == ChangeSection::Untracked && is_folder(&change.path) {
             self.opening = Task::ready(());
-            let lines = Err("An untracked folder has no diff.");
+            let lines = Err("et.git.untracked_folder");
             return self.shows(
                 Diff {
                     change,
@@ -331,12 +349,12 @@ impl GitPanel {
             let read = read.await;
             let opened = |panel: &mut Self, cx: &mut Context<Self>| {
                 let lines = match read {
-                    Ok(Some(lines)) if lines.is_empty() => Err("No line changed."),
+                    Ok(Some(lines)) if lines.is_empty() => Err("et.git.no_line"),
                     Ok(Some(lines)) => Ok(Rc::new(lines)),
-                    Ok(None) => Err("A binary file."),
+                    Ok(None) => Err("et.git.binary"),
                     Err(error) => {
-                        log::error!("git panel: Diff failed: {error:#}");
-                        panel.error = Some(("Diff failed", format!("{error:#}").into()));
+                        log::error!("git panel: the diff failed: {error:#}");
+                        panel.error = Some(("et.git.diff_failed", format!("{error:#}").into()));
                         return cx.notify();
                     }
                 };

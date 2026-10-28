@@ -8,19 +8,26 @@ use futures::channel::mpsc::UnboundedSender;
 use polling::{Event, PollMode, Poller};
 
 use super::{
-    marks,
+    marks::{self, Mark},
     notify::{self, Kitty},
     prompts::{self, Prompts},
     pty::PtyEvent,
-    status,
+    status::{self, Holder},
     titles::{self, Titles},
 };
 
 /// The longest OSC body kept; longer ones are dropped whole.
 pub(super) const MOST: usize = 4096;
 
+/// alacritty's `MAX_LOCKED_READ`: the bytes one turn of its loop reads.
+#[cfg(windows)]
+pub(super) const TURN: usize = u16::MAX as usize;
+
 /// A pty whose reader shows each byte to its scanners before the parser.
 pub(crate) struct Tapped<P> {
+    /// The master's copy, naming the foreground group; drops before `inner`.
+    #[cfg(unix)]
+    master: Option<std::fs::File>,
     pub inner: P,
     scanner: Osc,
     modes: Modes,
@@ -30,6 +37,14 @@ pub(crate) struct Tapped<P> {
     events: UnboundedSender<PtyEvent>,
     pid: u32,
     last: Option<PathBuf>,
+    /// The session's own shell names its prompts.
+    named: bool,
+    /// The poller alacritty's event loop waits on.
+    #[cfg(windows)]
+    poller: Option<Arc<Poller>>,
+    /// Bytes since the pty ran dry or the loop woke.
+    #[cfg(windows)]
+    unwoken: usize,
 }
 
 impl<P> Tapped<P> {
@@ -44,26 +59,88 @@ impl<P> Tapped<P> {
             events,
             pid,
             last: None,
+            named: false,
+            #[cfg(windows)]
+            poller: None,
+            #[cfg(windows)]
+            unwoken: 0,
+            #[cfg(unix)]
+            master: None,
         }
+    }
+
+    /// Names, by `master`, the process group each report comes from.
+    #[cfg(unix)]
+    pub fn holding(mut self, master: std::fs::File) -> Self {
+        self.master = Some(master);
+        self
     }
 }
 
 impl<P: EventedReadWrite> io::Read for Tapped<P> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        // What a rewrite adds stays inside the buffer, with room for the held sequence's own.
-        let room = buf
-            .len()
-            .saturating_sub(self.prompts.held() + prompts::SLACK);
-        let take = room / prompts::GROWTH;
-        if take == 0 {
-            return Ok(0);
+        loop {
+            // What a rewrite adds stays inside the buffer, with room for the held sequence's own.
+            let room = buf
+                .len()
+                .saturating_sub(self.prompts.held() + prompts::SLACK);
+            let take = room / prompts::GROWTH;
+            if take == 0 {
+                return Ok(0);
+            }
+            let (count, dry) = self.fill(&mut buf[..take])?;
+            let passed = self.pass(buf, count);
+            #[cfg(windows)]
+            self.keep_waking(passed, dry);
+            // Zero would end alacritty's turn while bytes wait.
+            if passed > 0 || dry {
+                return Ok(passed);
+            }
         }
-        let count = self.inner.reader().read(&mut buf[..take])?;
+    }
+}
+
+impl<P: EventedReadWrite> Tapped<P> {
+    /// Fills `buf`; true once the pty ran dry.
+    fn fill(&mut self, buf: &mut [u8]) -> io::Result<(usize, bool)> {
+        let mut count = 0;
+        while count < buf.len() {
+            match io::Read::read(self.inner.reader(), &mut buf[count..]) {
+                Ok(0) => return Ok((count, true)),
+                Ok(got) => count += got,
+                Err(error) if count == 0 => return Err(error),
+                // The error comes again at the next read.
+                Err(_) => return Ok((count, true)),
+            }
+        }
+        Ok((count, false))
+    }
+
+    /// Scans `buf[..count]`; the parser's bytes start `buf`, their count returned.
+    fn pass(&mut self, buf: &mut [u8], count: usize) -> usize {
         let read = &buf[..count];
         let (events, pid, last) = (&self.events, self.pid, &mut self.last);
-        let (kitty, titles) = (&mut self.kitty, &mut self.titles);
+        let (kitty, titles, named) = (&mut self.kitty, &mut self.titles, &mut self.named);
+        #[cfg(unix)]
+        let (holder, prompts) = (
+            || holder(self.master.as_ref(), pid),
+            |group: Option<i32>, click| group.is_some_and(|group| prompts(group, click, pid)),
+        );
+        #[cfg(windows)]
+        let (holder, prompts) = (
+            || None,
+            |group: Option<i32>, _| group.is_none() && nested(pid),
+        );
         self.scanner.feed(read, &mut |found| {
-            report(found, events, pid, last, kitty, titles)
+            report(
+                found,
+                events,
+                pid,
+                last,
+                (kitty, titles, named),
+                &holder,
+                &prompts,
+            )
         });
         #[cfg(windows)]
         let win32 = self.modes.win32;
@@ -85,18 +162,48 @@ impl<P: EventedReadWrite> io::Read for Tapped<P> {
         }
         let out = self.prompts.pass(&buf[..count]);
         buf[..out.len()].copy_from_slice(out);
-        Ok(out.len())
+        out.len()
+    }
+
+    /// Wakes alacritty's loop when bytes wait unread (alacritty#8147).
+    #[cfg(windows)]
+    fn keep_waking(&mut self, passed: usize, dry: bool) {
+        use polling::os::iocp::{CompletionPacket, PollerIocpExt};
+        if dry {
+            self.unwoken = 0;
+            return;
+        }
+        self.unwoken += passed;
+        if self.unwoken < TURN {
+            return;
+        }
+        self.unwoken = 0;
+        let Some(poller) = &self.poller else {
+            log::error!("pty {}: read before the event loop registered it", self.pid);
+            return;
+        };
+        let packet = CompletionPacket::new(Event::readable(
+            alacritty_terminal::tty::PTY_READ_WRITE_TOKEN,
+        ));
+        match poller.post(packet) {
+            Ok(()) => log::debug!(
+                "pty {}: a turn's bytes read, more may wait; woke the loop",
+                self.pid
+            ),
+            Err(error) => log::error!("pty {}: cannot wake the event loop: {error}", self.pid),
+        }
     }
 }
 
-/// Sends the session what the scanner found: a full reset, a title, a mark, a program's status or ask, or a folder.
+/// Sends the session what the scanner found, with `holder`'s group.
 fn report(
     found: Found,
     events: &UnboundedSender<PtyEvent>,
     pid: u32,
     last: &mut Option<PathBuf>,
-    kitty: &mut Kitty,
-    titles: &mut Titles,
+    (kitty, titles, named): (&mut Kitty, &mut Titles, &mut bool),
+    holder: &dyn Fn() -> Option<i32>,
+    prompts: &dyn Fn(Option<i32>, marks::Click) -> bool,
 ) {
     let event = match found {
         Found::Reset => {
@@ -114,17 +221,28 @@ fn report(
         },
         Found::Osc(body, length) => {
             if let Some(mark) = body.strip_prefix(b"133;").and_then(marks::read) {
-                log::debug!("pty {pid}: {mark:?}");
-                PtyEvent::Mark(mark)
+                let holder = match mark {
+                    Mark::Prompt(_) if body.strip_prefix(b"133;").is_some_and(marks::named) => {
+                        // A nested shell's name stays its own.
+                        *named |= holder().is_some_and(|group| u32::try_from(group) == Ok(pid));
+                        Holder::Shell
+                    }
+                    Mark::Prompt(click) => prompter(click, holder(), pid, *named, prompts),
+                    _ => Holder::Unknown,
+                };
+                log::debug!("pty {pid}: {mark:?} held by {holder:?}");
+                PtyEvent::Mark(mark, holder)
             } else if let Some(status) = body
                 .strip_prefix(b"7501;")
                 .and_then(|rest| status::read(rest, length))
             {
-                log::debug!("pty {pid}: {status:?}");
-                PtyEvent::Status(status)
+                let group = holder();
+                log::debug!("pty {pid}: {status:?} from group {group:?}");
+                PtyEvent::Status(status, group)
             } else if let Some(ask) = ask(body, kitty) {
-                log::debug!("pty {pid}: {ask:?}");
-                PtyEvent::Ask(ask)
+                let group = holder();
+                log::debug!("pty {pid}: {ask:?} from group {group:?}");
+                PtyEvent::Ask(ask, group)
             } else if let Some(folder) = body.strip_prefix(b"7;").and_then(folder) {
                 if last.as_ref() == Some(&folder) {
                     log::debug!("pty {pid}: folder {} again", folder.display());
@@ -169,14 +287,26 @@ impl<P: EventedReadWrite> EventedReadWrite for Tapped<P> {
         event: Event,
         mode: PollMode,
     ) -> io::Result<()> {
+        #[cfg(windows)]
+        {
+            self.poller = Some(poll.clone());
+        }
         unsafe { self.inner.register(poll, event, mode) }
     }
 
     fn reregister(&mut self, poll: &Arc<Poller>, event: Event, mode: PollMode) -> io::Result<()> {
+        #[cfg(windows)]
+        {
+            self.poller = Some(poll.clone());
+        }
         self.inner.reregister(poll, event, mode)
     }
 
     fn deregister(&mut self, poll: &Arc<Poller>) -> io::Result<()> {
+        #[cfg(windows)]
+        {
+            self.poller = None;
+        }
         self.inner.deregister(poll)
     }
 
@@ -349,75 +479,16 @@ impl Osc {
 /// The most values, subparameters too, one sequence holds before vte drops it.
 const PARAMS: usize = 32;
 
-/// The local folder an OSC 7 `file://host/path` names; another host's folder is none.
-pub(crate) fn folder(body: &[u8]) -> Option<PathBuf> {
-    folder_on(body, cfg!(windows))
-}
-
-/// The folder an OSC 7 body names; on `windows` a drive's or a share's, as Windows names it, WSL's among them.
-fn folder_on(body: &[u8], windows: bool) -> Option<PathBuf> {
-    let Some(rest) = body.strip_prefix(b"file://") else {
-        log::warn!(
-            "pty: OSC 7 without file:// ({})",
-            String::from_utf8_lossy(body)
-        );
-        return None;
-    };
-    let slash = rest.iter().position(|&byte| byte == b'/')?;
-    let host = String::from_utf8_lossy(&rest[..slash]);
-    let local = gethostname::gethostname();
-    if !(host.is_empty()
-        || host.eq_ignore_ascii_case("localhost")
-        || local
-            .to_str()
-            .is_some_and(|name| host.eq_ignore_ascii_case(name)))
-    {
-        log::debug!("pty: OSC 7 from host {host}, not this one");
-        return None;
-    }
-    let Some(path) = decode(&rest[slash..]) else {
-        log::warn!("pty: OSC 7 path is not UTF-8 after decoding");
-        return None;
-    };
-    if !windows {
-        return Some(PathBuf::from(path));
-    }
-    let drive = path.as_bytes().get(1..3).is_some_and(|two| two[1] == b':')
-        && path.as_bytes()[1].is_ascii_alphabetic();
-    if path.starts_with("//") {
-        Some(PathBuf::from(path.replace('/', "\\")))
-    } else if drive {
-        Some(PathBuf::from(&path[1..]))
-    } else {
-        log::debug!("pty: OSC 7 path {path} names no Windows folder");
-        None
-    }
-}
-
-fn decode(bytes: &[u8]) -> Option<String> {
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut at = 0;
-    while at < bytes.len() {
-        let hex = bytes
-            .get(at + 1..at + 3)
-            .and_then(|two| std::str::from_utf8(two).ok())
-            .and_then(|two| u8::from_str_radix(two, 16).ok());
-        match (bytes[at], hex) {
-            (b'%', Some(value)) => {
-                out.push(value);
-                at += 3;
-            }
-            (byte, _) => {
-                out.push(byte);
-                at += 1;
-            }
-        }
-    }
-    String::from_utf8(out).ok()
-}
-
+mod folder;
+mod holder;
 mod modes;
 #[cfg(test)]
 mod tests;
 
+use folder::folder;
+#[cfg(windows)]
+use holder::nested;
+use holder::prompter;
+#[cfg(unix)]
+use holder::{holder, prompts};
 pub(crate) use modes::Modes;
