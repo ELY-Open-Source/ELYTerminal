@@ -1,4 +1,4 @@
-# windows-zip.ps1: the release build, its icon inside, and ConPTY, in a zip.
+# windows-zip.ps1: the release build with icon and ConPTY, zipped.
 Set-Location (Join-Path $PSScriptRoot '..') -ErrorAction Stop
 cargo build --release --locked
 if ($LASTEXITCODE -ne 0) { throw "windows-zip: cargo build failed" }

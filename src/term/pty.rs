@@ -212,7 +212,8 @@ fn start(launch: &Launch, env: HashMap<String, String>, size: WindowSize) -> std
         escape_args: true,
     };
     let pty = tty::new(&options, size, 0)?;
-    log::info!("pty: ConPTY is {}", conpty()?.display());
+    let dll = conpty()?;
+    log::info!("pty: ConPTY is {}", dll.display());
     Ok(pty)
 }
 
