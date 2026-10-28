@@ -1,4 +1,5 @@
 use super::*;
+use gpui::px;
 
 fn run(len: usize, color: gpui::Hsla) -> TextRun {
     TextRun {
@@ -75,4 +76,24 @@ fn sections_preserve_utf8_boundaries_and_font_changes() {
     assert_eq!(parts[0].1, &runs[..2]);
     assert_eq!(parts[1].0, "b");
     assert!(sections("", &[]).next().is_none());
+}
+
+#[test]
+fn columns_count_characters_not_bytes() {
+    let map = columns("中 aא");
+    assert_eq!((map[0], map[3], map[4], map[5]), (0, 1, 2, 3));
+}
+
+#[test]
+fn right_to_left_glyphs_keep_their_logical_columns() {
+    let map = columns("abc אב");
+    let shaped = [(2, px(0.)), (0, px(10.))];
+    assert_eq!(places(&map, 4, &shaped, px(10.)), [px(50.), px(40.)]);
+}
+
+#[test]
+fn glyphs_of_one_character_keep_their_offsets() {
+    let map = columns("ab");
+    let shaped = [(0, px(1.)), (0, px(4.)), (1, px(12.))];
+    assert_eq!(places(&map, 0, &shaped, px(10.)), [px(0.), px(3.), px(10.)]);
 }
