@@ -1,4 +1,4 @@
-# windows-zip.ps1: the release build, its icon inside, in a zip.
+# windows-zip.ps1: the release build, its icon inside, and ConPTY, in a zip.
 Set-Location (Join-Path $PSScriptRoot '..') -ErrorAction Stop
 cargo build --release --locked
 if ($LASTEXITCODE -ne 0) { throw "windows-zip: cargo build failed" }
@@ -9,5 +9,7 @@ if (-not $arch) { throw "windows-zip: no name for $env:PROCESSOR_ARCHITECTURE" }
 $target = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { 'target' }
 $out = Join-Path $target 'release'
 $zip = Join-Path $out "ELYTerminal-$version-windows-$arch.zip"
-Compress-Archive -Force -Path (Join-Path $out 'elyterminal.exe') -DestinationPath $zip -ErrorAction Stop
+Copy-Item 'vendor/conpty/LICENSE' (Join-Path $out 'LICENSE-conpty') -ErrorAction Stop
+$files = 'elyterminal.exe', 'conpty.dll', 'OpenConsole.exe', 'LICENSE-conpty' | ForEach-Object { Join-Path $out $_ }
+Compress-Archive -Force -Path $files -DestinationPath $zip -ErrorAction Stop
 Write-Output "windows-zip: $zip"

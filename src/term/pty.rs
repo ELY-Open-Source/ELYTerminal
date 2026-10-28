@@ -211,7 +211,49 @@ fn start(launch: &Launch, env: HashMap<String, String>, size: WindowSize) -> std
         env,
         escape_args: true,
     };
-    tty::new(&options, size, 0)
+    let pty = tty::new(&options, size, 0)?;
+    log::info!("pty: ConPTY is {}", conpty()?.display());
+    Ok(pty)
+}
+
+/// The `conpty.dll` alacritty loaded; it must be the bundled one.
+#[cfg(windows)]
+fn conpty() -> std::io::Result<PathBuf> {
+    use std::{io, os::windows::ffi::OsStringExt};
+    use windows_sys::{
+        Win32::System::LibraryLoader::{GetModuleFileNameW, GetModuleHandleW},
+        w,
+    };
+    // SAFETY: a module name, no ownership taken.
+    let module = unsafe { GetModuleHandleW(w!("conpty.dll")) };
+    if module.is_null() {
+        return Err(io::Error::other(
+            "pty: Windows' own conhost runs the session; no conpty.dll loaded",
+        ));
+    }
+    let mut name = [0u16; 32768];
+    // SAFETY: the buffer's length bounds the write.
+    let n = unsafe { GetModuleFileNameW(module, name.as_mut_ptr(), name.len() as u32) } as usize;
+    if n == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let loaded = PathBuf::from(std::ffi::OsString::from_wide(&name[..n]));
+    let beside = std::env::current_exe()?.with_file_name("conpty.dll");
+    if loaded.canonicalize()? != beside.canonicalize()? {
+        return Err(io::Error::other(format!(
+            "pty: conpty.dll came from {}, not {}",
+            loaded.display(),
+            beside.display()
+        )));
+    }
+    let console = loaded.with_file_name("OpenConsole.exe");
+    if !console.is_file() {
+        return Err(io::Error::other(format!(
+            "pty: no {} beside conpty.dll",
+            console.display()
+        )));
+    }
+    Ok(loaded)
 }
 
 impl Pty {
@@ -291,6 +333,9 @@ pub fn fit(columns: usize, lines: usize, cell: (u16, u16)) -> WindowSize {
 
 #[cfg(all(test, unix))]
 mod tests;
+
+#[cfg(all(test, windows))]
+mod through_conpty;
 
 #[cfg(test)]
 mod scrollback {
