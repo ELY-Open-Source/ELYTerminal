@@ -9,7 +9,6 @@ use crate::term::{
 
 #[test]
 fn a_program_s_mouse_mode_reaches_the_tap_through_conpty() {
-    crate::testlog::init();
     let script = "$e = [char]27; [Console]::Out.Write(\"$e[?1049h$e[?1002h$e[?1006h\"); \
                   Start-Sleep -Milliseconds 500";
     let wide: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
