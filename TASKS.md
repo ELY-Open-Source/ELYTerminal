@@ -218,7 +218,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 
 ## 39. Pull requests and issues
 
-- [ ] T102 PR #37: each row shapes by foreground color section; checked on macOS, Windows and Linux, merged with its author.
+- [x] T102 PR #37: each row shapes by foreground color section; checked on macOS, Windows and Linux, merged with its author. Each grapheme cluster sits on its grid column, as Ghostty draws, which the owner chose over main's drift; three reviews spent, the owner allowed a fourth, and round 4 passed on 4838df5.
 - [ ] T103 PR #34: on the owner's Windows PC, find whether ConPTY drops a program's mouse modes; merge the fix, or fix the real cause; zcg's authorship restored.
 - [ ] T104 PR #35: the README split into English and Chinese guides; every claim and link checked against the code and v0.1.9, then merged.
 - [ ] T105 Issue #33 and PR #36: Ely's `Tree` takes a right press, on Ely's `elyterminal-0.1.1` branch and its main; Files' right-press menu, Open, New session here and Copy path, behind a Settings switch, off by default; no vendored Ely; the author credited.
