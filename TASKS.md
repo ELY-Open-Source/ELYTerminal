@@ -215,3 +215,30 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T99 On Windows, which has no process groups, a nested shell's prompt is known from the process tree under the session's shell. Three reviews spent, the cap: round 3's finding, an unknown start time in the tree, which now leaves the prompt's holder unknown, was fixed; the owner allowed more rounds, and round 5 passed on bfc8631.
 - [x] T100 A shell over ssh, under sudo or in a container drops its live records at its prompts: find what the terminal can know of it, and do it, or record why not. Done: a root shell under sudo, su or doas, on the pty itself by its name or on their own pty through that pty's foreground group; a shell over ssh, mosh or in a container sends what omp sends through the same local process, clicks too, a limit only an integration on the far side could lift.
 - [x] T101 The Windows save race: run CI's Windows job until `overlapping_saves_leave_one_whole_file` fails again with the named step, then fix its cause. On 2026-10-25 the job ran 25 times more on 1ccf725's run 40173728077 without a failure, beside 380 runs on the owner's PC: about one failure in 435 runs. Its cause stays unknown; T96's step names wait in the log for the next one. The owner closed it as a known issue on 2026-10-25: the next failure's log names the step, and its cause is fixed then.
+
+## 39. Pull requests and issues
+
+- [ ] T102 PR #37: each row shapes by foreground color section; checked on macOS, Windows and Linux, merged with its author.
+- [ ] T103 PR #34: on the owner's Windows PC, find whether ConPTY drops a program's mouse modes; merge the fix, or fix the real cause; zcg's authorship restored.
+- [ ] T104 PR #35: the README split into English and Chinese guides; every claim and link checked against the code and v0.1.9, then merged.
+- [ ] T105 Issue #33 and PR #36: Ely's `Tree` takes a right press, on Ely's `elyterminal-0.1.1` branch and its main; Files' right-press menu, Open, New session here and Copy path, behind a Settings switch, off by default; no vendored Ely; the author credited.
+- [ ] T106 Issue #29: Shift types capitals and Ctrl-Shift shortcuts work on niri's Wayland; the cause found and fixed, and logged.
+- [ ] T107 Issue #30: on Windows a fallback font's italic draws its own glyphs; the cause found and fixed, and logged.
+- [ ] T108 Issue #32: the main window opens on the display and at the place it was left, or centered on the primary display when that display is gone.
+- [ ] T109 Issue #31: an Add card after the last theme makes a custom theme from Ely Dark, whose colors the user sets; built-in themes never change; a background image setting.
+
+## 40. Ghostty 1.4
+
+- [ ] T110 Shift+Enter makes a new line in codex and Claude Code, through the kitty keyboard protocol, on macOS, Windows and Linux; proven in each, fixed where not.
+- [ ] T111 APC reaches the terminal: an org fork of vte dispatches APC strings, and the alacritty fork hands kitty graphics commands to ELYTerminal at the cursor.
+- [ ] T112 Kitty graphics transmission: direct, file, temporary file and shared memory; RGB, RGBA and PNG; zlib; chunks; ids and numbers; responses and quiet; storage limit; delete commands.
+- [ ] T113 Kitty graphics placements: at the cursor, the cursor moved after them; z-index under text, under the ground and over text; source rectangle, cell size, offsets; images scroll with text, scroll regions clip them, clears delete them as kitty does.
+- [ ] T114 Kitty graphics Unicode placeholders and relative placements (P, Q, H, V).
+- [ ] T115 Kitty graphics animation: frames (a=f), composition (a=c), control (a=a: state, loops, gaps, current frame); playback pauses while its session is hidden.
+- [ ] T116 Image payloads decode in bulk with SIMD; measured against byte-at-a-time decoding.
+- [ ] T117 A hidden session releases its images' GPU textures and stops drawing them, and rebuilds them when shown; measured.
+- [ ] T118 Kitty clipboard protocol, OSC 5522: writes allowed up to 64 MiB; each read asks, with a preview and a choice to remember for the session; text, images and file lists; paste events under mode 5522.
+- [ ] T119 Scrollback compression: idle history compressed in the alacritty fork on macOS, Windows and Linux, decompressed on demand; resident memory measured.
+- [ ] T120 Throughput: plain ASCII through the tap and the parser measured, the tap's scan made bulk, the numbers recorded.
+- [ ] T121 Renderer: on Linux, through gpui's wgpu, text is crisp at 125% and 150% and nothing tears, on Vulkan and on GL; checked on the Omarchy machine, fixed where not, recorded.
+- [ ] T122 PRD, AGENTS.md and `tasks/acceptance.md` hold every change of T102 to T121; the acceptance table checked row by row.
