@@ -16,7 +16,7 @@
 [GitHub 上的发行版](https://github.com/ELY-Open-Source/ELYTerminal/releases) 为每个平台提供构建。
 
 - macOS 11 或更高，Apple silicon：打开 `ELYTerminal-VERSION.dmg`，把 ELYTerminal 拖进应用程序。应用已用 Developer ID 签名并公证。
-- Windows 10 或更高，x86_64：解压 `ELYTerminal-VERSION-windows-x86_64.zip`，运行 `elyterminal.exe`，`conpty.dll` 和 `OpenConsole.exe` 要留在它旁边，和 zip 里一样。它未签名；若 SmartScreen 拦住，点按“更多信息”，再点按“仍要运行”。
+- Windows 10 或更高，x86_64：解压 `ELYTerminal-VERSION-windows-x86_64.zip`，运行 `elyterminal.exe`，zip 里的其他文件留在它旁边。它未签名；若 SmartScreen 拦住，点按“更多信息”，再点按“仍要运行”。
 - Linux，x86_64：[软件包](docs/zh_cn/install.md)。
 
 ## 功能
@@ -58,4 +58,4 @@ cargo run --release
 
 ## 许可
 
-MIT，见 `LICENSE`。盒线和按键编码沿用 Ghostty 的代码，MIT，见 `LICENSE-GHOSTTY`。主题文件来自 iTerm2-Color-Schemes，MIT，其许可在 `assets/themes`。JetBrains Mono 及其 Nerd Font 构建遵循 SIL Open Font License，见 `assets/fonts`。复合文本解码器的表来自 libX11，遵循 SunSoft 和 Bruno Haible 的声明，见 `vendor/xim-ctext/tables/LICENSE`。Microsoft 的 ConPTY，即 `conpty.dll` 和 `OpenConsole.exe`，为 MIT，见 `vendor/conpty/LICENSE`，Windows 的 zip 里名为 `LICENSE-conpty`。
+MIT，见 `LICENSE`。盒线和按键编码沿用 Ghostty 的代码，MIT，见 `LICENSE-GHOSTTY`。主题文件来自 iTerm2-Color-Schemes，MIT，其许可在 `assets/themes`。JetBrains Mono 及其 Nerd Font 构建遵循 SIL Open Font License，见 `assets/fonts`。复合文本解码器的表来自 libX11，遵循 SunSoft 和 Bruno Haible 的声明，见 `vendor/xim-ctext/tables/LICENSE`。Microsoft 的 ConPTY，即 `conpty.dll` 和 `OpenConsole.exe`，为 MIT，见 `vendor/conpty/LICENSE`。

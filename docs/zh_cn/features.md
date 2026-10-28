@@ -2,7 +2,7 @@
 
 [English](../en_us/features.md) / 中文
 
-- 终端跑在 `alacritty_terminal` 上：256 色和真彩、粗体、暗淡、斜体、五种下划线、宽字符和组合标记。盒线、块元素和 powerline 形状按几何绘制，所以线段跨单元格对齐。按键遵循 xterm 和 kitty 键盘协议，在 Windows 上还有 win32-input-mode，和 Windows Terminal 发出的一样，所以 herdr 的快捷键能用；输入法在光标处组合；程序可以跟踪鼠标；程序要求时粘贴加括号；OSC 8 和纯文本链接用下面的链接点按打开；在 herdr 里由 herdr 打开，只开网页链接，其窗格折行处仍是整条，按住 Shift 则终端打开它所看见的；查找搜索回滚。
+- 终端跑在 `alacritty_terminal` 上：256 色和真彩、粗体、暗淡、斜体、五种下划线、宽字符和组合标记。盒线、块元素和 powerline 形状按几何绘制，所以线段跨单元格对齐。按键遵循 xterm 和 kitty 键盘协议，在 Windows 上还有 win32-input-mode，和 Windows Terminal 发出的一样，所以 herdr 的快捷键能用；输入法在光标处组合；程序可以跟踪鼠标；程序要求时粘贴加括号；OSC 8 和纯文本链接用[快捷键](keys.md)里的链接点按打开；在 herdr 里由 herdr 打开，只开网页链接，其窗格折行处仍是整条，按住 Shift 则终端打开它所看见的；查找搜索回滚。
 - 终端右缘的滚动条滚动历史，即使程序占用了滚轮。
 - zsh、bash、fish 和 PowerShell 的 shell 集成，在 Windows 上也包括 Git for Windows 的 bash 和 `sh`，以及 Shell 为 `wsl` 时启动的 bash、zsh 或 fish，所以文件和 Git 能跟上 WSL 或 Git Bash 会话：每个提示符报告其文件夹和标题，OSC 133 标记每个提示符、每条命令及其退出状态。
 - Ely 从窗口上缘探出头，窗口上方没有她的位置时则从左下角探上来，并且一直在动：呼吸、摇摆、眨眼。她跟着会话走：程序等你时她跳，出错时她抖，完成时她欢呼，程序工作时她顺着读，长久平静时她打盹。点按她，她眨眼，并把她从盹里叫醒。沿边缘拖动可挪她。设置 › 终端 › Ely 关掉她。
