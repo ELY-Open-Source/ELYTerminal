@@ -2,7 +2,7 @@
 Title: start with the type, for example
   [FEATURE REQUEST] Add dark mode to the settings page
   [BUG REPORT] Fix a crash when opening an empty file
-  [Other] Update the README install steps
+  [Other] Update the docs/en_us/install.md install steps
 -->
 
 ## Type
