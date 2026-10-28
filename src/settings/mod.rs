@@ -115,6 +115,8 @@ pub struct Settings {
     pub drag_sessions: bool,
     /// A right press on a session's row opens its menu.
     pub session_menu: bool,
+    /// A right press on a Files name opens its menu.
+    pub files_menu: bool,
     pub show_panel: bool,
     pub panel: PanelTab,
     /// The sessions and right columns' widths, in pixels, as their borders were dragged.
@@ -155,6 +157,7 @@ impl Default for Settings {
             show_sessions: true,
             drag_sessions: true,
             session_menu: true,
+            files_menu: false,
             show_panel: true,
             panel: PanelTab::Git,
             sessions_width: 240.0,

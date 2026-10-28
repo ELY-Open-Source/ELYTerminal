@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use gpui::{Context, EntityId, Window};
 
 use super::Workspace;
@@ -43,6 +45,20 @@ impl Workspace {
         };
         log::info!("app: session {id:?} duplicates into {}", folder.display());
         self.open(&shell, Start::In(folder), Some(index + 1), window, cx);
+    }
+
+    /// A session of the shown shell, in `folder`, after the shown row.
+    pub fn here(&mut self, folder: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(shell) = self
+            .sessions
+            .get(self.active)
+            .map(|session| session.shell.clone())
+        else {
+            log::error!("app: no session to open {}", folder.display());
+            return;
+        };
+        log::info!("app: session here {}", folder.display());
+        self.open(&shell, Start::In(folder), Some(self.active + 1), window, cx);
     }
 
     /// Shows a `shell` session from `start`, at `at` or last.

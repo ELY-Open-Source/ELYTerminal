@@ -121,11 +121,13 @@ impl Workspace {
             let folder = this.sessions[this.active].folder.clone();
             this.files.update(cx, |files, cx| files.show(&folder, cx));
         });
+        let host = cx.entity();
+        let files = cx.new(|_| Files::new(launch.cwd.clone()).with_workspace(host));
         let mut workspace = Self {
             focus: cx.focus_handle(),
             sessions: Vec::new(),
             active: 0,
-            files: cx.new(|_| Files::new(launch.cwd.clone())),
+            files,
             git,
             background: Blur::new(window, SettingsStore::get(cx)),
             dragged: Dragged::default(),

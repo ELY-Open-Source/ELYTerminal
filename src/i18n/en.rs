@@ -91,6 +91,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.session_menu_hint",
         "A right press duplicates the row or closes it",
     ),
+    ("et.terminal.files_menu", "Files menu"),
+    (
+        "et.terminal.files_menu_hint",
+        "A right press opens, copies, or starts a session",
+    ),
     ("et.terminal.ely", "Ely"),
     (
         "et.terminal.ely_hint",
@@ -147,6 +152,9 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.tip.show_panel", "Show Git and Files"),
     ("et.panel.git", "Git"),
     ("et.panel.files", "Files"),
+    ("et.files.open", "Open"),
+    ("et.files.new_session", "New session here"),
+    ("et.files.copy_path", "Copy path"),
     ("et.panel.no_folder", "This shell reports no folder."),
     ("et.status.line", "{state}: {said}"),
     ("et.status.idle", "Idle"),

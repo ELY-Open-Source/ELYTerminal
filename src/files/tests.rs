@@ -246,3 +246,24 @@ fn decomposed_names_on_disk_wear_the_composed_marks_git_writes() {
     );
     assert_eq!(files.folder(&root, "r".into(), false), expected);
 }
+
+#[test]
+fn a_file_starts_a_session_in_its_folder() {
+    let root = PathBuf::from("/tmp/elyterminal-files-here");
+    assert_eq!(here_folder(&root.join("a.txt"), false), root);
+    assert_eq!(here_folder(&root, true), root);
+    assert_eq!(
+        here_folder(&root.join("gone"), true),
+        root.join("gone"),
+        "a listed folder keeps itself, even if it has gone"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_path_not_in_utf8_is_not_copied() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    assert!(menu::copy_text(Path::new(OsStr::from_bytes(b"a/\xff"))).is_none());
+    assert_eq!(menu::copy_text(Path::new("a/b")), Some("a/b"));
+}

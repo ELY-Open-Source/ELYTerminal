@@ -16,6 +16,15 @@ fn a_file_without_the_session_switches_leaves_them_on() {
 }
 
 #[test]
+fn a_file_without_files_menu_leaves_it_off() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert!(
+        !settings.files_menu,
+        "a right press on Files opens nothing by default"
+    );
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,
