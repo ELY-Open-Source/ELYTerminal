@@ -258,3 +258,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 5 of T98 and T99, bfc8631: PASS.
 - On 2026-10-25 the owner kept ssh and container shells as a recorded limit: no remote integration.
 - On 2026-10-25 the owner accepted the other limits row 60 records as limits: `bash -s`, a subshell marking by builtins, sudo under `hidepid=invisible`.
+
+## T102
+
+- Round 1, 09ca1c6: FAIL. Hebrew split across two colors drew its sections swapped, `abc אב גד xyz` in red and blue; two comments ran past ten words. Fixed in 5261932: main and the merge both placed a glyph where shaping put it, so the shaper's reordering leaked into a grid of logical order; a glyph took its character's column.
+- Round 2, 5261932: FAIL. Tamil கொ shapes as vowel, consonant, vowel, indices [3, 0, 3], and its vowel's two parts met in one place. Fixed in 1244310: a glyph takes its grapheme cluster's column, its offset from the cluster's leftmost glyph kept, and rows shape without forced advances; the owner chose grid columns over main's drift, so a syllable wider than its cells overlaps the next.
+- Round 3, 1244310: FAIL. A flag split by color, `\e[31m🇺\e[34m🇸`, put both halves in one cell; `👨🏾X` joined the modifier to the space holding the man's second cell, which shaped at the emoji font's width over X. Fixed in 4838df5: clusters stop at color sections, each shaped alone, and after a space, which in a row's text holds no mark. Shots match main for both; check.sh 303 tests, Linux 309 and 7 IME, Windows 288.
