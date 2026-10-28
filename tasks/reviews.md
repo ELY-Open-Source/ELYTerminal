@@ -276,3 +276,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 0639ab0: FAIL. The READMEs named conpty.dll, OpenConsole.exe and LICENSE-conpty in a zip whose v0.1.9 holds elyterminal.exe alone; both features pages pointed "below" to a link press now on the keys page. Fixed in 7ed2327.
 - Round 2, 7ed2327: PASS. The install line matches v0.1.9's zip, both features pages link their keys page, and 26 relative links resolve.
+
+## T105
+
+- Round 1, 15d9754: FAIL. A closed menu opened again when the right column or the switch brought it back: Ely's ContextMenu keeps the request it used in keyed state, which goes when it leaves the frame, and Files sent the same request each render. Fixed in ac3a967: a render takes the press's point once.
+- Round 2, ac3a967: PASS. In the app five right presses opened five menus, and a hidden column or a turned switch reopened none; New session here ran.
