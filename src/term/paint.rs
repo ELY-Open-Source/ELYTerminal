@@ -1,4 +1,8 @@
+mod glyphs;
+
 use std::rc::Rc;
+
+use glyphs::draw;
 
 use alacritty_terminal::vte::ansi::CursorShape;
 use gpui::{
@@ -230,62 +234,6 @@ fn text(
     draw(content, &runs, origin, None, look, window);
 }
 
-/// Shapes `content` and paints each glyph on the cell's baseline below `top`; `force` sets every advance.
-fn draw(
-    content: &str,
-    runs: &[TextRun],
-    top: Point<Pixels>,
-    force: Option<Pixels>,
-    look: &Look,
-    window: &mut Window,
-) {
-    let shaped =
-        window
-            .text_system()
-            .shape_line(content.to_string().into(), look.size, runs, force);
-    let baseline = top.y + look.baseline;
-    for run in &shaped.runs {
-        for glyph in &run.glyphs {
-            let color = color_at(runs, glyph.index);
-            let at = point(
-                top.x + glyph.position.x,
-                baseline + upward(glyph.position.y),
-            );
-            let painted = if glyph.is_emoji {
-                window.paint_emoji(at, run.font_id, glyph.id, look.size)
-            } else {
-                window.paint_glyph(at, run.font_id, glyph.id, look.size, color)
-            };
-            if let Err(error) = painted {
-                log::error!("terminal: a glyph of `{content}` failed to paint: {error:#}");
-            }
-        }
-    }
-}
-
-/// The color of the run holding byte `index`.
-fn color_at(runs: &[TextRun], index: usize) -> Hsla {
-    let mut end = 0;
-    runs.iter()
-        .find(|run| {
-            end += run.len;
-            index < end
-        })
-        .expect("a glyph indexes its own text")
-        .color
-}
-
-/// CoreText gives glyph offsets growing upward; the screen grows downward.
-#[cfg(target_os = "macos")]
-fn upward(y: Pixels) -> Pixels {
-    -y
-}
-
-#[cfg(not(target_os = "macos"))]
-fn upward(y: Pixels) -> Pixels {
-    y
-}
-
 /// Paints a cell's text alone at `corner`: a drawn base as shapes, its marks over a no-break space.
 fn paint_alone(
     content: &str,
@@ -452,39 +400,4 @@ fn paint_cursor(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::term::frame::{Row, Underline};
-
-    #[test]
-    fn spans_count_columns_not_bytes() {
-        let style = Style {
-            fg: gpui::black(),
-            bg: None,
-            bold: false,
-            italic: false,
-            underline: Underline::None,
-            underline_color: gpui::black(),
-            strike: false,
-        };
-        let bold = Style {
-            bold: true,
-            ..style
-        };
-        let row = Row {
-            text: "中 ab".into(),
-            runs: vec![(4, style), (2, bold)],
-            alone: Vec::new(),
-        };
-        let spans: Vec<_> = spans(&row).into_iter().map(|(at, n, _)| (at, n)).collect();
-        assert_eq!(spans, [(0, 2), (2, 2)]);
-    }
-
-    #[test]
-    fn icons_live_in_the_private_use_areas() {
-        assert!(private('\u{E0B0}'));
-        assert!(private('\u{F0035}'));
-        assert!(!private('a'));
-        assert!(!private('中'));
-    }
-}
+mod tests;
