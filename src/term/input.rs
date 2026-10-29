@@ -89,6 +89,7 @@ impl TerminalView {
         _: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        log::trace!("terminal {}: key down {:?}", self.pty.pid, event.keystroke);
         if event.prefer_character_input {
             log::debug!(
                 "terminal {}: {:?} types through the layout, a dead key or a character its modifiers make",
