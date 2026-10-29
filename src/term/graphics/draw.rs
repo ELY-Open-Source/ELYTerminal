@@ -43,7 +43,7 @@ pub struct Shown {
     pub clip: Bounds<f32>,
 }
 
-/// Textures by image generation, built when first shown.
+/// Textures by what each image shows, built when first shown.
 #[derive(Default)]
 pub struct Pictures {
     built: HashMap<u64, Arc<RenderImage>>,
@@ -116,7 +116,7 @@ impl Pictures {
             }
             let picture = self
                 .built
-                .entry(image.generation)
+                .entry(image.version)
                 .or_insert_with(|| Arc::new(texture(image)))
                 .clone();
             let layer = Layer::of(kept.display.z);
@@ -130,11 +130,11 @@ impl Pictures {
         let alive: Vec<u64> = shared
             .screens
             .iter()
-            .flat_map(|screen| screen.store.images().map(|image| image.generation))
+            .flat_map(|screen| screen.store.images().map(|image| image.version))
             .collect();
         let mut stale = Vec::new();
-        self.built.retain(|generation, picture| {
-            let keep = alive.contains(generation);
+        self.built.retain(|version, picture| {
+            let keep = alive.contains(version);
             if !keep {
                 stale.push(Arc::clone(picture));
             }
@@ -209,7 +209,7 @@ fn fitted(target: &Placement, image: &Image, cell: (u32, u32), run: &Run) -> Bou
 
 /// The image as gpui takes it, BGRA.
 fn texture(image: &Image) -> RenderImage {
-    let mut pixels = image.pixels.clone();
+    let mut pixels = image.shown().to_vec();
     for pixel in pixels.chunks_exact_mut(4) {
         pixel.swap(0, 2);
     }

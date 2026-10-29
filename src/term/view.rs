@@ -107,6 +107,8 @@ pub struct TerminalView {
     kitty: TermMode,
     _events: Task<()>,
     _blink: Task<()>,
+    /// Wakes the view at its animations' next frame.
+    animate: Option<Task<()>>,
     _herdr: Task<()>,
     _focus: [Subscription; 3],
     _settings: Subscription,
@@ -167,6 +169,7 @@ impl TerminalView {
             kitty: TermMode::empty(),
             _events: Self::pump(events, cx),
             _blink: Self::blink(cx),
+            animate: None,
             _herdr: super::herdr::follow(cx),
             _settings: cx.observe_global::<SettingsStore>(|view, cx| {
                 view.pty
@@ -196,6 +199,10 @@ impl TerminalView {
 
     /// Whether it is the session shown: one shown in an active window posts no notification.
     pub fn set_front(&mut self, front: bool) {
+        if front && !self.front {
+            // A hidden session's animations paused; their gaps start afresh.
+            self.pty.graphics().resume();
+        }
         self.front = front;
     }
 
@@ -377,16 +384,22 @@ impl Render for TerminalView {
             finder.lit(&term, cx.theme().colors.warning)
         });
         let shown = frame(&term, &ink, &lit);
+        let mut graphics = self.pty.graphics();
+        // Only a drawn session ticks; a hidden one pauses.
+        let next = graphics.tick(Instant::now());
         let (pictures, stale) = self.pictures.shown(
-            &self
-                .pty
-                .graphics
-                .lock()
-                .expect("graphics: a holder panicked"),
+            &graphics,
             &runs(&term),
             term.grid().display_offset(),
             (term.columns(), term.screen_lines()),
         );
+        drop(graphics);
+        self.animate = next.map(|delay| {
+            cx.spawn(async move |view, cx| {
+                cx.background_executor().timer(delay).await;
+                view.update(cx, |_, cx| cx.notify()).ok();
+            })
+        });
         let blinks = term.cursor_style().blinking;
         let span = Span::of(&term);
         drop(term);
@@ -448,11 +461,7 @@ impl Render for TerminalView {
                 if cell != self.cell {
                     log::debug!("terminal {}: a cell is {cell:?} pixels", self.pty.pid);
                     self.cell = cell;
-                    let mut graphics = self
-                        .pty
-                        .graphics
-                        .lock()
-                        .expect("graphics: a holder panicked");
+                    let mut graphics = self.pty.graphics();
                     graphics.cell = (cell.0.into(), cell.1.into());
                     drop(graphics);
                     self.pty.resize(self.size, cell);

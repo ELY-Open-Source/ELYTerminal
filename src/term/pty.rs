@@ -271,6 +271,11 @@ fn conpty() -> std::io::Result<PathBuf> {
 }
 
 impl Pty {
+    /// Its kitty graphics, locked after the term, as the parser.
+    pub fn graphics(&self) -> std::sync::MutexGuard<'_, Shared> {
+        self.graphics.lock().expect("graphics: a holder panicked")
+    }
+
     /// Sends bytes to the program, as typing does.
     pub fn write(&self, bytes: impl Into<Cow<'static, [u8]>>) {
         self.notifier.notify(bytes);

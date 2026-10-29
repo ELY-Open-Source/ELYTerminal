@@ -3,7 +3,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use super::Error;
+use super::{Error, frames::Animation};
 
 /// kitty's quota and Ghostty's default, per screen.
 pub(super) const LIMIT: usize = 320 * 1000 * 1000;
@@ -19,6 +19,10 @@ pub(super) struct Image {
     pub transient: bool,
     /// When it was stored: newest answers, oldest goes first.
     pub generation: u64,
+    /// What shows, a texture's key; a new frame changes it.
+    pub version: u64,
+    /// Its frames past the first, once animation names it.
+    pub animation: Option<Animation>,
 }
 
 impl Image {
@@ -31,8 +35,52 @@ impl Image {
             pixels,
             transient,
             generation: 0,
+            version: 0,
+            animation: None,
         }
     }
+
+    /// Its bytes, the frames' too.
+    pub fn size(&self) -> usize {
+        self.pixels.len() + self.animation.as_ref().map_or(0, Animation::bytes)
+    }
+
+    /// The pixels shown now: its current frame's.
+    pub fn shown(&self) -> &[u8] {
+        let current = self
+            .animation
+            .as_ref()
+            .map_or(0, |animation| animation.current);
+        self.frame(current + 1).expect("the current frame is there")
+    }
+
+    /// Frame `number`, 1 its own pixels; none past the last.
+    pub fn frame(&self, number: usize) -> Option<&[u8]> {
+        match number {
+            0 => None,
+            1 => Some(&self.pixels),
+            _ => Some(&self.animation.as_ref()?.frames.get(number - 2)?.pixels),
+        }
+    }
+
+    pub fn frame_mut(&mut self, number: usize) -> Option<&mut Vec<u8>> {
+        match number {
+            0 => None,
+            1 => Some(&mut self.pixels),
+            _ => Some(&mut self.animation.as_mut()?.frames.get_mut(number - 2)?.pixels),
+        }
+    }
+
+    /// A new version: what shows changed.
+    pub fn changed(&mut self) {
+        self.version = fresh();
+    }
+}
+
+/// One count for both screens, so textures never collide.
+fn fresh() -> u64 {
+    static COUNT: AtomicU64 = AtomicU64::new(1);
+    COUNT.fetch_add(1, Ordering::Relaxed)
 }
 
 /// One session's transmitted images, within its quota.
@@ -59,6 +107,10 @@ impl Store {
         self.images.get(&id)
     }
 
+    pub fn get_mut(&mut self, id: u32) -> Option<&mut Image> {
+        self.images.get_mut(&id)
+    }
+
     /// Free id: a number's lowest, as kitty picks, else next.
     pub(super) fn free(&mut self, numbered: bool) -> u32 {
         let mut id = if numbered { 1 } else { self.next };
@@ -73,6 +125,10 @@ impl Store {
 
     pub(super) fn images(&self) -> impl Iterator<Item = &Image> {
         self.images.values()
+    }
+
+    pub(super) fn images_mut(&mut self) -> impl Iterator<Item = &mut Image> {
+        self.images.values_mut()
     }
 
     /// The newest image of `number`.
@@ -91,29 +147,11 @@ impl Store {
         pid: u32,
         placed: &dyn Fn(u32) -> bool,
     ) -> Result<(), Error> {
-        let size = image.pixels.len();
-        if size > self.limit {
-            log::warn!(
-                "graphics {pid}: image {} of {size} bytes passes the quota",
-                image.id
-            );
-            return Err(Error::Space);
-        }
+        let size = image.size();
         self.remove(image.id);
-        while self.bytes + size > self.limit {
-            let oldest = self
-                .images
-                .values()
-                .min_by_key(|image| (placed(image.id), !image.transient, image.generation))
-                .map(|image| image.id)
-                .expect("bytes over zero mean an image");
-            log::info!("graphics {pid}: image {oldest} evicted for {size} bytes");
-            self.remove(oldest);
-        }
-        // One count for both screens: a texture names one image.
-        static GENERATION: AtomicU64 = AtomicU64::new(1);
-        image.generation = GENERATION.fetch_add(1, Ordering::Relaxed);
-        self.bytes += size;
+        self.reserve(image.id, size, pid, placed)?;
+        image.generation = fresh();
+        image.version = image.generation;
         log::debug!(
             "graphics {pid}: image {} stored, {}x{}, {} bytes of {}",
             image.id,
@@ -126,12 +164,42 @@ impl Store {
         Ok(())
     }
 
+    /// Room for `size` more bytes, evicting images but `keep`.
+    pub(super) fn reserve(
+        &mut self,
+        keep: u32,
+        size: usize,
+        pid: u32,
+        placed: &dyn Fn(u32) -> bool,
+    ) -> Result<(), Error> {
+        if size > self.limit {
+            log::warn!("graphics {pid}: image {keep}'s {size} bytes pass the quota");
+            return Err(Error::Space);
+        }
+        while self.bytes + size > self.limit {
+            let others = self.images.values().filter(|image| image.id != keep);
+            let oldest = others
+                .min_by_key(|image| (placed(image.id), !image.transient, image.generation))
+                .map(|image| image.id)
+                .ok_or(Error::Space)?;
+            log::info!("graphics {pid}: image {oldest} evicted for {size} bytes");
+            self.remove(oldest);
+        }
+        self.bytes += size;
+        Ok(())
+    }
+
+    /// Gives back `size` bytes a frame held.
+    pub(super) fn release(&mut self, size: usize) {
+        self.bytes -= size;
+    }
+
     /// Drops an image and its data; whether one was there.
     pub(super) fn remove(&mut self, id: u32) -> bool {
         let Some(image) = self.images.remove(&id) else {
             return false;
         };
-        self.bytes -= image.pixels.len();
+        self.bytes -= image.size();
         true
     }
 

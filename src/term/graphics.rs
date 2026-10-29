@@ -1,12 +1,15 @@
 //! Kitty graphics commands, as the terminal hands them over.
 
+mod animate;
 mod command;
 mod draw;
+mod frames;
 mod load;
 mod media;
 mod place;
 mod put;
 mod relate;
+mod reply;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -26,99 +29,8 @@ use command::{Command, Quiet};
 pub use draw::{Layer, Pictures, Shown};
 use load::Loading;
 use place::{Display, Pick, Screen};
+use reply::{Error, Ids, Reply};
 pub use unicode::{PLACEHOLDER, runs};
-
-/// A failure, as its reply names it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Error {
-    Both,
-    Invalid,
-    Read,
-    Decompress,
-    Format,
-    Medium,
-    NoSize,
-    TooLarge,
-    Space,
-    NoId,
-    NoImage,
-    VirtualParent,
-    NoParentImage,
-    NoParentPlacement,
-    SelfParent,
-    Cycle,
-    TooDeep,
-}
-
-impl Error {
-    /// Ghostty's words; kitty's for a file that does not read.
-    fn message(self) -> &'static str {
-        match self {
-            Self::Both => "EINVAL: image ID and number are mutually exclusive",
-            Self::Invalid => "EINVAL: invalid data",
-            Self::Read => "EBADF:Failed to read image file",
-            Self::Decompress => "EINVAL: decompression failed",
-            Self::Format => "EINVAL: unsupported format",
-            Self::Medium => "EINVAL: unsupported medium",
-            Self::NoSize => "EINVAL: dimensions required",
-            Self::TooLarge => "EINVAL: dimensions too large",
-            Self::Space => "ENOMEM: out of memory",
-            Self::NoId => "EINVAL: image ID or number required",
-            Self::NoImage => "ENOENT: image not found",
-            Self::VirtualParent => "EINVAL: virtual placement cannot refer to a parent",
-            Self::NoParentImage => "ENOPARENT: parent image not found",
-            Self::NoParentPlacement => "ENOPARENT: parent placement not found",
-            Self::SelfParent => "EINVAL: placement cannot be its own parent",
-            Self::Cycle => "ECYCLE: parent chain creates a cycle",
-            Self::TooDeep => "ETOODEEP: parent chain too deep",
-        }
-    }
-}
-
-/// What a command names its image by, echoed back.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-struct Ids {
-    id: u32,
-    number: u32,
-    placement: u32,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct Reply {
-    ids: Ids,
-    message: &'static str,
-}
-
-impl Reply {
-    fn ok(ids: Ids) -> Self {
-        Self { ids, message: "OK" }
-    }
-
-    fn failed(ids: Ids, error: Error) -> Self {
-        Self {
-            ids,
-            message: error.message(),
-        }
-    }
-
-    /// The reply's escape; none without an id or a number.
-    fn text(&self) -> Option<String> {
-        let Ids {
-            id,
-            number,
-            placement,
-        } = self.ids;
-        if id == 0 && number == 0 {
-            return None;
-        }
-        let keys: Vec<String> = [("i", id), ("I", number), ("p", placement)]
-            .into_iter()
-            .filter(|(_, value)| *value > 0)
-            .map(|(key, value)| format!("{key}={value}"))
-            .collect();
-        Some(format!("\x1b_G{};{}\x1b\\", keys.join(","), self.message))
-    }
-}
 
 /// Images and placements: the parser writes them, the view draws.
 #[derive(Debug)]
@@ -190,7 +102,7 @@ impl Graphics {
         } else {
             match command.action {
                 b'q' => self.query(command, ids),
-                b't' | b'T' => {
+                b't' | b'T' | b'f' => {
                     // Only a direct chunk goes on with a transmission.
                     let direct = command.letter(b't').is_none_or(|medium| medium == b'd');
                     if !direct && self.loading.take().is_some() {
@@ -202,18 +114,17 @@ impl Graphics {
                             asked => loading.quiet = asked,
                         }
                     }
-                    self.transmit(command, ids, cursor)
+                    if self.loading.is_none() && command.action == b'f' {
+                        self.frame(command, ids)
+                    } else {
+                        self.transmit(command, ids, cursor)
+                    }
                 }
+                b'a' => self.control(command, ids),
+                b'c' => self.compose(command, ids),
                 b'p' => self.display(Display::of(command), ids, cursor),
                 b'd' => {
                     self.delete(command, cursor);
-                    None
-                }
-                b'f' | b'a' | b'c' => {
-                    log::debug!(
-                        "graphics {pid}: action {} is not taken yet",
-                        command.action as char
-                    );
                     None
                 }
                 other => {
@@ -277,6 +188,9 @@ impl Graphics {
             self.loading = Some(loading);
             return None;
         }
+        if loading.frame.is_some() {
+            return self.framed(loading);
+        }
         let (ids, local, display) = (loading.ids, loading.local(), loading.display);
         let mut image = match loading.finish(pid) {
             Ok(image) => image,
@@ -311,6 +225,9 @@ impl Graphics {
             log::warn!("graphics {pid}: a delete dropped a transmission unfinished");
         }
         let what = command.letter(b'd').unwrap_or(b'a');
+        if what.eq_ignore_ascii_case(&b'f') {
+            return self.delete_frame(command, what == b'F');
+        }
         let (x, y, z) = (
             command.int(b'x'),
             command.int(b'y'),
@@ -349,10 +266,6 @@ impl Graphics {
             b'y' => (y > 0).then(|| Pick::Row(y as i32 - 1)),
             b'z' => Some(Pick::Z(z)),
             b'r' => Some(Pick::Range(x, y)),
-            b'f' => {
-                log::debug!("graphics {pid}: animation frames are not taken yet");
-                None
-            }
             _ => {
                 log::warn!(
                     "graphics {pid}: delete {} is none kitty names",

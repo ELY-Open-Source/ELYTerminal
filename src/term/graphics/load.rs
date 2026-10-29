@@ -31,6 +31,8 @@ pub(super) struct Loading {
     local: bool,
     /// Where `a=T` shows it once whole.
     pub display: Option<super::place::Display>,
+    /// What `a=f` asks of its frame.
+    pub frame: Option<super::frames::Ask>,
     data: Vec<u8>,
 }
 
@@ -65,6 +67,7 @@ impl Loading {
             transient: command.int(b'N') & 1 == 1,
             local: true,
             display: None,
+            frame: None,
             data: Vec::new(),
         };
         let (offset, size) = (command.int(b'O'), command.int(b'S'));

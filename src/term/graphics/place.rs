@@ -248,7 +248,7 @@ impl Screen {
     }
 
     /// Drops placements whose image or parent went; their images.
-    fn orphans(&mut self) -> Vec<u32> {
+    pub(super) fn orphans(&mut self) -> Vec<u32> {
         let mut gone = Vec::new();
         loop {
             let serials: Vec<u64> = self.placements.iter().map(|kept| kept.serial).collect();
