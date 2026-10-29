@@ -325,6 +325,10 @@ mod windows_tests {
              Set-Alias -Name cd -Value Push-Location -Option AllScope -Scope Global -Force; \
              ElyDrivePath 'cd /c/Windows'; \
              Set-Alias -Name cd -Value Set-Location -Option AllScope -Scope Global -Force; \
+             ElyDrivePath \"cd`n/c/Windows\"; $q = 'cd /c/\u{201c}Windows\u{201d}'; if ((ElyDrivePath $q) -eq $q) {{ 'curly: kept' }}; \
+             function global:Set-Location {{ }}; ElyDrivePath 'cd /c/Windows'; Remove-Item function:Set-Location; \
+             New-PSDrive -Name I -PSProvider FileSystem -Root $env:TEMP | Out-Null; \
+             [Threading.Thread]::CurrentThread.CurrentCulture = 'tr-TR'; ElyDrivePath 'cd /i'; \
              $global:ElyReadLine = {{ 'cd /c/Windows' }}; $typed = PSConsoleHostReadLine; \"run: $typed\"",
             script.display()
         );
@@ -344,6 +348,11 @@ mod windows_tests {
                 "no drive: kept",
                 "cd /c/proj*",
                 "cd /c/Windows",
+                "cd",
+                "/c/Windows",
+                "curly: kept",
+                "cd /c/Windows",
+                r"cd I:\",
                 // The hook marks the command's start first.
                 "\u{1b}]133;C\u{7}run: cd C:\\Windows",
             ],
