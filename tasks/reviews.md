@@ -357,3 +357,7 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, f24e6f1 with vte 7c7404d: FAIL. AGENTS.md named SSE4.1 where base64-simd 0.8 dispatches SSSE3 or AVX2 on x86. Fixed in a4d1d92. The bulk APC path and the decoder passed as they stood.
 - Round 2, a4d1d92: PASS. macOS 371, Linux 378, Windows 352 on f24e6f1; the fix touched words alone.
+
+## T117
+
+- Round 1, 76ee8eb: PASS. macOS 372, Linux 379, Windows 353; on macOS ten image sessions held 166 MB of GPU memory before and 20 to 23 MB after.
