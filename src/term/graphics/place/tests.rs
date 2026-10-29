@@ -72,7 +72,13 @@ impl Screen {
         let screen = shared.screen();
         let each = |kept: &super::Placement| {
             let [_, y, _, h] = kept.display.source;
-            (kept.image, kept.id, kept.line, kept.column, (y, h))
+            (
+                kept.image,
+                kept.id,
+                kept.line,
+                kept.column,
+                (y as u32, h as u32),
+            )
         };
         screen.placements.iter().map(each).collect()
     }
@@ -160,6 +166,25 @@ fn a_cut_stays_in_source_pixels_whatever_the_cell() {
         (shown[0].clip.size.height, shown[0].whole.origin.y),
         (2., -1.)
     );
+}
+
+#[test]
+fn a_cut_keeps_the_part_of_a_source_pixel_a_row_shows() {
+    let mut s = screen();
+    let white = STANDARD.encode([255u8; 4]);
+    s.feed(&format!(
+        "\x1b[2;4r\x1b[3;1H\x1b_Ga=T,i=2,s=1,v=1,c=2,r=2,C=1;{white}\x1b\\"
+    ));
+    s.feed("\x1b[2;1H\x1bM");
+    let mut pictures = Pictures::default();
+    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 5));
+    // Half the pixel shows in line 3; half is cut.
+    let drawn = (
+        shown[0].clip.origin.y,
+        shown[0].clip.size.height,
+        shown[0].whole.size.height,
+    );
+    assert_eq!(drawn, (3., 1., 2.));
 }
 
 #[test]

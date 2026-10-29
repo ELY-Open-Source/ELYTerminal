@@ -69,7 +69,7 @@ impl Pictures {
         for (kept, image) in placed {
             let [x, y, w, h] = kept.source(image);
             let (wide, tall) = kept.size(image, cell);
-            if w == 0 || h == 0 || wide == 0 || tall == 0 {
+            if w <= 0. || h <= 0. || wide == 0 || tall == 0 {
                 continue;
             }
             let (ox, oy) = kept.offset(cell);
@@ -79,9 +79,9 @@ impl Pictures {
                 row + oy as f32 / height,
             );
             let area = size(wide as f32 / width, tall as f32 / height);
-            let (kx, ky) = (area.width / w as f32, area.height / h as f32);
+            let (kx, ky) = (area.width / w, area.height / h);
             let whole = Bounds::new(
-                point(corner.x - x as f32 * kx, corner.y - y as f32 * ky),
+                point(corner.x - x * kx, corner.y - y * ky),
                 size(image.width as f32 * kx, image.height as f32 * ky),
             );
             let clip = Bounds::new(corner, area).intersect(&grid);

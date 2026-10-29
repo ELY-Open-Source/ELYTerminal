@@ -10,10 +10,10 @@ use super::{
 };
 
 /// How a placement shows its image, from `a=p` or `a=T`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(super) struct Display {
-    /// The source rectangle, `x`, `y`, `w`, `h`.
-    pub source: [u32; 4],
+    /// The source rectangle, `x`, `y`, `w`, `h`; cuts leave fractions.
+    pub source: [f32; 4],
     /// `X` and `Y`, inside the first cell.
     pub offset: (u32, u32),
     /// `c` and `r`, 0 where unasked.
@@ -28,7 +28,7 @@ impl Display {
     pub fn of(command: &Command) -> Self {
         let int = |key| command.int(key);
         Self {
-            source: [int(b'x'), int(b'y'), int(b'w'), int(b'h')],
+            source: [b'x', b'y', b'w', b'h'].map(|key| int(key) as f32),
             offset: (int(b'X'), int(b'Y')),
             cells: (int(b'c'), int(b'r')),
             z: int(b'z') as i32,
@@ -40,7 +40,7 @@ impl Display {
 }
 
 /// One image shown on the grid, from its top-left cell.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Placement {
     pub image: u32,
     pub id: u32,
@@ -54,11 +54,12 @@ pub(super) struct Placement {
 
 impl Placement {
     /// The part of the image shown, clamped as Ghostty clamps.
-    pub fn source(&self, image: &Image) -> [u32; 4] {
+    pub fn source(&self, image: &Image) -> [f32; 4] {
         let [x, y, w, h] = self.display.source;
-        let (x, y) = (x.min(image.width), y.min(image.height));
-        let w = if w > 0 { w } else { image.width }.min(image.width - x);
-        let h = if h > 0 { h } else { image.height }.min(image.height - y);
+        let (width, height) = (image.width as f32, image.height as f32);
+        let (x, y) = (x.min(width), y.min(height));
+        let w = if w > 0. { w } else { width }.min(width - x);
+        let h = if h > 0. { h } else { height }.min(height - y);
         [x, y, w, h]
     }
 
@@ -75,23 +76,20 @@ impl Placement {
     pub fn size(&self, image: &Image, cell: (u32, u32)) -> (u32, u32) {
         let [_, _, w, h] = self.source(image);
         let (ox, oy) = self.offset(cell);
-        let scale =
-            |length: u64, by: u32, of: u32| (length * u64::from(by)).checked_div(u64::from(of));
-        let clamp = |length: u64| u32::try_from(length).unwrap_or(u32::MAX);
+        let pixels = |length: f32| length.round() as u32;
+        let span =
+            |side: u32, cells: u32, offset: u32| side.saturating_mul(cells).saturating_sub(offset);
         match self.display.cells {
-            (0, 0) => (w, h),
+            (0, 0) => (pixels(w), pixels(h)),
             (c, 0) => {
-                let width = clamp(u64::from(cell.0) * u64::from(c)).saturating_sub(ox);
-                (width, clamp(scale(width.into(), h, w).unwrap_or(0)))
+                let width = span(cell.0, c, ox);
+                (width, pixels(width as f32 * h / w))
             }
             (0, r) => {
-                let height = clamp(u64::from(cell.1) * u64::from(r)).saturating_sub(oy);
-                (clamp(scale(height.into(), w, h).unwrap_or(0)), height)
+                let height = span(cell.1, r, oy);
+                (pixels(height as f32 * w / h), height)
             }
-            (c, r) => (
-                clamp(u64::from(cell.0) * u64::from(c)).saturating_sub(ox),
-                clamp(u64::from(cell.1) * u64::from(r)).saturating_sub(oy),
-            ),
+            (c, r) => (span(cell.0, c, ox), span(cell.1, r, oy)),
         }
     }
 
@@ -118,11 +116,16 @@ impl Placement {
     /// Cuts `rows` off its top into its source, as Ghostty.
     fn clip_top(&mut self, image: &Image, cell: (u32, u32), rows: u32) -> bool {
         let [x, y, w, h] = self.source(image);
-        let shown = self.size(image, cell).1;
-        let gone = (cell.1.saturating_mul(rows)).saturating_sub(self.offset(cell).1);
-        let Some(crop) = scaled(gone, h, shown).filter(|&crop| crop < h) else {
+        let shown = self.size(image, cell).1 as f32;
+        let gone = cell
+            .1
+            .saturating_mul(rows)
+            .saturating_sub(self.offset(cell).1) as f32;
+        // A row showing part of a pixel keeps that part.
+        if shown <= 0. || gone >= shown {
             return false;
-        };
+        }
+        let crop = h * gone / shown;
         self.display.source = [x, y + crop, w, h - crop];
         self.display.offset.1 = 0;
         if self.display.cells.1 > 0 {
@@ -135,13 +138,15 @@ impl Placement {
     /// Cuts `rows` off its bottom into its source, as Ghostty.
     fn clip_bottom(&mut self, image: &Image, cell: (u32, u32), rows: u32) -> bool {
         let [x, y, w, h] = self.source(image);
-        let (shown, tall) = (self.size(image, cell).1, self.cells(image, cell).1);
-        let room =
-            (cell.1.saturating_mul(tall.saturating_sub(rows))).saturating_sub(self.offset(cell).1);
-        let Some(keep) = scaled(room.min(shown), h, shown).filter(|&keep| keep > 0) else {
+        let (shown, tall) = (self.size(image, cell).1 as f32, self.cells(image, cell).1);
+        let room = cell
+            .1
+            .saturating_mul(tall.saturating_sub(rows))
+            .saturating_sub(self.offset(cell).1) as f32;
+        if shown <= 0. || room <= 0. {
             return false;
-        };
-        self.display.source = [x, y, w, keep];
+        }
+        self.display.source = [x, y, w, h * room.min(shown) / shown];
         if self.display.cells.1 > 0 {
             self.display.cells.1 -= rows;
         }
@@ -154,12 +159,6 @@ impl Placement {
         let columns = self.cells(image, cell).0 as usize;
         (top..=bottom).contains(&line) && (self.column..self.column + columns).contains(&column)
     }
-}
-
-/// `length` of `whole` shown pixels, in `of` source pixels.
-fn scaled(length: u32, of: u32, whole: u32) -> Option<u32> {
-    let source = u64::from(length) * u64::from(of) / u64::from(whole).max(1);
-    (whole > 0).then(|| u32::try_from(source).unwrap_or(u32::MAX))
 }
 
 /// What a delete picks, as `d` names it.
