@@ -342,3 +342,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 5, 00e1508: two runs disconnected; the reviewer restarted fresh. FAIL. gpui's clip squeezed an image cut at the edge; a cut in rows let a smaller cell uncover pixels. Fixed in a1596c2: cuts go into the source, as Ghostty clips, and a clipped image paints whole under a mask.
 - Round 6, a1596c2: FAIL. A bottom cut of a 1x1 image over two rows rounded to nothing. Fixed in 0aff760: the source keeps fractions of a pixel.
 - Round 7, 0aff760: PASS, with 216 clipping cases and a native draw check. Rounds 4 to 7 ran under the owner's standing word. macOS 354, Linux 361, Windows 335.
+
+## T114
+
+- Round 1, ea753a4: FAIL. A relative child of a virtual parent survived `a=d`; one at a negative column escaped `d=p`. Both came from resolving a relative placement's chain for deletes by place. Fixed in 5f2d7cb by Ghostty's rule: deletes by place pick grid placements alone, and a relative placement goes with its parent or by id, number, range or z. The test fails on the old code.
+- Round 2, 5f2d7cb: PASS, with 64 delete cases and 33 decode and size checks. macOS 361, Linux 368, Windows 342.

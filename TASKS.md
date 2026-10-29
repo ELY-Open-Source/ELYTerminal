@@ -234,7 +234,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T123 A process mid-exec is no hidden process: on macOS the holder read a group's arguments while it `exec`ed, macOS answered `EIO`, and the holder took it as another user's hidden arguments, so `sh -c 'echo ready; exec sleep 30'` read as a shell; `only_an_interactive_shell_leading_its_group_draws_its_prompt` failed so under load in T109's review and T111's check.
 - [x] T112 Kitty graphics transmission: direct, file, temporary file and shared memory; RGB, RGBA and PNG; zlib; chunks; ids and numbers; responses and quiet; storage limit; delete commands.
 - [x] T113 Kitty graphics placements: at the cursor, the cursor moved after them; z-index under text, under the ground and over text; source rectangle, cell size, offsets; images scroll with text, scroll regions clip them, clears delete them as kitty does.
-- [ ] T114 Kitty graphics Unicode placeholders and relative placements (P, Q, H, V).
+- [x] T114 Kitty graphics Unicode placeholders and relative placements (P, Q, H, V).
 - [ ] T115 Kitty graphics animation: frames (a=f), composition (a=c), control (a=a: state, loops, gaps, current frame); playback pauses while its session is hidden.
 - [ ] T116 Image payloads decode in bulk with SIMD; measured against byte-at-a-time decoding.
 - [ ] T117 A hidden session releases its images' GPU textures and stops drawing them, and rebuilds them when shown; measured.
