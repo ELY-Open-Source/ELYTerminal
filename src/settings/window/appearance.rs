@@ -1,10 +1,11 @@
 mod cards;
+mod custom;
 
 use std::ops::RangeInclusive;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, IconButton},
-    forms::{FontPicker, NumberInput, Slider, Switch, TextInput},
+    forms::{FontPicker, NumberInput, PathInput, Slider, Switch, TextInput},
     i18n::text,
     primitives::IconName,
     settings::{SettingsRow, SettingsSection},
@@ -16,7 +17,10 @@ use gpui::{
 };
 
 use self::cards::grid;
-use super::{SettingsWindow, choice, set, switch};
+use super::{
+    SettingsWindow, choice, set, switch,
+    terminal::{chosen, path_field},
+};
 use crate::{
     settings::{
         CursorStyle, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings, SettingsStore,
@@ -75,6 +79,11 @@ impl SettingsWindow {
         if separate {
             let dark = Some(word("et.appearance.dark"));
             themes = themes.row(grid(&this, dark, true, settings, window, cx));
+        }
+        if let Some(worn) = &self.editing {
+            for row in self.custom_editor(worn, cx) {
+                themes = themes.row(row);
+            }
         }
         let family = FontPicker::new("font_family", &self.font)
             .selected(settings.font_family.clone())
@@ -179,8 +188,16 @@ impl SettingsWindow {
                     .text_size(theme.text_size(TextSize::Sm))
                     .child(format!("{opacity}%")),
             );
+        let image = PathInput::new("settings-background-image", &self.image)
+            .on_choose(chosen(&this, "background_image"));
+        let image = path_field(image, self.refused_image.clone(), cx);
         let background = SettingsSection::new(word("et.appearance.window"))
             .row(SettingsRow::new(word("et.appearance.opacity")).control(opacity))
+            .row(
+                SettingsRow::new(word("et.appearance.image"))
+                    .description(word("et.appearance.image_hint"))
+                    .control(image),
+            )
             .row(SettingsRow::new(word("et.appearance.blur")).control(switch(
                 &this,
                 "background_blur",

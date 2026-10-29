@@ -1,4 +1,5 @@
 mod chrome;
+mod custom;
 #[cfg(target_os = "linux")]
 pub mod omarchy;
 
@@ -6,17 +7,18 @@ use std::sync::LazyLock;
 
 use anyhow::Context as _;
 use ely_gpui_component::theme::Palette;
-use gpui::{App, Global, Hsla, Rgba, WindowAppearance};
+use gpui::{App, Global, Hsla, Rgba, SharedString, WindowAppearance};
 
 pub use chrome::{apply, palette};
+pub use custom::{CustomTheme, PREFIX, SLOTS};
 
 use crate::settings::Settings;
 
 /// What a terminal paints with. Ely's own themes keep Ely's palette for the chrome.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerminalTheme {
-    pub id: &'static str,
-    pub name: &'static str,
+    pub id: SharedString,
+    pub name: SharedString,
     pub background: Hsla,
     pub foreground: Hsla,
     pub cursor: Hsla,
@@ -148,11 +150,16 @@ pub fn chosen(settings: &Settings, appearance: WindowAppearance) -> &str {
     }
 }
 
-/// The chosen theme's colors; Omarchy's come from its global.
+/// The chosen theme's colors; Omarchy's come from its global, the user's from the settings.
 pub fn active(settings: &Settings, appearance: WindowAppearance, cx: &App) -> TerminalTheme {
     let id = chosen(settings, appearance);
     if id == OMARCHY {
         return cx.global::<Omarchy>().0.clone();
+    }
+    if let Some(custom) = settings.custom_themes.iter().find(|theme| theme.id == id) {
+        return custom
+            .theme()
+            .unwrap_or_else(|error| panic!("validation admits {id}: {error:#}"));
     }
     find(id)
         .unwrap_or_else(|| panic!("settings name theme {id}, which validation admits"))
@@ -161,8 +168,8 @@ pub fn active(settings: &Settings, appearance: WindowAppearance, cx: &App) -> Te
 
 fn ely(id: &'static str, name: &'static str, palette: Palette) -> TerminalTheme {
     TerminalTheme {
-        id,
-        name,
+        id: SharedString::new_static(id),
+        name: SharedString::new_static(name),
         background: palette.bg,
         foreground: palette.fg,
         cursor: palette.focus,
@@ -205,8 +212,8 @@ fn parse(id: &'static str, name: &'static str, text: &str) -> anyhow::Result<Ter
         colors[index] = color.with_context(|| format!("no palette {index}"))?;
     }
     Ok(TerminalTheme {
-        id,
-        name,
+        id: SharedString::new_static(id),
+        name: SharedString::new_static(name),
         background: get("background")?,
         foreground: get("foreground")?,
         cursor: get("cursor-color")?,
@@ -218,7 +225,7 @@ fn parse(id: &'static str, name: &'static str, text: &str) -> anyhow::Result<Ter
     })
 }
 
-fn hex(text: &str) -> anyhow::Result<Hsla> {
+pub(crate) fn hex(text: &str) -> anyhow::Result<Hsla> {
     let digits = text
         .strip_prefix('#')
         .with_context(|| format!("`{text}` is not #rrggbb"))?;

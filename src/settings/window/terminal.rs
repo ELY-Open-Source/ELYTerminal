@@ -218,7 +218,7 @@ fn updates_row(cx: &App) -> SettingsRow {
 }
 
 /// Hands Browse's pick for `field` to the window.
-fn chosen(
+pub(super) fn chosen(
     this: &Entity<SettingsWindow>,
     field: &'static str,
 ) -> impl Fn(PathBuf, &mut Window, &mut App) + 'static {
@@ -227,7 +227,7 @@ fn chosen(
 }
 
 /// A path field, with why its text is not saved.
-fn path_field(path: PathInput, refused: Option<SharedString>, cx: &App) -> Div {
+pub(super) fn path_field(path: PathInput, refused: Option<SharedString>, cx: &App) -> Div {
     let refused = refused.map(|why| InlineMessage::new(Severity::Danger, why));
     let field = div().w(cx.theme().prose_width()).flex().flex_col().gap_1();
     field.child(path).children(refused)

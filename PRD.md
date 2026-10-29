@@ -10,7 +10,7 @@ Chapters run in build order. `TASKS.md` follows them line by line.
 - Every setting has a control in the settings window. No setting lives only in a file.
 - Silent: no sound, no bell, no notifications but a session's and a newer release's, below, no telemetry, no tips, no onboarding. The one call out is the update check the owner asked for, a switch in Settings › Terminal.
 - Clean: no subtitle, no tagline, no logging options, no status bar, no badges that do not carry state.
-- Built-in themes, each shown as a small preview, Catppuccin among them. A theme colors the terminal and the chrome.
+- Built-in themes, each shown as a small preview, Catppuccin among them, and themes of the user's own, each made from Ely Dark and never over a built-in one. A theme colors the terminal and the chrome.
 - The window background blurs on macOS, Windows, Wayland and X11.
 
 ## 2. Foundation
@@ -113,11 +113,11 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 - Appearance
   - Language: English or 简体中文, for every window and the menu bar, applied at once; what programs, git and the system say stays as it comes.
-  - Theme: a grid of previews; on Omarchy, the Omarchy theme first.
+  - Theme: a grid of previews; on Omarchy, the Omarchy theme first; the user's themes after the built-in ones, then New theme, which makes one from Ely Dark and wears it. While a theme of the user's is worn, its name, its 21 colors (background, foreground, cursor, cursor text, selection and the 16 ANSI colors), each picked as a swatch and set in a color picker, and Delete, after which Ely Dark takes its place.
   - Separate dark theme: a switch; when on, a second grid for dark mode.
   - Font family: a list of installed fonts. Fallbacks: installed families tried in order for a character the family lacks, each added, changed or removed in a list of pickers. Font size. Line height. Ligatures.
   - Cursor: style (block, bar, underline, hollow), blink, with a live preview.
-  - Background opacity: a slider. Background blur: a switch.
+  - Background opacity: a slider. Background image: a picture under the terminal, at that opacity, chosen as a file. Background blur: a switch.
   - Padding: horizontal and vertical.
 - Terminal
   - Shell: a path; empty runs the login shell, on Windows `pwsh`, else `powershell`, else `cmd`. On Windows a session takes the registry's environment as it starts.

@@ -87,6 +87,10 @@ pub struct Settings {
     pub theme: String,
     /// The theme while the system is dark; none keeps `theme`.
     pub dark_theme: Option<String>,
+    /// Themes the user made, each from Ely Dark.
+    pub custom_themes: Vec<themes::CustomTheme>,
+    /// A picture under the terminal; empty for none.
+    pub background_image: String,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -147,6 +151,8 @@ impl Default for Settings {
             start_folder: String::new(),
             theme: themes::default_id().into(),
             dark_theme: None,
+            custom_themes: Vec::new(),
+            background_image: String::new(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             font_size: 13.0,
@@ -214,8 +220,25 @@ impl Settings {
             ("dark_theme", self.dark_theme.as_ref()),
         ] {
             if let Some(id) = id {
-                anyhow::ensure!(themes::known(id), "{field} is {id:?}, no built-in theme");
+                let custom = self.custom_themes.iter().any(|theme| theme.id == *id);
+                anyhow::ensure!(
+                    themes::known(id) || custom,
+                    "{field} is {id:?}, no built-in or custom theme"
+                );
             }
+        }
+        for (at, theme) in self.custom_themes.iter().enumerate() {
+            theme.theme()?;
+            anyhow::ensure!(
+                !self.custom_themes[..at]
+                    .iter()
+                    .any(|other| other.id == theme.id),
+                "custom_themes holds {} twice",
+                theme.id
+            );
+        }
+        if !self.background_image.is_empty() {
+            background_image(&self.background_image)?;
         }
         anyhow::ensure!(!self.font_family.is_empty(), "font_family is empty");
         anyhow::ensure!(
@@ -234,6 +257,20 @@ impl Settings {
         );
         Ok(())
     }
+}
+
+/// The background picture: a full path to a file.
+pub fn background_image(image: &str) -> anyhow::Result<PathBuf> {
+    let path = Path::new(image);
+    anyhow::ensure!(
+        path.is_absolute(),
+        "background_image is {image:?}, not a full path"
+    );
+    anyhow::ensure!(
+        path.is_file(),
+        "background_image is {image:?}, which names no file"
+    );
+    Ok(path.to_path_buf())
 }
 
 /// `folder` to start sessions in: a full path that exists.

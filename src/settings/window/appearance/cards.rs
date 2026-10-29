@@ -6,7 +6,8 @@ use ely_gpui_component::{
     theme::{ActiveTheme, Mix, Radius, TextSize},
 };
 use gpui::{
-    App, Div, Entity, Hsla, ParentElement, SharedString, Styled, Window, div, relative, rems,
+    App, Div, Entity, Hsla, IntoElement, ParentElement, SharedString, Styled, Window, div,
+    relative, rems,
 };
 
 use super::super::{SettingsWindow, set};
@@ -30,22 +31,36 @@ pub(super) fn grid(
     } else {
         ("theme", Some(settings.theme.as_str()))
     };
-    let omarchy = cx.try_global::<themes::Omarchy>().map(|omarchy| &omarchy.0);
-    let cards = omarchy.into_iter().chain(themes::all()).map(|each| {
-        let (id, this) = (each.id, this.clone());
+    let omarchy = cx
+        .try_global::<themes::Omarchy>()
+        .map(|omarchy| omarchy.0.clone());
+    let custom = settings.custom_themes.iter().map(|theme| {
+        theme
+            .theme()
+            .unwrap_or_else(|error| panic!("validation admits it: {error:#}"))
+    });
+    let shown: Vec<TerminalTheme> = omarchy
+        .into_iter()
+        .chain(themes::all().iter().cloned())
+        .chain(custom)
+        .collect();
+    let cards = shown.iter().map(|each| {
+        let (id, this) = (each.id.clone(), this.clone());
         let key = SharedString::from(format!("{field}-{id}"));
-        RadioCard::new(key, chosen == Some(id), each.name)
+        RadioCard::new(key, chosen == Some(id.as_ref()), each.name.clone())
             .preview(preview(each, cx))
             .on_select(move |_, cx| {
                 set(&this, format!("{field} is {id}"), cx, |settings| {
                     if dark {
-                        settings.dark_theme = Some(id.into());
+                        settings.dark_theme = Some(id.to_string());
                     } else {
-                        settings.theme = id.into();
+                        settings.theme = id.to_string();
                     }
                 });
             })
+            .into_any_element()
     });
+    let add = (!dark).then(|| super::custom::add_card(this, cx).into_any_element());
     let rem = window.rem_size();
     let (min, gap) = (
         theme.label_width().to_pixels(rem),
@@ -60,7 +75,9 @@ pub(super) fn grid(
         .border_color(theme.colors.border)
         .children(title.map(|title| div().text_size(theme.text_size(TextSize::Sm)).child(title)))
         .child(
-            SimpleGrid::new(SharedString::from(format!("{field}-grid")), min, gap).children(cards),
+            SimpleGrid::new(SharedString::from(format!("{field}-grid")), min, gap)
+                .children(cards)
+                .children(add),
         )
 }
 
