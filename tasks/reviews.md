@@ -361,3 +361,11 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T117
 
 - Round 1, 76ee8eb: PASS. macOS 372, Linux 379, Windows 353; on macOS ten image sessions held 166 MB of GPU memory before and 20 to 23 MB after.
+
+## T118
+
+- Round 1, cf8d705: FAIL, eight findings. A paste password read another place and never expired; aliases copied data past the limit; an overlong packet without its type was passed by; the tap cleaned controls out of bad base64; a failed system write answered DONE; a Unix file name not in UTF-8 was lost; X11 sent large data in one request, which ended its server thread. Fixed in fad0356 and the Linux fork's c2b8743, each with a test that fails without it.
+- Round 2, fad0356: FAIL, seven findings. Alias type names went uncounted; an old image passed the read-back; Wayland answered DONE for a skipped write; a missing Wayland primary selection was not ENOSYS; a held Windows clipboard read as empty; X11 INCR transfers stalled each other and kept a gone requestor's data. Fixed in e6ecd51 and the fork's 128f5a9.
+- Round 3, e6ecd51: FAIL, four findings. Empty types grew a write without limit; one read copied its data per repeated type; Wayland kept a claim another client had taken; X11's stall deadline waited for an event. Fixed in 6230912 and the fork's 15cc240.
+- Round 4, 6230912: FAIL. X11's serve thread could sleep on a socket another thread had drained. Fixed in 359c0a4 and the fork's 829b808.
+- Round 5, 359c0a4: PASS. Rounds 4 and 5 ran under the owner's standing word. macOS 385, Linux 392, Windows 366 on 6230912; round 4 touched the Linux fork alone, tested on Linux. X11 and Wayland end to end in Docker on 359c0a4.
