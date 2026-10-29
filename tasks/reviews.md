@@ -420,3 +420,11 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 2, e49d702: FAIL. The READMEs still promised every read asked; the paste password's read was said to hold the paste's contents. Fixed in def721a.
 - Round 3, def721a: FAIL. The drive path's condition named a folder where the code tests any path. Fixed in 8626938.
 - Round 4, 8626938: PASS.
+
+## T128
+
+- Round 1, 4b03fcd: FAIL. A wrapper over `$args` lost a failure's `$?`, pipeline input and `-PassThru:$false`. Fixed in c79b631 with Set-Location's generated proxy.
+- Round 2, c79b631: FAIL. The proxy checked the path literally where `-Path` takes wildcards, and the exit-status logic took it for a function. Fixed in 78c48f4.
+- Round 3, 18487a4: FAIL. Replacing `cd` overrode a user's own `cd` and lost its folder-only completion. The approach changed in 7ab6c59: the typed line is rewritten before it runs, `cd` itself untouched.
+- Round 4, 86e6205: FAIL. A line break, curly quotes, a user's own Set-Location function and tr-TR's capital i each slipped through. Fixed in 5211c92.
+- Round 5, 5211c92: PASS.
