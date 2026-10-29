@@ -17,10 +17,11 @@ Chapters run in build order. `TASKS.md` follows them line by line.
 
 - One binary crate, `elyterminal`, edition 2024, Rust 1.95.
 - Ely from github.com/ELY-Open-Source by pinned rev. gpui, gpui_platform from crates.io `gpui-pre` at the exact version Ely pins.
-- `alacritty_terminal` 0.26 for the grid, the parser and the pseudo-terminal, as Ely uses it.
+- `alacritty_terminal` 0.26 for the grid, the parser and the pseudo-terminal, as Ely uses it, taken from the org's fork, and `vte` 0.15 from the org's fork, for what the terminal adds below: kitty graphics at the cursor, mode 5522, idle history packed small, printable text in runs. gpui's platform crates for macOS, Windows and Linux come from the org's forks where a fix or a whole clipboard needs them.
 - Logs through `log` to stderr, `RUST_LOG` sets the level. No log setting in the app.
 - CI on GitHub Actions: macOS builds, tests and lints; Ubuntu and Windows build and test.
 - Repo `ELY-Open-Source/ELYTerminal` on GitHub, public; it lived on git.zacharyzhang.com until v0.1.7. No credential in any file or commit.
+- The README and the guides, install, features, keys and develop, in English and in Chinese, each true to the code.
 
 ## 3. Settings model and storage
 
@@ -40,7 +41,7 @@ Chapters run in build order. `TASKS.md` follows them line by line.
 
 ## 5. Terminal engine
 
-Ghostty is the bar for what the terminal does. ELYTerminal owns its engine on `alacritty_terminal`; Ely's `Terminal` is a gallery widget without mouse reporting, IME, kitty keys or style settings.
+Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, scrollback and speed among it. ELYTerminal owns its engine on `alacritty_terminal`; Ely's `Terminal` is a gallery widget without mouse reporting, IME, kitty keys or style settings.
 
 - PTY: alacritty's `tty` and event loop; on Windows, Microsoft's OpenConsole, bundled, so a program's mouse modes reach the terminal. The pty is wrapped so its reader passes bytes through an OSC scanner. The scanner reports the working directory and prompt marks. Output reaches the screen as the program writes it, with no key to bring it.
 - Shell integration for zsh, bash, fish and PowerShell, injected at launch as Ghostty does: each prompt sends OSC 7 and a title. On Windows a Shell of `wsl` runs the distribution's bash, zsh or fish with that integration, and its folder reaches Files and Git as Windows names it, git running inside the distribution. Git for Windows' bash, its `sh` too, reports its folder as Windows names it. A shell without integration reports nothing, and the panels say so.
@@ -50,18 +51,23 @@ Ghostty is the bar for what the terminal does. ELYTerminal owns its engine on `a
 - Notifications: OSC 9 (iTerm2), OSC 777 notify (rxvt) and OSC 99 (kitty: title and body in chunks, base64, ids, focus and report on activation, close, expiry, which ones live, and its query; `o` passes by, since a session posts only while unseen, below); ConEmu's other OSC 9 commands are no notifications.
 - Inside herdr, which keeps its panes' OSC 7, the session's folder is that of herdr's focused pane, read from herdr's socket while herdr's client runs in the session, on macOS, Linux and Windows.
 - Inside herdr, which passes no OSC 7501 on, herdr's agent states (idle, working, blocked, done) are the session's status records.
-- Grid: colors (named, 256, truecolor, OSC 4/10/11/12), bold, dim, italic, underline (single, double, curly, dotted, dashed), strikethrough, inverse, hidden, wide characters, combining marks. An erase, insert or delete that splits a wide character, insert mode's typing and a character written over one half among them, clears all of it in the current ground, as xterm does.
+- Grid: each grapheme cluster on its own column, as Ghostty draws, a row shaped by runs of one color; colors (named, 256, truecolor, OSC 4/10/11/12), bold, dim, italic, underline (single, double, curly, dotted, dashed), strikethrough, inverse, hidden, wide characters, combining marks. An erase, insert or delete that splits a wide character, insert mode's typing and a character written over one half among them, clears all of it in the current ground, as xterm does.
 - Box drawing (U+2500–U+257F), block elements (U+2580–U+259F) and powerline shapes (U+E0B0–U+E0B7) painted as geometry, so lines and segments join across cells.
-- Fonts: JetBrains Mono by default, any installed font by choice, and fallback families tried in order for a character it lacks, a Chinese font after a Latin one among them; Nerd Font icons the font lacks come from a bundled Nerd Font.
+- Fonts: JetBrains Mono by default, any installed font by choice, and fallback families tried in order for a character it lacks, a Chinese font after a Latin one among them, on Windows a fallback's italic drawn from its own face; Nerd Font icons the font lacks come from a bundled Nerd Font.
 - Cursor: block, bar, underline, hollow block; blinking per setting and per DECSCUSR; hollow when the window is not focused.
-- Keys: xterm encoding with modifiers, application cursor mode, Option as Alt on macOS, with an input method selected too, and natural text editing there when the setting is on: Option-Left and Option-Right go as ESC b and ESC f, Option-Backspace and Option-Delete as ESC DEL and ESC d, Command-Left and Command-Right as Ctrl-A and Ctrl-E, Command-Backspace and Command-Delete as Ctrl-U and Ctrl-K, as iTerm2's preset; the kitty keyboard protocol as the program sets its flags; a key Shift makes a symbol of goes as its own key with Shift, the symbol its alternate, as Ghostty sends it, on macOS and Windows. On Windows keys go as win32-input-mode records while ConPTY asks, as Windows Terminal sends them. Keypad keys type their characters, as Ghostty's do with mode 1035 on by default.
+- Keys: xterm encoding with modifiers, application cursor mode, Option as Alt on macOS, with an input method selected too, and natural text editing there when the setting is on: Option-Left and Option-Right go as ESC b and ESC f, Option-Backspace and Option-Delete as ESC DEL and ESC d, Command-Left and Command-Right as Ctrl-A and Ctrl-E, Command-Backspace and Command-Delete as Ctrl-U and Ctrl-K, as iTerm2's preset; the kitty keyboard protocol as the program sets its flags, so Shift+Enter makes a new line in codex and Claude Code on macOS, Windows and Linux; a key Shift makes a symbol of goes as its own key with Shift, the symbol its alternate, as Ghostty sends it, on macOS and Windows. On Windows keys go as win32-input-mode records while ConPTY asks, as Windows Terminal sends them. Keypad keys type their characters, as Ghostty's do with mode 1035 on by default.
 - IME: marked text drawn at the cursor; committed text sent to the program. A dead key waits for the key after it, as the keyboard layout asks and as Windows' console waits: under US-International a quote then `a` types `á`. On X11 the input method's compound text composes and commits in every set libX11 writes, Simplified and Traditional Chinese among them.
 - Mouse: select by character, word (double press) and line (triple press); Shift extends; mouse reporting (X10, normal, button, any; SGR and UTF-8); wheel scrolls back, or reports, or sends arrows on the alternate screen; on Windows a notch moves the lines Windows sets, a screen under one screen at a time, and elsewhere 3; with Shift, which takes the wheel back from a program that tracks the mouse, a notch does what it does where nothing tracks it.
 - Click to move: while the shell reads a line, as its OSC 133 marks say, a plain click on that line, past its prompt, moves the shell's cursor there, as Ghostty's `cursor-click-to-move`: a shell that takes clicks, as fish does, hears the click; others get arrow keys.
 - Clipboard: copy, paste (bracketed when asked), copy on select per setting, OSC 52 writes.
+- Kitty's clipboard protocol, OSC 5522, as Ghostty 1.4 takes it: writes up to 64 MiB allowed; each read asks first, showing what it would read, with a choice to allow a program's password for the session; text, images and file lists, written and read alike on every system; under mode 5522 a paste lists the clipboard's types with a password for one read.
+- Kitty graphics, as Ghostty 1.4 takes them: images sent direct, from a file, a temporary file or shared memory, RGB, RGBA or PNG, zlib, in chunks, within a session's quota; placed at the cursor under the ground, between it and the text or over the text, cut and sized as asked, moving with scrolls, clears and resizes; Unicode placeholders and relative placements; animation, its frames composed and played on their clock, paused while its session is hidden. Payloads decode through SIMD. A hidden session gives its images' GPU textures back.
 - Drop: files dropped on the terminal type their paths at the cursor, as macOS Terminal does, each kept literal for the session's shell and followed by a space.
 - Links: OSC 8 and plain URLs; Cmd-press (Ctrl-press off macOS) opens them. Inside herdr, while it takes the mouse, herdr opens them, web links only, as herdr does, whole where its pane wraps them, and underlines them while the key is held; with Shift the terminal opens what it sees.
 - Focus reporting, title (OSC 0/2), scrollback limit per setting, find in scrollback (Ely's `FindWidget`).
+- Idle history packed small, unpacked as it is read, on every system, as Ghostty 1.4 compresses its scrollback.
+- Plain text passes the pty's scanners and the parser in runs, not a byte at a time.
+- On Linux, through gpui's wgpu, text draws on whole device pixels at fractional scales and nothing tears, on Vulkan and on GL.
 - A scrollbar over the history, along the terminal's right edge: a drag on its thumb scrolls, whatever the program does with the wheel.
 - Bell: no sound. The session row marks it until the session is shown.
 
@@ -167,4 +173,4 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 ## Deferred
 
-Splits, tabs inside a session, profiles, key rebinding, kitty graphics, sixel, session restore, push and pull, quick terminal.
+Splits, tabs inside a session, profiles, key rebinding, sixel, session restore, push and pull, quick terminal.
