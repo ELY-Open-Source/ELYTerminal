@@ -32,18 +32,25 @@ function global:prompt {
 }
 # Git Bash's /e/x is E:\x, where no such folder lies here.
 if ($env:OS -eq 'Windows_NT') {
-    function global:ElyLocation {
-        $given = $args
-        $path = if ($given.Count -eq 1) { $given[0] }
-        if ($path -is [string] -and $path -match '^/([A-Za-z])(/.*)?$') {
-            $drive, $rest = "$($Matches[1]):\", "$($Matches[2])"
-            if (-not (Test-Path -LiteralPath $path) -and (Test-Path -LiteralPath $drive)) {
-                $given = @($drive + $rest.TrimStart('/').Replace('/', '\'))
+    & {
+        # Set-Location's own proxy keeps its parameters, pipeline and errors.
+        $command = Get-Command Set-Location -CommandType Cmdlet
+        $proxy = [System.Management.Automation.ProxyCommand]::Create($command)
+        $drive = {
+            $path = $PSBoundParameters['Path']
+            if ($path -is [string] -and $path -match '^/([A-Za-z])(/.*)?$') {
+                $root, $rest = "$($Matches[1]):\", "$($Matches[2])".TrimStart('/')
+                if (-not (Test-Path -LiteralPath $path) -and (Test-Path -LiteralPath $root)) {
+                    $PSBoundParameters['Path'] = $root + $rest.Replace('/', '\')
+                }
             }
         }
-        Set-Location @given
+        $begin = [regex]::Match($proxy, '(?m)^begin\r?\n\{')
+        if (-not $begin.Success) { throw "ELYTerminal: Set-Location's proxy has no begin block" }
+        $ely = $proxy.Insert($begin.Index + $begin.Length, "`n$drive")
+        Set-Item -Path function:global:ElyLocation -Value ([ScriptBlock]::Create($ely)) -ErrorAction Stop
+        Set-Alias -Name cd -Value ElyLocation -Option AllScope -Scope Global -Force
     }
-    Set-Alias -Name cd -Value ElyLocation -Option AllScope -Scope Global -Force
 }
 # A command starts once PSReadLine hands over a line that is not blank.
 if (Test-Path Function:\PSConsoleHostReadLine) {

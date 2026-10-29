@@ -312,13 +312,13 @@ mod windows_tests {
         let script =
             std::env::temp_dir().join(format!("elyterminal-cd-{}.ps1", std::process::id()));
         std::fs::write(&script, text).expect("the script");
-        // A drive no folder names: /x stays PowerShell's.
+        // Set-Location's own forms stay; a drive no disk has stays a failure.
         let body = format!(
-            ". '{}'; $ErrorActionPreference = 'Stop'; \
-             cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
-             cd -Path C:\\Windows; (Get-Location).Path; cd ..; (Get-Location).Path; \
+            ". '{}'; cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
+             cd -Path C:\\Windows -PassThru:$false; (Get-Location).Path; cd ..; (Get-Location).Path; \
+             'C:\\Windows' | cd; (Get-Location).Path; $h = @{{ Path = 'C:\\' }}; cd @h; (Get-Location).Path; \
              $free = [char[]](70..89) | Where-Object {{ -not (Test-Path \"$($_):\\\") }} | Select-Object -First 1; \
-             try {{ cd \"/$free\"; 'moved' }} catch {{ 'refused' }}",
+             cd \"/$free\" 2>$null; \"failed: $(-not $?)\"",
             script.display()
         );
         let out = std::process::Command::new("powershell.exe")
@@ -335,7 +335,9 @@ mod windows_tests {
                 r"C:\",
                 r"C:\Windows",
                 r"C:\",
-                "refused"
+                r"C:\Windows",
+                r"C:\",
+                "failed: True"
             ],
             "{}",
             String::from_utf8_lossy(&out.stderr)
