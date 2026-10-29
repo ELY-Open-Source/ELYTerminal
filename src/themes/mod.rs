@@ -10,7 +10,7 @@ use ely_gpui_component::theme::Palette;
 use gpui::{App, Global, Hsla, Rgba, SharedString, WindowAppearance};
 
 pub use chrome::{apply, palette};
-pub use custom::{CustomTheme, PREFIX, SLOTS};
+pub use custom::{CustomTheme, PREFIX, SLOTS, forget, wear};
 
 use crate::settings::Settings;
 

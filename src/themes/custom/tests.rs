@@ -1,6 +1,7 @@
 use gpui::{Hsla, Rgba};
 
 use super::*;
+use crate::settings::Settings;
 
 fn rgb(r: f32, g: f32, b: f32) -> Hsla {
     Rgba { r, g, b, a: 1.0 }.into()
@@ -62,4 +63,40 @@ fn a_theme_that_does_not_read_names_itself() {
         blank.theme().expect_err("no name").to_string(),
         "custom theme custom-1 has no name"
     );
+}
+
+#[test]
+fn a_new_theme_is_worn_where_the_system_looks() {
+    let mut settings = Settings {
+        theme: "ely-light".into(),
+        dark_theme: Some("dracula".into()),
+        ..Settings::default()
+    };
+    wear(&mut settings, "custom-1", true);
+    assert_eq!(settings.dark_theme.as_deref(), Some("custom-1"));
+    assert_eq!(settings.theme, "ely-light");
+    wear(&mut settings, "custom-2", false);
+    assert_eq!(settings.theme, "custom-2");
+    let mut one = Settings::default();
+    wear(&mut one, "custom-3", true);
+    assert_eq!((one.theme.as_str(), one.dark_theme), ("custom-3", None));
+}
+
+#[test]
+fn ely_dark_takes_each_place_a_deleted_theme_held() {
+    let mine = CustomTheme::from_ely_dark(&[], "Mine".into());
+    let mut settings = Settings {
+        theme: "ely-light".into(),
+        dark_theme: Some(mine.id.clone()),
+        custom_themes: vec![mine.clone()],
+        ..Settings::default()
+    };
+    forget(&mut settings, &mine.id);
+    assert!(settings.custom_themes.is_empty());
+    assert_eq!(settings.dark_theme.as_deref(), Some("ely-dark"));
+    assert_eq!(settings.theme, "ely-light");
+    settings.theme = mine.id.clone();
+    settings.custom_themes.push(mine.clone());
+    forget(&mut settings, &mine.id);
+    assert_eq!(settings.theme, "ely-dark");
 }

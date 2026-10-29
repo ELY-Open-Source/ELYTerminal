@@ -5,6 +5,7 @@ use gpui::{Hsla, Rgba, SharedString};
 use serde::{Deserialize, Serialize};
 
 use super::{TerminalTheme, find, hex};
+use crate::settings::Settings;
 
 /// The prefix every custom theme's id carries.
 pub const PREFIX: &str = "custom-";
@@ -105,6 +106,27 @@ impl CustomTheme {
             _ => panic!("custom theme: no slot {slot}"),
         };
         *place = text(color);
+    }
+}
+
+/// Wears theme `id` where the system looks: dark's own theme while dark.
+pub fn wear(settings: &mut Settings, id: &str, dark: bool) {
+    match &mut settings.dark_theme {
+        Some(worn) if dark => *worn = id.to_string(),
+        _ => settings.theme = id.to_string(),
+    }
+}
+
+/// Drops theme `id`; Ely Dark takes each place it held.
+pub fn forget(settings: &mut Settings, id: &str) {
+    settings.custom_themes.retain(|theme| theme.id != id);
+    for place in [Some(&mut settings.theme), settings.dark_theme.as_mut()]
+        .into_iter()
+        .flatten()
+    {
+        if place == id {
+            *place = "ely-dark".into();
+        }
     }
 }
 

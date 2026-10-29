@@ -94,7 +94,11 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     themes::apply(cx);
     let chosen = |settings: &settings::Settings| {
         let theme = (settings.theme.clone(), settings.dark_theme.clone());
-        (theme, settings.background_opacity)
+        (
+            theme,
+            settings.custom_themes.clone(),
+            settings.background_opacity,
+        )
     };
     let mut worn = chosen(SettingsStore::get(cx));
     cx.observe_global::<SettingsStore>(move |cx| {

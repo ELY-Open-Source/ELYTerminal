@@ -10,13 +10,13 @@ use ely_gpui_component::{
 };
 use gpui::{
     App, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    SharedString, StatefulInteractiveElement, Styled, div,
+    SharedString, StatefulInteractiveElement, Styled, WindowAppearance, div,
 };
 
 use super::super::{SettingsWindow, set};
 use crate::{
     settings::SettingsStore,
-    themes::{CustomTheme, SLOTS},
+    themes::{CustomTheme, SLOTS, forget, wear},
 };
 
 /// The card after the last theme: Ely Dark's copy, worn at once.
@@ -44,7 +44,11 @@ pub(super) fn add_card(this: &Entity<SettingsWindow>, cx: &App) -> impl IntoElem
         .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
         .child(Icon::new(IconName::Plus))
         .child(text(cx, "et.custom.new", &[]))
-        .on_click(move |_, _, cx| {
+        .on_click(move |_, window, cx| {
+            let dark = matches!(
+                window.appearance(),
+                WindowAppearance::Dark | WindowAppearance::VibrantDark
+            );
             let taken = SettingsStore::get(cx).custom_themes.clone();
             let made = CustomTheme::from_ely_dark(&taken, String::new());
             let number = made
@@ -60,7 +64,7 @@ pub(super) fn add_card(this: &Entity<SettingsWindow>, cx: &App) -> impl IntoElem
                 format!("custom theme {} made", made.id),
                 cx,
                 |settings| {
-                    settings.theme = made.id.clone();
+                    wear(settings, &made.id, dark);
                     settings.custom_themes.push(made);
                 },
             );
@@ -129,15 +133,7 @@ impl SettingsWindow {
                     &this,
                     format!("custom theme {id} deleted"),
                     cx,
-                    |settings| {
-                        settings.custom_themes.retain(|theme| theme.id != id);
-                        if settings.theme == id {
-                            settings.theme = "ely-dark".into();
-                        }
-                        if settings.dark_theme.as_deref() == Some(id.as_str()) {
-                            settings.dark_theme = None;
-                        }
-                    },
+                    |settings| forget(settings, &id),
                 );
             });
         vec![
