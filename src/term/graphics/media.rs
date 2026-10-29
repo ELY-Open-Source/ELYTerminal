@@ -37,9 +37,14 @@ pub(super) fn file(
     if temporary {
         temporaries(&real)?;
     }
-    let read = read(&real, offset, size);
+    let kind = std::fs::metadata(&real).map_err(|error| format!("{real:?}: {error}"))?;
+    if !kind.is_file() {
+        return Err(format!("{real:?} is no regular file"));
+    }
+    let mut opened = system::open(&real, temporary)?;
+    let read = read(&mut opened.file, &real, offset, size);
     if temporary {
-        match std::fs::remove_file(&real) {
+        match opened.delete() {
             Ok(()) => log::debug!("graphics: temporary file {real:?} deleted"),
             Err(error) => log::warn!("graphics: temporary file {real:?} stays: {error}"),
         }
@@ -47,12 +52,7 @@ pub(super) fn file(
     read
 }
 
-fn read(real: &Path, offset: u32, size: u32) -> Result<Vec<u8>, String> {
-    let kind = std::fs::metadata(real).map_err(|error| format!("{real:?}: {error}"))?;
-    if !kind.is_file() {
-        return Err(format!("{real:?} is no regular file"));
-    }
-    let mut file = system::open(real).map_err(|error| format!("{real:?} opens not: {error}"))?;
+fn read(file: &mut File, real: &Path, offset: u32, size: u32) -> Result<Vec<u8>, String> {
     let opened = file
         .metadata()
         .map_err(|error| format!("{real:?}: {error}"))?;
@@ -64,7 +64,7 @@ fn read(real: &Path, offset: u32, size: u32) -> Result<Vec<u8>, String> {
     }
     file.seek(SeekFrom::Start(u64::from(offset)))
         .map_err(|error| format!("{real:?} seeks not to {offset}: {error}"))?;
-    read_to(&mut file, size).map_err(|error| format!("{real:?}: {error}"))
+    read_to(file, size).map_err(|error| format!("{real:?}: {error}"))
 }
 
 /// Exactly `size` bytes, or to the end when 0.

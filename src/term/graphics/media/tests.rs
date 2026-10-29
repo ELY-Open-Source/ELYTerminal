@@ -234,3 +234,59 @@ fn a_range_lies_inside_its_object() {
     assert!(range(100, 10, 91, None).is_err());
     assert!(range(100, 90, 0, Some(20)).is_err());
 }
+
+#[cfg(unix)]
+#[test]
+fn a_folder_swapped_after_its_check_opens_nothing_and_deletes_nothing() {
+    let temporary = folder(&std::env::temp_dir(), "swap");
+    let held = temporary.join("held");
+    std::fs::create_dir(&held).expect("a folder");
+    std::fs::write(held.join("tty-graphics-protocol-1"), [1, 2, 3, 4]).expect("written");
+    let target = Path::new(env!("CARGO_MANIFEST_DIR")).join("target");
+    let outside = folder(&target, "swap-outside");
+    let kept = outside.join("tty-graphics-protocol-1");
+    std::fs::write(&kept, [5, 6, 7, 8]).expect("written");
+    let real = super::system::real(&held.join("tty-graphics-protocol-1")).expect("it resolves");
+    std::fs::rename(&held, temporary.join("moved")).expect("moved");
+    std::os::unix::fs::symlink(&outside, &held).expect("linked");
+    assert!(
+        super::system::open(&real, true).is_err(),
+        "the swap was opened"
+    );
+    assert!(kept.exists());
+    let _ = std::fs::remove_dir_all(&outside);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_pipe_in_dev_shm_answers_without_waiting_for_a_writer() {
+    let name = format!("/ely-fifo-{}", std::process::id());
+    let fifo = std::ffi::CString::new(format!("/dev/shm{name}")).expect("no NUL");
+    // SAFETY: a NUL-ended path.
+    assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+    let (sent, heard) = std::sync::mpsc::channel();
+    let keys = name.clone();
+    std::thread::spawn(move || {
+        let mut graphics = Graphics::new(0);
+        let _ = sent.send(send(&mut graphics, "i=1,t=s,s=1,v=1", keys.as_bytes()));
+    });
+    let answer = heard.recv_timeout(std::time::Duration::from_secs(5));
+    // SAFETY: a NUL-ended path.
+    unsafe { libc::unlink(fifo.as_ptr()) };
+    assert_eq!(answer, Ok(reply(1, UNREAD)));
+}
+
+#[test]
+fn a_local_image_past_the_quota_answers_as_one_that_does_not_read() {
+    let mut graphics = Graphics {
+        pid: 0,
+        store: super::super::store::Store::new(40),
+        loading: None,
+    };
+    let file = folder(&std::env::temp_dir(), "quota").join("image");
+    std::fs::write(&file, [0; 48]).expect("written");
+    assert_eq!(
+        send(&mut graphics, "i=1,t=f,s=4,v=3", &bytes(&file)),
+        reply(1, UNREAD)
+    );
+}

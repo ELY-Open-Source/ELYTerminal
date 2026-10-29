@@ -1,7 +1,10 @@
 use std::{
     ffi::{CString, OsStr},
     fs::File,
-    os::unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+    os::{
+        fd::{AsRawFd, FromRawFd},
+        unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+    },
     path::{Path, PathBuf},
 };
 
@@ -25,12 +28,70 @@ pub(super) fn real(path: &Path) -> Result<PathBuf, String> {
     Ok(real)
 }
 
-/// Opens following no link and waiting on no pipe.
-pub(super) fn open(real: &Path) -> std::io::Result<File> {
-    File::options()
+/// A file opened through the folder it was checked in.
+pub(super) struct Opened {
+    pub file: File,
+    folder: File,
+    name: CString,
+}
+
+/// Opens `real` in its folder, refusing one that moved since.
+pub(super) fn open(real: &Path, _temporary: bool) -> Result<Opened, String> {
+    let (Some(parent), Some(name)) = (real.parent(), real.file_name()) else {
+        return Err(format!("{real:?} has no folder"));
+    };
+    let folder = File::options()
         .read(true)
-        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
-        .open(real)
+        .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW)
+        .open(parent)
+        .map_err(|error| format!("{parent:?} opens not: {error}"))?;
+    let held = held(&folder)?;
+    if held != parent {
+        return Err(format!("{parent:?} moved to {held:?}"));
+    }
+    let name = CString::new(name.as_bytes()).map_err(|_| format!("{real:?} holds a NUL"))?;
+    let flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC;
+    // SAFETY: an open folder and a NUL-ended name inside it.
+    let fd = unsafe { libc::openat(folder.as_raw_fd(), name.as_ptr(), flags) };
+    if fd < 0 {
+        return Err(format!(
+            "{real:?} opens not: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    // SAFETY: the descriptor just opened, owned by nothing else.
+    let file = unsafe { File::from_raw_fd(fd) };
+    Ok(Opened { file, folder, name })
+}
+
+impl Opened {
+    /// Unlinks the opened name in its held folder.
+    pub fn delete(self) -> std::io::Result<()> {
+        // SAFETY: the held folder and a NUL-ended name inside it.
+        match unsafe { libc::unlinkat(self.folder.as_raw_fd(), self.name.as_ptr(), 0) } {
+            0 => Ok(()),
+            _ => Err(std::io::Error::last_os_error()),
+        }
+    }
+}
+
+/// Where an open folder lies now.
+#[cfg(target_os = "macos")]
+fn held(folder: &File) -> Result<PathBuf, String> {
+    let mut path = vec![0u8; libc::PATH_MAX as usize];
+    // SAFETY: an open descriptor and a buffer of PATH_MAX bytes.
+    if unsafe { libc::fcntl(folder.as_raw_fd(), libc::F_GETPATH, path.as_mut_ptr()) } != 0 {
+        return Err(format!("no path: {}", std::io::Error::last_os_error()));
+    }
+    let path = std::ffi::CStr::from_bytes_until_nul(&path).map_err(|_| "no NUL".to_string())?;
+    Ok(PathBuf::from(OsStr::from_bytes(path.to_bytes())))
+}
+
+/// Where an open folder lies now.
+#[cfg(not(target_os = "macos"))]
+fn held(folder: &File) -> Result<PathBuf, String> {
+    let fd = format!("/proc/self/fd/{}", folder.as_raw_fd());
+    std::fs::read_link(&fd).map_err(|error| format!("{fd}: {error}"))
 }
 
 /// What POSIX shared memory `name` holds, read, then unlinked.
@@ -46,9 +107,10 @@ pub(in super::super) fn shared(
     // SAFETY: a NUL-ended name; the mode passes unread without O_CREAT.
     #[cfg(target_os = "macos")]
     let fd = unsafe { libc::shm_open(name.as_ptr(), libc::O_RDONLY, 0 as libc::c_uint) };
-    // SAFETY: as above.
+    // glibc opens under /dev/shm, where a pipe would block.
     #[cfg(not(target_os = "macos"))]
-    let fd = unsafe { libc::shm_open(name.as_ptr(), libc::O_RDONLY, 0) };
+    // SAFETY: as above.
+    let fd = unsafe { libc::shm_open(name.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK, 0) };
     if fd < 0 {
         return Err(format!(
             "{shown:?} opens not: {}",
@@ -60,6 +122,11 @@ pub(in super::super) fn shared(
     let mut stat: libc::stat = unsafe { std::mem::zeroed() };
     if unsafe { libc::fstat(object.fd, &mut stat) } != 0 {
         return Err(format!("{shown:?}: {}", std::io::Error::last_os_error()));
+    }
+    // macOS objects are no files; Linux's are, under /dev/shm.
+    #[cfg(not(target_os = "macos"))]
+    if stat.st_mode & libc::S_IFMT != libc::S_IFREG {
+        return Err(format!("{shown:?} is no memory object"));
     }
     let available = usize::try_from(stat.st_size).map_err(|_| format!("{shown:?} has no size"))?;
     if available == 0 {

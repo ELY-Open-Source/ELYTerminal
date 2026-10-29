@@ -1,11 +1,16 @@
 use std::{
     fs::File,
-    os::windows::ffi::OsStrExt,
+    os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle},
     path::{Path, PathBuf},
 };
 
 use windows_sys::Win32::{
     Foundation::CloseHandle,
+    Storage::FileSystem::{
+        DELETE, FILE_DISPOSITION_INFO, FILE_GENERIC_READ, FILE_NAME_NORMALIZED,
+        FileDispositionInfo, GetFinalPathNameByHandleW, SetFileInformationByHandle,
+        VOLUME_NAME_DOS,
+    },
     System::Memory::{
         FILE_MAP_READ, MEMORY_BASIC_INFORMATION, MapViewOfFile, OpenFileMappingW, UnmapViewOfFile,
         VirtualQuery,
@@ -65,8 +70,60 @@ pub(super) fn real(path: &Path) -> Result<PathBuf, String> {
     Ok(PathBuf::from(drive))
 }
 
-pub(super) fn open(real: &Path) -> std::io::Result<File> {
-    File::open(real)
+/// A file whose opened path was checked.
+pub(super) struct Opened {
+    pub file: File,
+}
+
+/// Opens `real`, refusing a file that moved since its check.
+pub(super) fn open(real: &Path, temporary: bool) -> Result<Opened, String> {
+    let mut options = File::options();
+    options.read(true);
+    if temporary {
+        options.access_mode(FILE_GENERIC_READ | DELETE);
+    }
+    let file = options
+        .open(real)
+        .map_err(|error| format!("{real:?} opens not: {error}"))?;
+    let mut path = vec![0u16; 32768];
+    // SAFETY: an open handle and a buffer of that length.
+    let length = unsafe {
+        GetFinalPathNameByHandleW(
+            file.as_raw_handle(),
+            path.as_mut_ptr(),
+            path.len() as u32,
+            FILE_NAME_NORMALIZED | VOLUME_NAME_DOS,
+        )
+    } as usize;
+    if length == 0 || length >= path.len() {
+        return Err(format!("{real:?}: {}", std::io::Error::last_os_error()));
+    }
+    let held = String::from_utf16(&path[..length]).map_err(|_| format!("{real:?}: no UTF-16"))?;
+    let held = Path::new(held.strip_prefix(r"\\?\").unwrap_or(&held));
+    if held != real {
+        return Err(format!("{real:?} moved to {held:?}"));
+    }
+    Ok(Opened { file })
+}
+
+impl Opened {
+    /// Deletes the opened file itself, by its handle.
+    pub fn delete(self) -> std::io::Result<()> {
+        let info = FILE_DISPOSITION_INFO { DeleteFile: true };
+        // SAFETY: an open handle with delete access, and its record.
+        let done = unsafe {
+            SetFileInformationByHandle(
+                self.file.as_raw_handle(),
+                FileDispositionInfo,
+                (&info as *const FILE_DISPOSITION_INFO).cast(),
+                std::mem::size_of::<FILE_DISPOSITION_INFO>() as u32,
+            )
+        };
+        match done {
+            0 => Err(std::io::Error::last_os_error()),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// What named shared memory `name` holds, read, then closed.

@@ -100,6 +100,10 @@ impl Loading {
         fits.then(|| self.width as usize * self.height as usize * depth)
     }
 
+    pub fn local(&self) -> bool {
+        self.local
+    }
+
     /// A chunk of a direct transmission.
     pub fn add(&mut self, chunk: &[u8], pid: u32) -> Result<(), Error> {
         if self.data.len() + chunk.len() > media::MAX {

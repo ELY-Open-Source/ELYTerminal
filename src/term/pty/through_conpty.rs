@@ -7,7 +7,7 @@ use crate::term::{
     mouse::{Format, Tracking},
 };
 
-/// A PowerShell script under the bundled ConPTY: its pid, its events.
+/// A PowerShell script under the bundled ConPTY: pid and events.
 fn powershell(script: &str) -> (u32, Vec<PtyEvent>) {
     crate::testlog::init();
     let wide: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();

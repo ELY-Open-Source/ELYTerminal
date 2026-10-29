@@ -201,7 +201,7 @@ impl Graphics {
             self.loading = Some(loading);
             return None;
         }
-        let ids = loading.ids;
+        let (ids, local) = (loading.ids, loading.local());
         let mut image = match loading.finish(pid) {
             Ok(image) => image,
             Err(error) => return Some(Reply::failed(ids, error)),
@@ -216,6 +216,8 @@ impl Graphics {
             ..ids
         };
         if let Err(error) = self.store.add(image, pid) {
+            // A local image's size tells of its file.
+            let error = if local { Error::Read } else { error };
             return Some(Reply::failed(ids, error));
         }
         // An image named by neither id nor number hears nothing.
