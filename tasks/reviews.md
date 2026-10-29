@@ -286,3 +286,7 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 979c02a: FAIL. AGENTS.md said the reporter was asked for logs while #29 held no comment yet. The request was posted, issuecomment-6484160625.
 - Round 2, 979c02a with the comment: PASS.
+
+## T107
+
+- Round 1, f79691b: PASS. The reviewer's Windows probe broke the italic glyphs on the old dependency and matched every glyph id on the fork; 120 rasterizations, 20 color glyphs, passed; 24,000 layouts of varied text and sizes kept the cached font ids stable.
