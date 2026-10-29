@@ -2,8 +2,8 @@ use std::{
     ffi::{CString, OsStr},
     fs::File,
     os::{
-        fd::{AsRawFd, FromRawFd},
-        unix::{ffi::OsStrExt, fs::OpenOptionsExt},
+        fd::{AsRawFd, FromRawFd, OwnedFd},
+        unix::ffi::OsStrExt,
     },
     path::{Path, PathBuf},
 };
@@ -31,20 +31,34 @@ pub(super) fn real(path: &Path) -> Result<PathBuf, String> {
 /// A file opened through the folder it was checked in.
 pub(super) struct Opened {
     pub file: File,
-    folder: File,
+    folder: OwnedFd,
     name: CString,
 }
+
+/// Opens a folder for search alone, all a read needs.
+#[cfg(target_os = "macos")]
+const SEARCH: i32 = libc::O_SEARCH;
+#[cfg(not(target_os = "macos"))]
+const SEARCH: i32 = libc::O_PATH;
 
 /// Opens `real` in its folder, refusing one that moved since.
 pub(super) fn open(real: &Path, _temporary: bool) -> Result<Opened, String> {
     let (Some(parent), Some(name)) = (real.parent(), real.file_name()) else {
         return Err(format!("{real:?} has no folder"));
     };
-    let folder = File::options()
-        .read(true)
-        .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW)
-        .open(parent)
-        .map_err(|error| format!("{parent:?} opens not: {error}"))?;
+    let path = CString::new(parent.as_os_str().as_bytes())
+        .map_err(|_| format!("{parent:?} holds a NUL"))?;
+    let flags = SEARCH | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
+    // SAFETY: a NUL-ended path.
+    let fd = unsafe { libc::open(path.as_ptr(), flags) };
+    if fd < 0 {
+        return Err(format!(
+            "{parent:?} opens not: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    // SAFETY: the descriptor just opened, owned by nothing else.
+    let folder = unsafe { OwnedFd::from_raw_fd(fd) };
     let held = held(&folder)?;
     if held != parent {
         return Err(format!("{parent:?} moved to {held:?}"));
@@ -77,7 +91,7 @@ impl Opened {
 
 /// Where an open folder lies now.
 #[cfg(target_os = "macos")]
-fn held(folder: &File) -> Result<PathBuf, String> {
+fn held(folder: &OwnedFd) -> Result<PathBuf, String> {
     let mut path = vec![0u8; libc::PATH_MAX as usize];
     // SAFETY: an open descriptor and a buffer of PATH_MAX bytes.
     if unsafe { libc::fcntl(folder.as_raw_fd(), libc::F_GETPATH, path.as_mut_ptr()) } != 0 {
@@ -89,7 +103,7 @@ fn held(folder: &File) -> Result<PathBuf, String> {
 
 /// Where an open folder lies now.
 #[cfg(not(target_os = "macos"))]
-fn held(folder: &File) -> Result<PathBuf, String> {
+fn held(folder: &OwnedFd) -> Result<PathBuf, String> {
     let fd = format!("/proc/self/fd/{}", folder.as_raw_fd());
     std::fs::read_link(&fd).map_err(|error| format!("{fd}: {error}"))
 }

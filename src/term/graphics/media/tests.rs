@@ -290,3 +290,19 @@ fn a_local_image_past_the_quota_answers_as_one_that_does_not_read() {
         reply(1, UNREAD)
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_file_in_a_folder_one_may_only_search_still_reads() {
+    use std::os::unix::fs::PermissionsExt;
+    let searched = folder(&std::env::temp_dir(), "search");
+    let file = searched.join("image");
+    std::fs::write(&file, [1, 2, 3, 4]).expect("written");
+    let only = std::fs::Permissions::from_mode(0o111);
+    std::fs::set_permissions(&searched, only).expect("search alone");
+    let mut graphics = Graphics::new(0);
+    let read = send(&mut graphics, "i=1,t=f,s=1,v=1", &bytes(&file));
+    let back = std::fs::Permissions::from_mode(0o700);
+    std::fs::set_permissions(&searched, back).expect("restored");
+    assert_eq!(read, reply(1, "OK"));
+}
