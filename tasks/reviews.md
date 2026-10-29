@@ -299,3 +299,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - On 2026-10-28 the owner's standing word, every recommended option, allowed T108 a fourth review.
 - Round 4, aae8597: FAIL. The middle was checked after fitting: a 1200 by 1269 window kept at 300, -600, its middle on the screen, centered once shrunk to the visible height. Fixed in the next commit: the kept bounds' middle decides, then the fit and the move. The owner's standing word allowed a fifth review.
 - Round 5, 6a57856: FAIL. On one X screen, a place kept on a left monitor that went, the right one moved to the origin, still had its middle on the shrunk screen and opened there, not centered: gpui's X11 display is the screen and knows no monitor in it. Recorded as a limit in AGENTS.md; the window opens whole on a monitor that stayed. Under the owner's standing word, every recommended option, T108 closes after five reviews with that limit, as T97 closed at its cap.
+
+## T109
+
+- Round 1, ee5bf13: FAIL. A custom color changed the terminal, not the chrome; New theme on a dark system with a dark theme set the light one; deleting the dark theme let the light one show; a picture overwritten, cleared and named again showed its old pixels. Fixed in f8bfe77.
+- Round 2, f8bfe77: FAIL. Cmd-Z after a theme switch wrote one theme's name onto another; a picture renamed while the terminal was minimized kept its old pixels. Fixed in 8821701: a name field for each theme; the app drops gpui's cached picture where the setting changes.
+- Round 3, 8821701: PASS. Both earlier rounds' inputs replayed in the app; one PTY test failed once in the reviewer's first check.sh and passed in the full rerun, 317 tests. Windows went unchecked on 8821701: the owner's PC reset every SSH connection; f8bfe77 passed clippy and the tests there, and CI's Windows job checks the push.
