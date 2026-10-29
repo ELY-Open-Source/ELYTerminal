@@ -235,7 +235,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T112 Kitty graphics transmission: direct, file, temporary file and shared memory; RGB, RGBA and PNG; zlib; chunks; ids and numbers; responses and quiet; storage limit; delete commands.
 - [x] T113 Kitty graphics placements: at the cursor, the cursor moved after them; z-index under text, under the ground and over text; source rectangle, cell size, offsets; images scroll with text, scroll regions clip them, clears delete them as kitty does.
 - [x] T114 Kitty graphics Unicode placeholders and relative placements (P, Q, H, V).
-- [ ] T115 Kitty graphics animation: frames (a=f), composition (a=c), control (a=a: state, loops, gaps, current frame); playback pauses while its session is hidden.
+- [x] T115 Kitty graphics animation: frames (a=f), composition (a=c), control (a=a: state, loops, gaps, current frame); playback pauses while its session is hidden.
 - [ ] T116 Image payloads decode in bulk with SIMD; measured against byte-at-a-time decoding.
 - [ ] T117 A hidden session releases its images' GPU textures and stops drawing them, and rebuilds them when shown; measured.
 - [ ] T118 Kitty clipboard protocol, OSC 5522: writes allowed up to 64 MiB; each read asks, with a preview and a choice to remember for the session; text, images and file lists; paste events under mode 5522.

@@ -347,3 +347,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, ea753a4: FAIL. A relative child of a virtual parent survived `a=d`; one at a negative column escaped `d=p`. Both came from resolving a relative placement's chain for deletes by place. Fixed in 5f2d7cb by Ghostty's rule: deletes by place pick grid placements alone, and a relative placement goes with its parent or by id, number, range or z. The test fails on the old code.
 - Round 2, 5f2d7cb: PASS, with 64 delete cases and 33 decode and size checks. macOS 361, Linux 368, Windows 342.
+
+## T115
+
+- Round 1, c8eb050: FAIL. A frame whose quota reserve evicted a placed image and still failed left that image's placement, which an image later given its id would show. Fixed in c562d60: the evicted images' placements go on success and failure alike. The test fails on the old code.
+- Round 2, c562d60: PASS. macOS 370; Linux 376 and Windows 350 on c8eb050, the fix's one test on macOS.
