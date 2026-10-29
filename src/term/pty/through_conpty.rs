@@ -63,6 +63,6 @@ fn a_kitty_graphics_command_passes_conpty_to_its_handler() {
         "$e = [char]27; [Console]::Out.Write(\"ab${e}_Gi=31,a=q,q=2;AAAA${e}\\cd\"); \
          Start-Sleep -Milliseconds 500",
     );
-    let seen = format!("graphics {pid}: 16 bytes at 0, 2: i=31,a=q,q=2;AAAA");
+    let seen = format!("graphics {pid}: 17 bytes at 0, 2: i=31,a=q,q=2;AAAA");
     assert!(crate::testlog::logged(&seen), "{seen}");
 }
