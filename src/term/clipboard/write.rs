@@ -6,6 +6,9 @@ use base64_simd::STANDARD;
 
 use super::{LIMIT, Place};
 
+/// The most types, aliases among them, one write holds.
+const TYPES: usize = 64;
+
 /// Why a write fails, as its status names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fail {
@@ -60,7 +63,12 @@ impl Write {
                 log::warn!("clipboard: {mime} came again after another type");
                 return Err(Fail::Invalid);
             }
+            if self.parts.len() + self.aliases.len() >= TYPES {
+                log::warn!("clipboard: a write passes {TYPES} types");
+                return Err(Fail::TooBig);
+            }
             self.parts.push((mime.to_string(), Vec::new()));
+            self.grow(mime.len())?;
         }
         if payload.is_empty() {
             return Ok(());
@@ -79,9 +87,15 @@ impl Write {
                 log::warn!("clipboard: {mime} is no padded base64: {error}");
                 Fail::Invalid
             })?;
+        let grown = data.len() - before;
         self.ended = self.carry[..whole].ends_with(b"=");
         self.carry.drain(..whole);
-        self.size += data.len() - before;
+        self.grow(grown)
+    }
+
+    /// Counts `bytes` more against the limit.
+    fn grow(&mut self, bytes: usize) -> Result<(), Fail> {
+        self.size += bytes;
         if self.size > LIMIT {
             log::warn!("clipboard: a write passes {LIMIT} bytes");
             return Err(Fail::TooBig);
@@ -91,14 +105,11 @@ impl Write {
 
     /// `aliases` hold what `mime` holds; their names count too.
     pub fn alias(&mut self, mime: String, aliases: Vec<String>) -> Result<(), Fail> {
-        self.size += aliases
-            .iter()
-            .map(|alias| alias.len() + mime.len())
-            .sum::<usize>();
-        if self.size > LIMIT {
-            log::warn!("clipboard: a write's aliases pass {LIMIT} bytes");
+        if self.parts.len() + self.aliases.len() + aliases.len() > TYPES {
+            log::warn!("clipboard: a write's aliases pass {TYPES} types");
             return Err(Fail::TooBig);
         }
+        self.grow(aliases.iter().map(|alias| alias.len() + mime.len()).sum())?;
         self.aliases
             .extend(aliases.into_iter().map(|alias| (alias, mime.clone())));
         Ok(())

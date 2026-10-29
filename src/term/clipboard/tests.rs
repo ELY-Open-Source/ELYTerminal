@@ -354,7 +354,7 @@ fn aliases_share_their_data_and_their_names_count() {
     // Each alias holds its type's name too.
     let mut write = Write::new(Place::Clipboard, String::new());
     let few = vec!["a".to_string(), "b".to_string()];
-    assert_eq!(write.alias("t".repeat(40), few), Err(Fail::TooBig));
+    assert_eq!(write.alias("t".repeat(200), few), Err(Fail::TooBig));
 }
 
 #[test]
@@ -414,4 +414,36 @@ fn a_unix_file_name_not_in_utf8_goes_and_comes_back() {
         panic!("one file list")
     };
     assert_eq!(back.paths(), [name]);
+}
+
+#[test]
+fn empty_types_count_against_a_write() {
+    let mut write = Write::new(Place::Clipboard, String::new());
+    let names: Vec<String> = (0..100).map(|n| format!("type/{n}")).collect();
+    let failed = names.iter().find_map(|mime| write.add(mime, b"").err());
+    assert_eq!(failed, Some(Fail::TooBig));
+}
+
+#[test]
+fn a_read_answers_each_kind_once() {
+    let png = Image::from_bytes(ImageFormat::Png, vec![1]);
+    let item = ClipboardItem {
+        entries: vec![
+            ClipboardEntry::String(ClipboardString::new("hi".into())),
+            ClipboardEntry::Image(png),
+        ],
+    };
+    let asked = [
+        "text/plain",
+        "text/plain",
+        "text/plain;charset=utf-8",
+        ".",
+        ".",
+        "image/png",
+        "image/png",
+    ];
+    let asked: Vec<String> = asked.map(String::from).into();
+    let got = found(Some(&item), &asked);
+    let names: Vec<&str> = got.iter().map(|(mime, _)| mime.as_str()).collect();
+    assert_eq!(names, ["text/plain", ".", "image/png"]);
 }

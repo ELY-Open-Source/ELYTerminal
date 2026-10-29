@@ -10,7 +10,7 @@ pub(super) const BODY: usize = 8192;
 #[cfg(not(test))]
 pub(super) const LIMIT: usize = 64 * 1024 * 1024;
 #[cfg(test)]
-pub(super) const LIMIT: usize = 64;
+pub(super) const LIMIT: usize = 256;
 
 /// The most bytes one answer carries, before base64.
 const CHUNK: usize = 4096;
@@ -219,8 +219,20 @@ pub(super) fn answers(read: &Read, found: &[(String, Vec<u8>)], pass: &str) -> V
 
 /// What `item` holds of each type; `.` lists its types.
 pub(super) fn found(item: Option<&ClipboardItem>, mimes: &[String]) -> Vec<(String, Vec<u8>)> {
-    let each = |mime: &String| {
+    // Each kind answers once, so repeats cost nothing.
+    let mut answered = Vec::new();
+    let mut each = |mime: &String| {
+        let answers = if mime == LIST {
+            Some(LIST)
+        } else {
+            reads(mime)
+        };
+        if answers.is_some_and(|it| answered.contains(&it)) {
+            log::debug!("clipboard: {mime} read already in this read");
+            return None;
+        }
         if mime == LIST {
+            answered.push(LIST);
             let types = item.map(types).unwrap_or_default();
             let list = if types.is_empty() {
                 String::new()
@@ -230,12 +242,13 @@ pub(super) fn found(item: Option<&ClipboardItem>, mimes: &[String]) -> Vec<(Stri
             return Some((mime.clone(), list.into_bytes()));
         }
         let held = item.and_then(|item| data(item, mime));
-        if held.is_none() {
-            log::debug!("clipboard: no {mime} to read");
+        match held {
+            Some(_) => answered.extend(answers),
+            None => log::debug!("clipboard: no {mime} to read"),
         }
         held.map(|data| (mime.clone(), data))
     };
-    mimes.iter().filter_map(each).collect()
+    mimes.iter().filter_map(&mut each).collect()
 }
 
 mod mime;
@@ -244,7 +257,7 @@ mod serve;
 mod session;
 mod write;
 
-use mime::{data, holds, item, types};
+use mime::{data, holds, item, reads, types};
 pub(super) use session::{Asking, Session, Step};
 pub(super) use write::{Fail, Write};
 

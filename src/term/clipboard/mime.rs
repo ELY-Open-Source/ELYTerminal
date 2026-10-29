@@ -71,6 +71,17 @@ pub fn holds(read: Option<&ClipboardItem>, written: &ClipboardItem) -> bool {
     })
 }
 
+/// Which entry `mime` reads: text, an image or files.
+pub(super) fn reads(mime: &str) -> Option<&'static str> {
+    if is_text(mime) {
+        Some("text")
+    } else if ImageFormat::from_mime_type(mime).is_some() {
+        Some("image")
+    } else {
+        (mime == FILES).then_some("files")
+    }
+}
+
 /// The types `item` offers.
 pub fn types(item: &ClipboardItem) -> Vec<String> {
     let mut types: Vec<String> = Vec::new();
