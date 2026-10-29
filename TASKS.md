@@ -239,7 +239,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T116 Image payloads decode in bulk with SIMD; measured against byte-at-a-time decoding.
 - [x] T117 A hidden session releases its images' GPU textures and stops drawing them, and rebuilds them when shown; measured.
 - [x] T118 Kitty clipboard protocol, OSC 5522: writes allowed up to 64 MiB; each read asks, with a preview and a choice to remember for the session; text, images and file lists; paste events under mode 5522.
-- [ ] T119 Scrollback compression: idle history compressed in the alacritty fork on macOS, Windows and Linux, decompressed on demand; resident memory measured.
+- [x] T119 Scrollback compression: idle history compressed in the alacritty fork on macOS, Windows and Linux, decompressed on demand; resident memory measured.
 - [ ] T120 Throughput: plain ASCII through the tap and the parser measured, the tap's scan made bulk, the numbers recorded.
 - [ ] T121 Renderer: on Linux, through gpui's wgpu, text is crisp at 125% and 150% and nothing tears, on Vulkan and on GL; checked on the Omarchy machine, fixed where not, recorded.
 - [ ] T122 PRD, AGENTS.md and `tasks/acceptance.md` hold every change of T102 to T121; the acceptance table checked row by row.

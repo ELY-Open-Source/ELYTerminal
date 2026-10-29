@@ -369,3 +369,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 3, e6ecd51: FAIL, four findings. Empty types grew a write without limit; one read copied its data per repeated type; Wayland kept a claim another client had taken; X11's stall deadline waited for an event. Fixed in 6230912 and the fork's 15cc240.
 - Round 4, 6230912: FAIL. X11's serve thread could sleep on a socket another thread had drained. Fixed in 359c0a4 and the fork's 829b808.
 - Round 5, 359c0a4: PASS. Rounds 4 and 5 ran under the owner's standing word. macOS 385, Linux 392, Windows 366 on 6230912; round 4 touched the Linux fork alone, tested on Linux. X11 and Wayland end to end in Docker on 359c0a4.
+
+## T119
+
+- Round 1, e588ee5 with the fork's f5671c5: FAIL. A search left the whole history unpacked with nothing to pack it again; an unpacked row was sized by its text's bytes, not its cells. Fixed in a9daa00 and the fork's 0baf57d, the sizing with a test that fails without it.
+- Round 2, a9daa00: FAIL. A resize's reflow, and select all or a prompt jump that returned early, still left history unpacked. Fixed in 44a4c0d by design rather than per reader: each terminal packs every two seconds output and scrolling rest, and the fork's compact returns the rows it changed.
+- Round 3, 44a4c0d: PASS. macOS 385, Linux 392, Windows 366; a counting allocator measured 85 to 95% less history memory.
