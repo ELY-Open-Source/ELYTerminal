@@ -465,7 +465,12 @@ impl alacritty_terminal::term::Graphics for Graphics {
         log::debug!("graphics {pid}: {change:?}");
     }
 
-    fn resized(&mut self, moved: &dyn Fn(Point) -> Option<Point>, columns: usize, lines: usize) {
+    fn anchors(&self) -> Vec<Point> {
+        let shared = self.lock();
+        shared.screens[usize::from(shared.alt)].anchors()
+    }
+
+    fn resized(&mut self, moved: &[Option<Point>], columns: usize, lines: usize) {
         let mut shared = self.lock();
         shared.screen().resized(moved);
         shared.size = (columns, lines);

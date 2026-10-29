@@ -204,6 +204,34 @@ fn a_reflow_keeps_a_placement_on_its_text() {
 }
 
 #[test]
+fn a_resize_keeps_a_placement_its_screen_and_history_still_hold() {
+    let mut s = screen();
+    s.feed("\x1b_Ga=p,i=1,C=1\x1b\\X\x1b[5;1HY\x1b[1;1H");
+    s.term.resize(TermSize::new(10, 3));
+    assert_eq!(s.placed(), [(1, 0, 0, 0, (0, 0))]);
+    let replies = Replies::default();
+    let config = Config {
+        scrolling_history: 3,
+        ..Config::default()
+    };
+    let mut term = Term::new(config, &TermSize::new(10, 5), replies.clone());
+    let graphics = Graphics::new(0, (10, 5), (10, 20));
+    let shared = graphics.shared();
+    term.set_graphics(Box::new(graphics));
+    let mut s = Screen {
+        term,
+        parser: Processor::new(),
+        replies,
+        shared,
+    };
+    s.transmit(1, "");
+    s.feed(&format!("{}\x1b_Ga=p,i=1,C=1\x1b\\X", "a".repeat(36)));
+    s.term.resize(TermSize::new(5, 5));
+    let (_, _, line, column, _) = s.placed()[0];
+    assert_eq!(s.term.grid()[Point::new(Line(line), Column(column))].c, 'X');
+}
+
+#[test]
 fn a_placement_the_history_s_clear_cut_keeps_its_rows_through_a_resize() {
     let mut s = screen();
     s.feed("\x1b_Ga=p,i=1,C=1\x1b\\\x1b[5;1H\n\x1b[3J");

@@ -259,18 +259,24 @@ impl Screen {
         });
     }
 
-    /// Each placement's cell moved as `moved` says; one gone drops.
-    pub fn resized(&mut self, moved: &dyn Fn(Point) -> Option<Point>) {
+    /// Each placement moved to its anchor's new cell, or dropped.
+    pub fn resized(&mut self, moved: &[Option<Point>]) {
+        let mut moved = moved.iter();
         self.placements.retain_mut(|kept| {
-            // Its first row shown: a cut top may be gone.
-            let shown = kept.line + kept.cut.0 as i32;
-            let Some(point) = moved(Point::new(Line(shown), Column(kept.column))) else {
+            let Some(point) = moved.next().copied().flatten() else {
                 return false;
             };
             kept.line = point.line.0 - kept.cut.0 as i32;
             kept.column = point.column.0;
             true
         });
+    }
+
+    /// Each placement's first row shown, past a cut top.
+    pub fn anchors(&self) -> Vec<Point> {
+        let anchor =
+            |kept: &Placement| Point::new(Line(kept.line + kept.cut.0 as i32), Column(kept.column));
+        self.placements.iter().map(anchor).collect()
     }
 
     /// Deletes what `pick` names; `free` drops images left unplaced.
