@@ -57,13 +57,6 @@ impl Screen {
         Some((at, columns, lines))
     }
 
-    /// Its grid line and column, if rooted on the grid.
-    pub fn at(&self, kept: &Placement) -> Option<(i32, usize)> {
-        let (root, columns, lines) = self.root(kept)?;
-        let column = usize::try_from(root.column as i64 + i64::from(columns)).ok()?;
-        (root.kind == Kind::Grid).then_some((root.line.saturating_add(lines), column))
-    }
-
     fn serial(&self, serial: u64) -> Option<&Placement> {
         self.placements.iter().find(|kept| kept.serial == serial)
     }

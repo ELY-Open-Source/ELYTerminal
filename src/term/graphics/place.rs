@@ -370,43 +370,39 @@ impl Screen {
             Pick::Range(first, last) => self.store.within(first, last),
             _ => Vec::new(),
         };
-        // Where each chain puts it; none for a virtual one.
-        let at: Vec<_> = self.placements.iter().map(|kept| self.at(kept)).collect();
-        let placed = |kept: &Placement, image: &Image, at: Option<(i32, usize)>| {
-            let mut here = kept.clone();
-            (here.line, here.column) = at.unwrap_or((kept.line, kept.column));
-            let shown = at.is_some();
+        // Places pick grid placements; relatives go with parents, as Ghostty's.
+        let placed = |kept: &Placement, image: &Image| {
+            let grid = kept.kind == Kind::Grid;
             match pick {
                 Pick::Shown => {
-                    let (top, bottom) = here.rows(image, cell);
-                    shown && bottom >= 0 && top < lines as i32
+                    let (top, bottom) = kept.rows(image, cell);
+                    grid && bottom >= 0 && top < lines as i32
                 }
                 Pick::Image { id, placement } => {
                     kept.image == id && (placement == 0 || kept.id == placement)
                 }
                 Pick::Cell { line, column, z } => {
-                    let covers = here.covers(image, cell, line, column);
-                    shown && covers && z.is_none_or(|z| kept.display.z == z)
+                    let covers = kept.covers(image, cell, line, column);
+                    grid && covers && z.is_none_or(|z| kept.display.z == z)
                 }
                 Pick::Column(column) => {
-                    let columns = here.cells(image, cell).0 as usize;
-                    shown && (here.column..here.column + columns).contains(&column)
+                    let columns = kept.cells(image, cell).0 as usize;
+                    grid && (kept.column..kept.column + columns).contains(&column)
                 }
                 Pick::Row(line) => {
-                    let (top, bottom) = here.rows(image, cell);
-                    shown && (top..=bottom).contains(&line)
+                    let (top, bottom) = kept.rows(image, cell);
+                    grid && (top..=bottom).contains(&line)
                 }
                 Pick::Z(z) => kept.kind != Kind::Virtual && kept.display.z == z,
                 Pick::Range(first, last) => (first..=last).contains(&kept.image),
             }
         };
-        let (store, mut at) = (&self.store, at.into_iter());
+        let store = &self.store;
         self.placements.retain(|kept| {
-            let at = at.next().flatten();
             let Some(image) = store.get(kept.image) else {
                 return false;
             };
-            let gone = placed(kept, image, at);
+            let gone = placed(kept, image);
             if gone {
                 touched.push(kept.image);
             }

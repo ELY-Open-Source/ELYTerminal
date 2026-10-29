@@ -162,3 +162,34 @@ fn a_virtual_placement_goes_only_by_its_image() {
     s.feed("\x1b_Ga=d,d=i,i=1\x1b\\");
     assert!(s.placed().is_empty());
 }
+
+#[test]
+fn a_relative_placement_goes_by_its_z_or_its_parent_alone() {
+    let mut s = screen();
+    s.transmit(2, "");
+    // Children: off a virtual parent, a negative column, a positive.
+    s.feed("\x1b_Ga=p,i=1,p=1,U=1,c=1,r=1,q=2\x1b\\\x1b[38;5;1m\x1b[1;1H\u{10EEEE}");
+    s.feed("\x1b[2;3H\x1b_Ga=p,i=1,p=2,C=1,q=2\x1b\\");
+    s.feed("\x1b_Ga=p,i=2,p=1,P=1,Q=1,H=2,c=1,r=1,z=-1,q=2\x1b\\");
+    s.feed("\x1b_Ga=p,i=2,p=2,P=1,Q=2,H=-3,c=2,r=1,q=2\x1b\\");
+    s.feed("\x1b_Ga=p,i=2,p=3,P=1,Q=2,H=3,c=2,r=1,q=2\x1b\\");
+    let relative = |s: &Screen| s.placed().iter().filter(|placed| placed.0 == 2).count();
+    // Each hits a child's cells alone, never a parent's.
+    for delete in [
+        "d=p,x=1,y=2",
+        "d=p,x=3,y=1",
+        "d=x,x=1",
+        "d=y,y=1",
+        "d=c",
+        "d=p,x=6,y=2",
+        "d=x,x=7",
+    ] {
+        s.feed(&format!("\x1b[1;3H\x1b_Ga=d,{delete}\x1b\\"));
+    }
+    assert_eq!(relative(&s), 3, "spatial deletes pass relatives by");
+    // The grid parent and its children go; the virtual stays.
+    s.feed("\x1b_Ga=d\x1b\\");
+    assert_eq!(relative(&s), 1);
+    s.feed("\x1b_Ga=d,d=z,z=-1\x1b\\");
+    assert_eq!(relative(&s), 0);
+}
