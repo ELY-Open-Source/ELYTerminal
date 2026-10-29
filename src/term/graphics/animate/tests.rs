@@ -298,3 +298,21 @@ fn a_frame_past_the_quota_takes_its_evicted_placements_along() {
     assert_eq!(s.heard(), [reply("i=6", "ENOMEM: out of memory")]);
     assert!(!s.stored(6) && s.placed().is_empty());
 }
+
+#[test]
+fn a_hidden_session_gives_its_textures_back() {
+    let s = animated();
+    let mut pictures = super::super::Pictures::default();
+    let mut shown = || {
+        let shared = s.shared.lock().unwrap();
+        let (shown, _) = pictures.shown(&shared, &[], 0, (10, 5));
+        shown[0].picture.id
+    };
+    let (first, again) = (shown(), shown());
+    assert_eq!(first, again, "a shown texture is kept");
+    assert_eq!(pictures.release().len(), 1);
+    assert!(pictures.release().is_empty());
+    let shared = s.shared.lock().unwrap();
+    let (rebuilt, _) = pictures.shown(&shared, &[], 0, (10, 5));
+    assert_ne!(rebuilt[0].picture.id, first, "shown again, it builds anew");
+}

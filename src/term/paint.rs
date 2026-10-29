@@ -81,11 +81,7 @@ pub fn grid(
             let focus = input.read(cx).focus.clone();
             window.handle_input(&focus, ElementInputHandler::new(bounds, input.clone()), cx);
             let origin = snapped(bounds.origin, window);
-            for picture in stale {
-                if let Err(error) = window.drop_image(picture) {
-                    log::error!("terminal: a texture did not drop: {error:#}");
-                }
-            }
+            drop_pictures(stale, window);
             let top = |index: usize| origin + point(px(0.), cell.height * index as f32);
             paint_pictures(&pictures, Layer::Under, origin, cell, window);
             for (index, row) in frame.rows.iter().enumerate() {
@@ -176,6 +172,18 @@ fn spans(row: &super::frame::Row) -> Vec<(usize, usize, Style)> {
             span
         })
         .collect()
+}
+
+/// Takes textures out of the window's atlas.
+pub fn drop_pictures(pictures: Vec<Arc<RenderImage>>, window: &mut Window) {
+    if !pictures.is_empty() {
+        log::debug!("terminal: {} textures dropped", pictures.len());
+    }
+    for picture in pictures {
+        if let Err(error) = window.drop_image(picture) {
+            log::error!("terminal: a texture did not drop: {error:#}");
+        }
+    }
 }
 
 /// Kitty graphics placements of `layer`, cells measured from `origin`.

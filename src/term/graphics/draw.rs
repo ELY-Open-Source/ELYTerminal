@@ -142,6 +142,11 @@ impl Pictures {
         });
         (shown, stale)
     }
+
+    /// Every texture built, for a session hidden or closed.
+    pub fn release(&mut self) -> Vec<Arc<RenderImage>> {
+        self.built.drain().map(|(_, picture)| picture).collect()
+    }
 }
 
 /// The whole image and the cells it fills, from `corner`.

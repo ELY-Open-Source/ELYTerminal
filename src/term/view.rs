@@ -198,10 +198,12 @@ impl TerminalView {
     }
 
     /// Whether it is the session shown: one shown in an active window posts no notification.
-    pub fn set_front(&mut self, front: bool) {
+    pub fn set_front(&mut self, front: bool, window: &mut Window) {
         if front && !self.front {
             // A hidden session's animations paused; their gaps start afresh.
             self.pty.graphics().resume();
+        } else if !front {
+            paint::drop_pictures(self.pictures.release(), window);
         }
         self.front = front;
     }
