@@ -1,5 +1,7 @@
 //! A write under way, its base64 decoded as it comes.
 
+use std::rc::Rc;
+
 use base64_simd::STANDARD;
 
 use super::{LIMIT, Place};
@@ -19,6 +21,9 @@ impl Fail {
         }
     }
 }
+
+/// Each type and its data, which aliases share.
+pub type Parts = Vec<(String, Rc<Vec<u8>>)>;
 
 /// A write's types and data so far.
 #[derive(Debug)]
@@ -84,19 +89,29 @@ impl Write {
         Ok(())
     }
 
-    /// `aliases` hold what `mime` holds.
-    pub fn alias(&mut self, mime: String, aliases: Vec<String>) {
+    /// `aliases` hold what `mime` holds; their names count too.
+    pub fn alias(&mut self, mime: String, aliases: Vec<String>) -> Result<(), Fail> {
+        self.size += aliases.iter().map(String::len).sum::<usize>();
+        if self.size > LIMIT {
+            log::warn!("clipboard: a write's aliases pass {LIMIT} bytes");
+            return Err(Fail::TooBig);
+        }
         self.aliases
             .extend(aliases.into_iter().map(|alias| (alias, mime.clone())));
+        Ok(())
     }
 
-    /// Each type and its data, aliases after.
-    pub fn finish(mut self) -> Result<Vec<(String, Vec<u8>)>, Fail> {
+    /// Each type and its data, aliases after, sharing it.
+    pub fn finish(mut self) -> Result<Parts, Fail> {
         self.close()?;
-        let mut parts = self.parts;
+        let mut parts: Parts = self
+            .parts
+            .into_iter()
+            .map(|(mime, data)| (mime, Rc::new(data)))
+            .collect();
         for (alias, mime) in self.aliases {
             let held = parts.iter().find(|(sent, _)| *sent == mime);
-            match held.map(|(_, data)| data.clone()) {
+            match held.map(|(_, data)| Rc::clone(data)) {
                 Some(data) if !parts.iter().any(|(sent, _)| *sent == alias) => {
                     parts.push((alias, data));
                 }

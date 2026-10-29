@@ -86,6 +86,8 @@ fn an_overlong_body_is_dropped() {
     let chunk = |n| [&b"\x1b]5522;type=wdata;"[..], &vec![b'A'; n - 16], b"\x07"].concat();
     assert_eq!(scan(&[&chunk(most)]).concat().len(), most);
     assert_eq!(scan(&[&chunk(most + 1)]), long(most));
+    let kept = scan(&[b"\x1b]5522;wdata;QQ\n==\x07"]);
+    assert_eq!(kept, ["5522;wdata;QQ\n=="]);
 }
 
 #[test]

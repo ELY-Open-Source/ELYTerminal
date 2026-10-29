@@ -123,10 +123,10 @@ pub(super) fn read(body: &[u8]) -> Option<Packet> {
     })
 }
 
-/// A packet past the bound: a write's fails it.
+/// A packet past the bound fails a write, unless reading.
 pub(super) fn long(body: &[u8]) -> Option<Packet> {
     let meta = body.split(|&byte| byte == b';').next().unwrap_or_default();
-    matches!(kind(meta).as_deref(), Some("wdata" | "walias")).then_some(Packet::Broken)
+    (kind(meta).as_deref() != Some("read")).then_some(Packet::Broken)
 }
 
 /// Its type, read though another pair is malformed.
@@ -244,7 +244,7 @@ mod serve;
 mod session;
 mod write;
 
-use mime::{data, item, types};
+use mime::{data, holds, item, types};
 pub(super) use session::{Asking, Session, Step};
 pub(super) use write::{Fail, Write};
 

@@ -1,11 +1,14 @@
 //! Types as gpui's clipboard holds them: text, an image, files.
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use gpui::{ClipboardEntry, ClipboardItem, ClipboardString, ExternalPaths, Image, ImageFormat};
 
 use super::Fail;
-use crate::term::tap::file_uri;
+use crate::term::tap::folder::file_uri;
 
 pub(in crate::term) const TEXT: &str = "text/plain";
 pub(in crate::term) const FILES: &str = "text/uri-list";
@@ -15,13 +18,13 @@ fn is_text(mime: &str) -> bool {
 }
 
 /// A write as gpui keeps it: first text, image, files.
-pub fn item(parts: &[(String, Vec<u8>)]) -> Result<ClipboardItem, Fail> {
+pub fn item(parts: &[(String, Rc<Vec<u8>>)]) -> Result<ClipboardItem, Fail> {
     let mut entries: Vec<ClipboardEntry> = Vec::new();
     let held =
         |entries: &[ClipboardEntry], kind: fn(&ClipboardEntry) -> bool| entries.iter().any(kind);
     for (mime, data) in parts {
         if is_text(mime) && !held(&entries, |it| matches!(it, ClipboardEntry::String(_))) {
-            let Ok(text) = String::from_utf8(data.clone()) else {
+            let Ok(text) = String::from_utf8(data.to_vec()) else {
                 log::warn!("clipboard: {mime} is not UTF-8");
                 return Err(Fail::Invalid);
             };
@@ -31,7 +34,7 @@ pub fn item(parts: &[(String, Vec<u8>)]) -> Result<ClipboardItem, Fail> {
         {
             entries.push(ClipboardEntry::Image(Image::from_bytes(
                 format,
-                data.clone(),
+                data.to_vec(),
             )));
         } else if mime == FILES
             && !held(&entries, |it| {
@@ -51,6 +54,21 @@ pub fn item(parts: &[(String, Vec<u8>)]) -> Result<ClipboardItem, Fail> {
         return Err(Fail::Invalid);
     }
     Ok(ClipboardItem { entries })
+}
+
+/// Whether the read-back clipboard holds the written text, files, image.
+pub fn holds(read: Option<&ClipboardItem>, written: &ClipboardItem) -> bool {
+    let Some(read) = read else {
+        return false;
+    };
+    written.entries.iter().all(|entry| match entry {
+        // A system may offer an image in other formats too.
+        ClipboardEntry::Image(_) => read
+            .entries
+            .iter()
+            .any(|kept| matches!(kept, ClipboardEntry::Image(_))),
+        entry => read.entries.contains(entry),
+    })
 }
 
 /// The types `item` offers.

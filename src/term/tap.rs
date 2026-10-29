@@ -406,7 +406,9 @@ impl Osc {
                     self.finish(2, found);
                     State::Escape
                 }
-                (State::Osc, 0x00..=0x06 | 0x08..=0x17 | 0x19 | 0x1c..=0x1f) => {
+                (State::Osc, 0x00..=0x06 | 0x08..=0x17 | 0x19 | 0x1c..=0x1f)
+                    if !self.body.starts_with(b"5522;") =>
+                {
                     self.length += 1;
                     State::Osc
                 }
@@ -483,14 +485,13 @@ impl Osc {
 /// The most values, subparameters too, one sequence holds before vte drops it.
 const PARAMS: usize = 32;
 
-mod folder;
+pub(in crate::term) mod folder;
 mod holder;
 mod modes;
 #[cfg(test)]
 mod tests;
 
 use folder::folder;
-pub(in crate::term) use folder::folder as file_uri;
 #[cfg(windows)]
 use holder::nested;
 use holder::prompter;

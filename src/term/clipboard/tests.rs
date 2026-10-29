@@ -1,9 +1,16 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use base64_simd::STANDARD;
 use gpui::{ClipboardEntry, ClipboardItem, ClipboardString, ExternalPaths, Image, ImageFormat};
 
-use super::{mime::uris, *};
+use super::{
+    mime::{holds, uris},
+    session::PASTE_LIFE,
+    *,
+};
 
 /// A folder and its `file://` form on this system.
 #[cfg(unix)]
@@ -318,7 +325,10 @@ fn a_uri_list_names_the_files_it_was_made_of() {
     #[cfg(windows)]
     paths.push(PathBuf::from(r"\\server\share\a b"));
     let list = uris(&paths);
-    let parts = [("text/uri-list".to_string(), list.into_bytes())];
+    let parts = [(
+        "text/uri-list".to_string(),
+        std::rc::Rc::new(list.into_bytes()),
+    )];
     let item = item(&parts).expect("files");
     let [ClipboardEntry::ExternalPaths(back)] = item.entries.as_slice() else {
         panic!("one file list")
@@ -327,10 +337,10 @@ fn a_uri_list_names_the_files_it_was_made_of() {
 }
 
 #[test]
-fn a_password_reads_unasked_once_or_for_the_session() {
+fn a_paste_password_reads_once_its_place_soon_and_only_the_newest() {
     let mut session = Session::default();
-    let asking = |word: &str| Read {
-        place: Place::Clipboard,
+    let asking = |word: &str, place| Read {
+        place,
         mimes: vec!["text/plain".into()],
         id: String::new(),
         pass: Some(Pass {
@@ -338,19 +348,113 @@ fn a_password_reads_unasked_once_or_for_the_session() {
             name: "Paste event".into(),
         }),
     };
-    let once = session.once().unwrap();
-    assert_eq!(once.len(), 32);
-    assert_ne!(session.once().unwrap(), once);
-    assert!(session.granted(&asking(&once)));
+    let start = Instant::now();
+    let soon = start + Duration::from_secs(1);
+    let old = session.once(Place::Clipboard, start).unwrap();
+    let word = session.once(Place::Clipboard, start).unwrap();
+    assert_eq!(word.len(), 32);
     assert!(
-        !session.granted(&asking(&once)),
-        "a one-time password is spent"
+        !session.granted(&asking(&old, Place::Clipboard), soon),
+        "a newer paste's only"
     );
-    assert!(!session.granted(&asking("kept")));
-    session.always("kept".into());
-    assert!(session.granted(&asking("kept")) && session.granted(&asking("kept")));
-    assert!(!session.granted(&Read {
-        pass: None,
-        ..asking("kept")
-    }));
+    assert!(
+        !session.granted(&asking(&word, Place::Primary), soon),
+        "its own place's only"
+    );
+    assert!(session.granted(&asking(&word, Place::Clipboard), soon));
+    assert!(
+        !session.granted(&asking(&word, Place::Clipboard), soon),
+        "spent"
+    );
+    let late = session.once(Place::Clipboard, start).unwrap();
+    assert!(
+        !session.granted(&asking(&late, Place::Clipboard), start + PASTE_LIFE),
+        "expired"
+    );
+    // A session's grant keeps its place and lasts.
+    session.always("kept".into(), Place::Clipboard);
+    assert!(session.granted(&asking("kept", Place::Clipboard), soon));
+    assert!(session.granted(&asking("kept", Place::Clipboard), start + PASTE_LIFE * 100));
+    assert!(!session.granted(&asking("kept", Place::Primary), soon));
+    assert!(!session.granted(
+        &Read {
+            pass: None,
+            ..asking("kept", Place::Clipboard)
+        },
+        soon
+    ));
+}
+
+#[test]
+fn aliases_share_their_data_and_their_names_count() {
+    let mut write = Write::new(Place::Clipboard, String::new());
+    write.add("text/plain", b"QUJD").unwrap();
+    write
+        .alias(
+            "text/plain".into(),
+            vec!["UTF8_STRING".into(), "text/x".into()],
+        )
+        .unwrap();
+    let parts = write.finish().unwrap();
+    assert!(
+        std::rc::Rc::ptr_eq(&parts[0].1, &parts[1].1)
+            && std::rc::Rc::ptr_eq(&parts[0].1, &parts[2].1)
+    );
+    let mut write = Write::new(Place::Clipboard, String::new());
+    write.add("text/plain", b"QUJD").unwrap();
+    let names = (0..20).map(|n| format!("text/alias-{n}")).collect();
+    assert_eq!(write.alias("text/plain".into(), names), Err(Fail::TooBig));
+}
+
+#[test]
+fn an_overlong_packet_fails_a_write_unless_it_reads() {
+    let id = "x".repeat(BODY);
+    assert_eq!(
+        long(format!("type=write:id={id}").as_bytes()),
+        Some(Packet::Broken)
+    );
+    assert_eq!(long(format!("id={id}").as_bytes()), Some(Packet::Broken));
+    assert_eq!(long(b"type=read;AAAA"), None);
+}
+
+#[test]
+fn a_write_holds_only_what_the_clipboard_read_back() {
+    let text = |text: &str| ClipboardEntry::String(ClipboardString::new(text.into()));
+    let png = ClipboardEntry::Image(Image::from_bytes(ImageFormat::Png, vec![1]));
+    let tiff = ClipboardEntry::Image(Image::from_bytes(ImageFormat::Tiff, vec![2]));
+    let files = |name| ClipboardEntry::ExternalPaths(ExternalPaths(vec![local(name)].into()));
+    let item = |entries| ClipboardItem { entries };
+    let written = item(vec![text("a"), png, files("x")]);
+    assert!(holds(
+        Some(&item(vec![files("x"), text("a"), tiff.clone()])),
+        &written
+    ));
+    assert!(!holds(
+        Some(&item(vec![files("x"), text("old"), tiff.clone()])),
+        &written
+    ));
+    assert!(!holds(
+        Some(&item(vec![files("y"), text("a"), tiff.clone()])),
+        &written
+    ));
+    assert!(!holds(Some(&item(vec![files("x"), text("a")])), &written));
+    assert!(!holds(None, &written));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_unix_file_name_not_in_utf8_goes_and_comes_back() {
+    use std::os::unix::ffi::OsStringExt;
+    let name = PathBuf::from(std::ffi::OsString::from_vec(b"/tmp/a\xffb".to_vec()));
+    let list = uris(std::slice::from_ref(&name));
+    assert_eq!(list, "file:///tmp/a%FFb\r\n");
+    let parts = [(
+        "text/uri-list".to_string(),
+        std::rc::Rc::new(list.into_bytes()),
+    )];
+    let item = item(&parts).expect("the file");
+    let [ClipboardEntry::ExternalPaths(back)] = item.entries.as_slice() else {
+        panic!("one file list")
+    };
+    assert_eq!(back.paths(), [name]);
 }

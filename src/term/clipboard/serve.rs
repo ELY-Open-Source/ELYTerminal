@@ -1,8 +1,10 @@
 //! The view's side: the system clipboard read and written.
 
+use std::time::Instant;
+
 use gpui::{ClipboardItem, Context};
 
-use super::{Asking, LIST, Packet, Place, Read, Step, answer, answers, found};
+use super::{Asking, LIST, Packet, Place, Read, Step, answer, answers, found, holds};
 use crate::term::view::TerminalView;
 
 /// Linux alone has a primary selection.
@@ -20,8 +22,19 @@ impl TerminalView {
                     self.pty.pid,
                     super::types(&item).join(" ")
                 );
-                store(place, item, cx);
-                self.pty.write(answer("write", "DONE", &[("id", &id)], b""));
+                store(place, item.clone(), cx);
+                // The read back tells a failed write; Wayland's comes later.
+                let wayland = cx.compositor_name() == "Wayland";
+                let status = if wayland || holds(load(place, cx).as_ref(), &item) {
+                    "DONE"
+                } else {
+                    log::warn!(
+                        "terminal {}: the {place:?} did not take the write",
+                        self.pty.pid
+                    );
+                    "EIO"
+                };
+                self.pty.write(answer("write", status, &[("id", &id)], b""));
             }
             Step::Read(read) => self.read_clipboard(read, cx),
         }
@@ -36,7 +49,7 @@ impl TerminalView {
         }
         let item = load(read.place, cx);
         let listing = read.mimes.iter().all(|mime| mime == LIST);
-        if listing || self.clips.granted(&read) {
+        if listing || self.clips.granted(&read, Instant::now()) {
             log::info!("terminal {pid}: a program reads {}", read.mimes.join(" "));
             return self
                 .pty
@@ -69,7 +82,7 @@ impl TerminalView {
         }
         if always && let Some(pass) = &read.pass {
             log::info!("terminal {pid}: {} may read for this session", pass.name);
-            self.clips.always(pass.word.clone());
+            self.clips.always(pass.word.clone(), read.place);
         }
         log::info!(
             "terminal {pid}: the user allowed a read of {}",
@@ -82,7 +95,7 @@ impl TerminalView {
     /// A paste under mode 5522: types, and a one-read password.
     pub(in crate::term) fn paste_event(&mut self, cx: &mut Context<Self>) {
         let pid = self.pty.pid;
-        let word = match self.clips.once() {
+        let word = match self.clips.once(Place::Clipboard, Instant::now()) {
             Ok(word) => word,
             Err(error) => return log::error!("terminal {pid}: no paste event password: {error}"),
         };

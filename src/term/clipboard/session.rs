@@ -1,6 +1,6 @@
 //! A terminal's write, grants and the read it asks about.
 
-use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use gpui::ClipboardItem;
 
@@ -15,11 +15,14 @@ pub enum Step {
     Read(Read),
 }
 
-/// A password's grant: every read this session, or one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Grant {
-    Always,
-    Once,
+/// How long a paste's password reads: the spec's short timeout.
+pub const PASTE_LIFE: Duration = Duration::from_secs(10);
+
+/// The newest paste's password, for one read of its place.
+struct Paste {
+    word: String,
+    place: Place,
+    at: Instant,
 }
 
 /// A read waiting on the user, with what it reads.
@@ -32,7 +35,9 @@ pub struct Asking {
 pub struct Session {
     /// The write under way; none after a failure.
     writing: Option<Write>,
-    grants: HashMap<String, Grant>,
+    /// Passwords the user let read their place this session.
+    always: Vec<(String, Place)>,
+    paste: Option<Paste>,
     pub asking: Option<Asking>,
 }
 
@@ -76,10 +81,7 @@ impl Session {
                     }
                 };
             }
-            Packet::Alias { mime, aliases } => {
-                write.alias(mime, aliases);
-                Ok(())
-            }
+            Packet::Alias { mime, aliases } => write.alias(mime, aliases),
             Packet::Broken => Err(super::Fail::Invalid),
             Packet::Read(_) | Packet::Write { .. } => unreachable!("taken above"),
         };
@@ -95,32 +97,33 @@ impl Session {
         }
     }
 
-    /// Whether `read` reads unasked; a one-time grant is spent.
-    pub fn granted(&mut self, read: &Read) -> bool {
+    /// Whether `read` reads unasked; a paste's password is spent.
+    pub fn granted(&mut self, read: &Read, now: Instant) -> bool {
         let Some(pass) = &read.pass else {
             return false;
         };
-        match self.grants.get(&pass.word) {
-            Some(Grant::Always) => true,
-            Some(Grant::Once) => {
-                self.grants.remove(&pass.word);
-                true
-            }
-            None => false,
+        let pasted = |paste: &mut Paste| paste.word == pass.word && paste.place == read.place;
+        if let Some(paste) = self.paste.take_if(pasted) {
+            return now.saturating_duration_since(paste.at) < PASTE_LIFE;
         }
+        self.always.contains(&(pass.word.clone(), read.place))
     }
 
-    /// Lets `word` read for the rest of the session.
-    pub fn always(&mut self, word: String) {
-        self.grants.insert(word, Grant::Always);
+    /// Lets `word` read `place` for the rest of the session.
+    pub fn always(&mut self, word: String, place: Place) {
+        self.always.push((word, place));
     }
 
-    /// A fresh password for one read, as paste events give.
-    pub fn once(&mut self) -> Result<String, getrandom::Error> {
+    /// A paste event's fresh password; an older one is void.
+    pub fn once(&mut self, place: Place, now: Instant) -> Result<String, getrandom::Error> {
         let mut bytes = [0; 16];
         getrandom::fill(&mut bytes)?;
         let word: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
-        self.grants.insert(word.clone(), Grant::Once);
+        self.paste = Some(Paste {
+            word: word.clone(),
+            place,
+            at: now,
+        });
         Ok(word)
     }
 }
