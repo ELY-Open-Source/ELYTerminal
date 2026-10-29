@@ -332,3 +332,13 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, 488e9a5: FAIL. The Windows Claude Code record ran past the evidence file, whose line filter had dropped the `❯ a` row, drawn with a no-break space, and the version banner. The encoding check passed: the probe picks the listener's own bytes for both modes. Fixed in 842b6b7: whole PROBE blocks in the evidence, and both records name the proof's reach, the encoder and OpenConsole, not gpui's dispatch of a real key.
 - Round 2, 842b6b7: PASS.
 - A first try at a GUI run on the PC grabbed the owner's own ELYTerminal window by name; it was caught at the first capture, before any key, the settings restored and only the test's process stopped. The proof ran headless after.
+
+## T113
+
+- Round 1, f58b66c: FAIL. A placement whose cursor move scrolled the screen stayed put; a region from the top (`CSI 1;4 r`) cut nothing; a reflow left a placement off its text. Fixed in bc5acb1: a whole-screen scroll moves every placement; a region cuts at its top; the fork's resize hands a map of cells.
+- Round 2, bc5acb1: FAIL. A wide character's reflow put a placement a cell off; a placement ED 3 cut was dropped at the next resize. Fixed in add5212, with the fork's map counting text cells and logical lines from the oldest.
+- Round 3, add5212: FAIL. A shorter window cutting bottom lines and a full history dropping a wrapped line's front misled the line count. Fixed in 9ff07fc: the fork marks each anchor's cell with a hyperlink of its own through the resize.
+- Round 4, 9ff07fc: the run disconnected after one finding: a program's look-alike link made the next resize panic. Fixed in 00e1508: marks match by identity.
+- Round 5, 00e1508: two runs disconnected; the reviewer restarted fresh. FAIL. gpui's clip squeezed an image cut at the edge; a cut in rows let a smaller cell uncover pixels. Fixed in a1596c2: cuts go into the source, as Ghostty clips, and a clipped image paints whole under a mask.
+- Round 6, a1596c2: FAIL. A bottom cut of a 1x1 image over two rows rounded to nothing. Fixed in 0aff760: the source keeps fractions of a pixel.
+- Round 7, 0aff760: PASS, with 216 clipping cases and a native draw check. Rounds 4 to 7 ran under the owner's standing word. macOS 354, Linux 361, Windows 335.
