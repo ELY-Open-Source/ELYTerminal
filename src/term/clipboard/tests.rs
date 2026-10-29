@@ -1,14 +1,10 @@
-use std::{
-    path::PathBuf,
-    time::{Duration, Instant},
-};
+use std::path::PathBuf;
 
 use base64_simd::STANDARD;
 use gpui::{ClipboardEntry, ClipboardItem, ClipboardString, ExternalPaths, Image, ImageFormat};
 
 use super::{
     mime::{holds, uris},
-    session::PASTE_LIFE,
     *,
 };
 
@@ -337,55 +333,6 @@ fn a_uri_list_names_the_files_it_was_made_of() {
 }
 
 #[test]
-fn a_paste_password_reads_once_its_place_soon_and_only_the_newest() {
-    let mut session = Session::default();
-    let asking = |word: &str, place| Read {
-        place,
-        mimes: vec!["text/plain".into()],
-        id: String::new(),
-        pass: Some(Pass {
-            word: word.into(),
-            name: "Paste event".into(),
-        }),
-    };
-    let start = Instant::now();
-    let soon = start + Duration::from_secs(1);
-    let old = session.once(Place::Clipboard, start).unwrap();
-    let word = session.once(Place::Clipboard, start).unwrap();
-    assert_eq!(word.len(), 32);
-    assert!(
-        !session.granted(&asking(&old, Place::Clipboard), soon),
-        "a newer paste's only"
-    );
-    assert!(
-        !session.granted(&asking(&word, Place::Primary), soon),
-        "its own place's only"
-    );
-    assert!(session.granted(&asking(&word, Place::Clipboard), soon));
-    assert!(
-        !session.granted(&asking(&word, Place::Clipboard), soon),
-        "spent"
-    );
-    let late = session.once(Place::Clipboard, start).unwrap();
-    assert!(
-        !session.granted(&asking(&late, Place::Clipboard), start + PASTE_LIFE),
-        "expired"
-    );
-    // A session's grant keeps its place and lasts.
-    session.always("kept".into(), Place::Clipboard);
-    assert!(session.granted(&asking("kept", Place::Clipboard), soon));
-    assert!(session.granted(&asking("kept", Place::Clipboard), start + PASTE_LIFE * 100));
-    assert!(!session.granted(&asking("kept", Place::Primary), soon));
-    assert!(!session.granted(
-        &Read {
-            pass: None,
-            ..asking("kept", Place::Clipboard)
-        },
-        soon
-    ));
-}
-
-#[test]
 fn aliases_share_their_data_and_their_names_count() {
     let mut write = Write::new(Place::Clipboard, String::new());
     write.add("text/plain", b"QUJD").unwrap();
@@ -404,6 +351,10 @@ fn aliases_share_their_data_and_their_names_count() {
     write.add("text/plain", b"QUJD").unwrap();
     let names = (0..20).map(|n| format!("text/alias-{n}")).collect();
     assert_eq!(write.alias("text/plain".into(), names), Err(Fail::TooBig));
+    // Each alias holds its type's name too.
+    let mut write = Write::new(Place::Clipboard, String::new());
+    let few = vec!["a".to_string(), "b".to_string()];
+    assert_eq!(write.alias("t".repeat(40), few), Err(Fail::TooBig));
 }
 
 #[test]
@@ -438,6 +389,12 @@ fn a_write_holds_only_what_the_clipboard_read_back() {
         &written
     ));
     assert!(!holds(Some(&item(vec![files("x"), text("a")])), &written));
+    // An old image of the same format is no proof.
+    let old = ClipboardEntry::Image(Image::from_bytes(ImageFormat::Png, vec![9]));
+    assert!(!holds(
+        Some(&item(vec![files("x"), text("a"), old])),
+        &written
+    ));
     assert!(!holds(None, &written));
 }
 

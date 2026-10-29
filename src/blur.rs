@@ -11,6 +11,12 @@ mod windows;
 #[cfg(target_os = "linux")]
 mod x11;
 
+/// Whether a primary selection exists; Wayland may lack one.
+#[cfg(target_os = "linux")]
+pub fn primary_selection() -> bool {
+    wayland::PRIMARY.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// What the window shows of the desktop: blurred or clear while the background lets it through.
 pub fn appearance(settings: &Settings) -> WindowBackgroundAppearance {
     if settings.background_opacity >= 1.0 {

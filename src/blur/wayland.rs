@@ -1,4 +1,9 @@
-use std::{ffi::c_void, mem::ManuallyDrop, ptr::NonNull};
+use std::{
+    ffi::c_void,
+    mem::ManuallyDrop,
+    ptr::NonNull,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use anyhow::Context as _;
 use gpui::Window;
@@ -27,6 +32,9 @@ pub struct Effect {
     /// The rect the compositor blurs behind, as last sent.
     blurs: Option<[i32; 4]>,
 }
+
+/// Whether the compositor offers a primary selection; X11 always does.
+pub(super) static PRIMARY: AtomicBool = AtomicBool::new(true);
 
 /// What the compositor offers, as its events say.
 #[derive(Default)]
@@ -72,6 +80,12 @@ impl Effect {
         let (globals, mut queue) =
             registry_queue_init::<Offers>(&connection).context("blur: Wayland's globals")?;
         let qh = queue.handle();
+        let primary = globals.contents().with_list(|list| {
+            list.iter()
+                .any(|global| global.interface == "zwp_primary_selection_device_manager_v1")
+        });
+        PRIMARY.store(primary, Ordering::Relaxed);
+        log::info!("clipboard: the compositor offers a primary selection: {primary}");
         let kde = globals.contents().with_list(|list| {
             list.iter()
                 .any(|global| global.interface == "org_kde_kwin_blur_manager")

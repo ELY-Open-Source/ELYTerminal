@@ -7,15 +7,45 @@ use gpui::{ClipboardItem, Context};
 use super::{Asking, LIST, Packet, Place, Read, Step, answer, answers, found, holds};
 use crate::term::view::TerminalView;
 
-/// Linux alone has a primary selection.
-const PRIMARY: bool = cfg!(any(target_os = "linux", target_os = "freebsd"));
+/// Whether a primary selection exists: Linux's, unless Wayland lacks it.
+fn primary() -> bool {
+    #[cfg(target_os = "linux")]
+    return crate::blur::primary_selection();
+    #[cfg(not(target_os = "linux"))]
+    false
+}
+
+/// Whether another program holds Windows' clipboard open.
+#[cfg(windows)]
+fn busy() -> bool {
+    use windows_sys::Win32::System::DataExchange::{CloseClipboard, OpenClipboard};
+    // SAFETY: opened for no window, closed at once.
+    if unsafe { OpenClipboard(std::ptr::null_mut()) } == 0 {
+        return true;
+    }
+    unsafe { CloseClipboard() };
+    false
+}
+
+#[cfg(not(windows))]
+fn busy() -> bool {
+    false
+}
 
 impl TerminalView {
     /// One OSC 5522 packet.
     pub(in crate::term) fn clipboard(&mut self, packet: Packet, cx: &mut Context<Self>) {
-        match self.clips.heard(packet, PRIMARY) {
+        match self.clips.heard(packet, primary()) {
             Step::Nothing => {}
             Step::Answer(bytes) => self.pty.write(bytes),
+            Step::Store(_, id, _) if busy() => {
+                log::warn!(
+                    "terminal {}: the clipboard is busy; a write waits",
+                    self.pty.pid
+                );
+                self.pty
+                    .write(answer("write", "EBUSY", &[("id", &id)], b""));
+            }
             Step::Store(place, id, item) => {
                 log::info!(
                     "terminal {}: a program writes {} to the {place:?}",
@@ -23,9 +53,8 @@ impl TerminalView {
                     super::types(&item).join(" ")
                 );
                 store(place, item.clone(), cx);
-                // The read back tells a failed write; Wayland's comes later.
-                let wayland = cx.compositor_name() == "Wayland";
-                let status = if wayland || holds(load(place, cx).as_ref(), &item) {
+                // gpui reports no failed write; the read back tells.
+                let status = if holds(load(place, cx).as_ref(), &item) {
                     "DONE"
                 } else {
                     log::warn!(
@@ -43,9 +72,13 @@ impl TerminalView {
     fn read_clipboard(&mut self, read: Read, cx: &mut Context<Self>) {
         let pid = self.pty.pid;
         let refuse = |status| answer("read", status, &[("id", &read.id)], b"");
-        if read.place == Place::Primary && !PRIMARY {
+        if read.place == Place::Primary && !primary() {
             log::warn!("terminal {pid}: a read of the primary selection, none here");
             return self.pty.write(refuse("ENOSYS"));
+        }
+        if busy() {
+            log::warn!("terminal {pid}: the clipboard is busy; a read waits");
+            return self.pty.write(refuse("EBUSY"));
         }
         let item = load(read.place, cx);
         let listing = read.mimes.iter().all(|mime| mime == LIST);
@@ -95,6 +128,9 @@ impl TerminalView {
     /// A paste under mode 5522: types, and a one-read password.
     pub(in crate::term) fn paste_event(&mut self, cx: &mut Context<Self>) {
         let pid = self.pty.pid;
+        if busy() {
+            return log::warn!("terminal {pid}: the clipboard is busy; no paste event");
+        }
         let word = match self.clips.once(Place::Clipboard, Instant::now()) {
             Ok(word) => word,
             Err(error) => return log::error!("terminal {pid}: no paste event password: {error}"),
@@ -131,3 +167,6 @@ fn store(place: Place, item: ClipboardItem, cx: &mut Context<TerminalView>) {
         Place::Primary => unreachable!("a primary write is refused before"),
     }
 }
+
+#[cfg(all(windows, test))]
+mod tests;

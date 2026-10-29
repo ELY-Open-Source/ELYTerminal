@@ -66,7 +66,7 @@ foreign-types = "0.5"
 [target.'cfg(windows)'.dependencies]
 raw-window-handle = "0.6"
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
-windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO"] }
@@ -77,7 +77,7 @@ vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "7c7404dfc0a8c
 xim-ctext = { path = "vendor/xim-ctext" }
 gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "b4f0cefd459f028a3bb820056806557e31e0d235" }
 gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "bf1ce7c431459d23522884d7e668183bd5fb9555" }
-gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "c2b87430f617383ae2edab2178431e4ad469f762" }
+gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "128f5a9396678e203f6dce0601f2b650e1fc6e02" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }

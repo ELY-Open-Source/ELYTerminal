@@ -91,7 +91,10 @@ impl Write {
 
     /// `aliases` hold what `mime` holds; their names count too.
     pub fn alias(&mut self, mime: String, aliases: Vec<String>) -> Result<(), Fail> {
-        self.size += aliases.iter().map(String::len).sum::<usize>();
+        self.size += aliases
+            .iter()
+            .map(|alias| alias.len() + mime.len())
+            .sum::<usize>();
         if self.size > LIMIT {
             log::warn!("clipboard: a write's aliases pass {LIMIT} bytes");
             return Err(Fail::TooBig);

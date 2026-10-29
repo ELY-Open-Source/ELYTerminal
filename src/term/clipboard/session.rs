@@ -127,3 +127,6 @@ impl Session {
         Ok(word)
     }
 }
+
+#[cfg(test)]
+mod tests;

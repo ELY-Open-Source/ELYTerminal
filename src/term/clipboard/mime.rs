@@ -62,11 +62,11 @@ pub fn holds(read: Option<&ClipboardItem>, written: &ClipboardItem) -> bool {
         return false;
     };
     written.entries.iter().all(|entry| match entry {
-        // A system may offer an image in other formats too.
-        ClipboardEntry::Image(_) => read
-            .entries
-            .iter()
-            .any(|kept| matches!(kept, ClipboardEntry::Image(_))),
+        // A system may convert it; the same format must match.
+        ClipboardEntry::Image(image) => read.entries.iter().any(|kept| match kept {
+            ClipboardEntry::Image(kept) => kept.format != image.format || kept.bytes == image.bytes,
+            _ => false,
+        }),
         entry => read.entries.contains(entry),
     })
 }
