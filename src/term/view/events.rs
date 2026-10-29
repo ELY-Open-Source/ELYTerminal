@@ -7,7 +7,7 @@ const IDLE: Duration = Duration::from_secs(2);
 
 impl TerminalView {
     /// Packs idle history once output and scrolling have rested.
-    pub(super) fn compact_later(&mut self, cx: &mut Context<Self>) {
+    pub(in crate::term) fn compact_later(&mut self, cx: &mut Context<Self>) {
         self.compacting = Some(cx.spawn(async move |view, cx| {
             cx.background_executor().timer(IDLE).await;
             let packed = view.update(cx, |view, _| {

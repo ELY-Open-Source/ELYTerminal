@@ -329,6 +329,8 @@ impl TerminalView {
             );
             cx.notify();
         }
+        // Searching unpacked the history; pack it again once idle.
+        self.compact_later(cx);
     }
 
     /// Steps to a newer match, or an older one, and scrolls it into view.
