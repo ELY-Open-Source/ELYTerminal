@@ -28,7 +28,7 @@ use windows_sys::{
 
 /// Windows 11's first build, whose DWM moves an acrylic window as fast as a clear one.
 const ELEVEN: u32 = 22000;
-/// Windows 11 22H2, the first build whose DWM draws Mica behind a window.
+/// Windows 11 22H2, the first build that draws Mica.
 const MICA: u32 = 22621;
 
 /// gpui's window procedure, which the main windows' pass every message on to.
@@ -172,7 +172,6 @@ fn accent(window: HWND, state: u32) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The running Windows' build.
 /// Whether this build draws Mica; read once, logged.
 pub fn mica() -> bool {
     static MICA_DRAWN: OnceLock<bool> = OnceLock::new();
@@ -189,6 +188,7 @@ pub fn mica() -> bool {
     })
 }
 
+/// The running Windows' build.
 fn build() -> anyhow::Result<u32> {
     let mut version: OSVERSIONINFOW = unsafe { std::mem::zeroed() };
     version.dwOSVersionInfoSize = size_of::<OSVERSIONINFOW>() as u32;

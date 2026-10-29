@@ -36,7 +36,7 @@ pub fn mica() -> bool {
     false
 }
 
-/// The blur the backdrop names: Mica where Windows draws it, else Acrylic.
+/// The backdrop's blur: Mica where Windows draws it, else Acrylic.
 fn blurred(backdrop: Backdrop) -> WindowBackgroundAppearance {
     match backdrop {
         Backdrop::Mica if mica() => WindowBackgroundAppearance::MicaBackdrop,
