@@ -112,6 +112,10 @@ pub struct TerminalView {
     _blink: Task<()>,
     /// Wakes the view at its animations' next frame.
     animate: Option<Task<()>>,
+    /// Packs idle history once output and scrolling rest.
+    compacting: Option<Task<()>>,
+    /// The view's place in the history as last drawn.
+    offset: usize,
     _herdr: Task<()>,
     _focus: [Subscription; 3],
     _settings: Subscription,
@@ -174,6 +178,8 @@ impl TerminalView {
             _events: Self::pump(events, cx),
             _blink: Self::blink(cx),
             animate: None,
+            compacting: None,
+            offset: 0,
             _herdr: super::herdr::follow(cx),
             _settings: cx.observe_global::<SettingsStore>(|view, cx| {
                 view.pty
@@ -310,7 +316,12 @@ impl Render for TerminalView {
         });
         let blinks = term.cursor_style().blinking;
         let span = Span::of(&term);
+        let offset = term.grid().display_offset();
         drop(term);
+        if offset != self.offset {
+            self.offset = offset;
+            self.compact_later(cx);
+        }
         let focused = self.focus.is_focused(window) && window.is_window_active();
         self.blinking = focused && blinks;
         if !self.blinking {

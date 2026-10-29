@@ -2,7 +2,29 @@
 
 use super::*;
 
+/// How long output and scrolling rest before history packs.
+const IDLE: Duration = Duration::from_secs(2);
+
 impl TerminalView {
+    /// Packs idle history once output and scrolling have rested.
+    pub(super) fn compact_later(&mut self, cx: &mut Context<Self>) {
+        self.compacting = Some(cx.spawn(async move |view, cx| {
+            cx.background_executor().timer(IDLE).await;
+            let packed = view.update(cx, |view, _| {
+                let mut term = view.pty.term.lock();
+                term.compact();
+                let lines = term.grid().history_size();
+                log::debug!(
+                    "terminal {}: {lines} idle history lines packed",
+                    view.pty.pid
+                );
+            });
+            if packed.is_err() {
+                log::debug!("compaction: the terminal closed first");
+            }
+        }));
+    }
+
     pub(super) fn handle(&mut self, events: Vec<PtyEvent>, cx: &mut Context<Self>) {
         let drawn = events
             .iter()
@@ -52,6 +74,7 @@ impl TerminalView {
             }
         }
         if drawn {
+            self.compact_later(cx);
             let kitty = *self.pty.term.lock().mode() & TermMode::KITTY_KEYBOARD_PROTOCOL;
             if kitty != self.kitty {
                 log::debug!("terminal {}: kitty keyboard flags {kitty:?}", self.pty.pid);
