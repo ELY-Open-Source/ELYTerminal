@@ -124,7 +124,7 @@ fn kitty_graphics_replies_reach_the_program_and_a_temporary_file_goes() {
     let file = std::env::temp_dir().join(format!("tty-graphics-protocol-{}", std::process::id()));
     std::fs::write(&file, [1, 2, 3]).expect("written");
     let path = base64::engine::general_purpose::STANDARD.encode(file.to_string_lossy().as_bytes());
-    // Raw and unechoed; a lost reply ends the read in a second.
+    // Raw, unechoed; a lost reply ends the read in a second.
     let script = format!(
         r#"stty raw -echo min 0 time 10; printf '\033_Gi=31,s=1,v=1,a=q,f=24;AAAA\033\\\033_Gi=32,t=t,f=24,s=1,v=1;{path}\033\\'; r=$(dd bs=1 count=24 2>/dev/null | tr '\033' E); stty sane; printf '%s' "$r""#
     );
