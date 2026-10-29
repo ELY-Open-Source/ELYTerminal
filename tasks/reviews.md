@@ -389,3 +389,11 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 99a821b: FAIL. §13 said T102 to T121 each passed a round, but T108 closed on its fifth failing round, so its row was Partial, not Pass; T103 had no rows, OpenConsole nor its one-line composition; a test path selected nothing; a blank line broke the Foundation table. Fixed in d0dfd8f, and every cited path matched against `cargo test --list`.
 - Round 2, d0dfd8f: PASS. `scripts/check.sh` passes with 385 tests.
+
+## T124
+
+- Round 1, 2cad27d with the fork's 63b0ba2: FAIL. A mask kept held keys it left out, so a lost Left Shift release lasted past a mask without Shift; Enter's keys were dropped. Fixed in 50cfcea and the fork's 4f8943a, each with a test that failed first.
+- Round 2, 50cfcea: FAIL. A new keymap forgot the keys still held; Meta was read as Alt by a keysym table, where `altwin:meta_win` makes it Mod4. Fixed in df60b5e and the fork's 129a74e: a key's modifiers read from the keymap's own action, held keys carried across a keymap.
+- Round 3, c4dab8d: FAIL. That reading used group 0 and level 1, so Multi_key on Shift with Right Alt counted as AltGr and Right Alt in a German group as Alt. Fixed in 32aab68 and the fork's 09711c2.
+- Round 4, 32aab68: FAIL. Ctrl with Left Win as a group switch read as Super; a release read its symbol again; held keys were sorted in group 0 before the mask's group came. Each round had found a case a reading of a key's modifiers of its own missed, so the design changed: in 86f2fc2 and the fork's 8fcc867 the client's xkb state takes every key through `update_key`, as a compositor's does.
+- Round 5, 86f2fc2: FAIL. Rebuilding the state at each mask replayed held keys in the new group; the keystroke was read after `update_key` had taken a latch; a key's group change left gpui's layout stale. Fixed in a28532f and the fork's 526c5ca: a mask is set over the live state, unseen keys are the mask's alone, the keystroke is read first, and the layout refreshes.
