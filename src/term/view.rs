@@ -27,7 +27,7 @@ use super::{
     find::Finder,
     fonts::look,
     frame::frame,
-    graphics::Pictures,
+    graphics::{Pictures, runs},
     ink::Ink,
     input::{self, Find, Held, NextPrompt, PreviousPrompt, Went},
     marks::Mark,
@@ -383,6 +383,7 @@ impl Render for TerminalView {
                 .graphics
                 .lock()
                 .expect("graphics: a holder panicked"),
+            &runs(&term),
             term.grid().display_offset(),
             (term.columns(), term.screen_lines()),
         );

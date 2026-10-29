@@ -115,7 +115,8 @@ pub fn frame<T: EventListener>(term: &Term<T>, ink: &Ink, lit: &[(Match, Hsla)])
         let spacer = cell
             .flags
             .intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER);
-        let hidden = cell.flags.contains(Flags::HIDDEN);
+        // A placeholder's image draws over its cell; its glyph never.
+        let hidden = cell.flags.contains(Flags::HIDDEN) || cell.c == super::graphics::PLACEHOLDER;
         let marks = cell.zerowidth().filter(|marks| !marks.is_empty());
         let alone = (!hidden && (marks.is_some() || boxes::drawn(cell.c))).then(|| {
             std::iter::once(cell.c)

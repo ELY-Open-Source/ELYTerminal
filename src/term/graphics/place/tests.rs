@@ -8,10 +8,10 @@ use alacritty_terminal::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 
-use super::super::{Graphics, Layer, Pictures, Shared};
+use super::super::{Graphics, Layer, Pictures, Shared, runs};
 
 #[derive(Clone, Default)]
-struct Replies(Arc<Mutex<Vec<String>>>);
+pub(in crate::term::graphics) struct Replies(Arc<Mutex<Vec<String>>>);
 
 impl EventListener for Replies {
     fn send_event(&self, event: Event) {
@@ -21,17 +21,17 @@ impl EventListener for Replies {
     }
 }
 
-type Placed = (u32, u32, i32, usize, (u32, u32));
+pub(in crate::term::graphics) type Placed = (u32, u32, i32, usize, (u32, u32));
 
-struct Screen {
-    term: Term<Replies>,
+pub(in crate::term::graphics) struct Screen {
+    pub term: Term<Replies>,
     parser: Processor,
     replies: Replies,
-    shared: Arc<Mutex<Shared>>,
+    pub shared: Arc<Mutex<Shared>>,
 }
 
 /// Five lines of ten 10 by 20 cells; image 1.
-fn screen() -> Screen {
+pub(in crate::term::graphics) fn screen() -> Screen {
     let replies = Replies::default();
     let mut term = Term::new(Config::default(), &TermSize::new(10, 5), replies.clone());
     let graphics = Graphics::new(0, (10, 5), (10, 20));
@@ -48,26 +48,26 @@ fn screen() -> Screen {
 }
 
 impl Screen {
-    fn feed(&mut self, text: &str) {
+    pub fn feed(&mut self, text: &str) {
         self.parser.advance(&mut self.term, text.as_bytes());
     }
 
-    fn transmit(&mut self, id: u32, keys: &str) {
+    pub fn transmit(&mut self, id: u32, keys: &str) {
         let pixels = STANDARD.encode([0u8; 20 * 40 * 4]);
         self.feed(&format!("\x1b_Gi={id},s=20,v=40,q=2{keys};{pixels}\x1b\\"));
     }
 
-    fn heard(&self) -> Vec<String> {
+    pub fn heard(&self) -> Vec<String> {
         std::mem::take(&mut *self.replies.0.lock().unwrap())
     }
 
-    fn cursor(&self) -> (i32, usize) {
+    pub fn cursor(&self) -> (i32, usize) {
         let point = self.term.grid().cursor.point;
         (point.line.0, point.column.0)
     }
 
     /// Each placement's image, id, line, column and cuts.
-    fn placed(&self) -> Vec<Placed> {
+    pub fn placed(&self) -> Vec<Placed> {
         let mut shared = self.shared.lock().unwrap();
         let screen = shared.screen();
         let each = |kept: &super::Placement| {
@@ -83,7 +83,7 @@ impl Screen {
         screen.placements.iter().map(each).collect()
     }
 
-    fn stored(&self, id: u32) -> bool {
+    pub fn stored(&self, id: u32) -> bool {
         self.shared.lock().unwrap().screen().store.get(id).is_some()
     }
 }
@@ -160,7 +160,7 @@ fn a_cut_stays_in_source_pixels_whatever_the_cell() {
     s.term.resize(TermSize::new(10, 6));
     assert_eq!(s.placed(), [(1, 0, 1, 0, (20, 20))]);
     let mut pictures = Pictures::default();
-    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 6));
+    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), &runs(&s.term), 0, (10, 6));
     // Twenty source rows show in two 10-pixel rows.
     assert_eq!(
         (shown[0].clip.size.height, shown[0].whole.origin.y),
@@ -177,7 +177,7 @@ fn a_cut_keeps_the_part_of_a_source_pixel_a_row_shows() {
     ));
     s.feed("\x1b[2;1H\x1bM");
     let mut pictures = Pictures::default();
-    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 5));
+    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), &runs(&s.term), 0, (10, 5));
     // Half the pixel shows in line 3; half is cut.
     let drawn = (
         shown[0].clip.origin.y,
@@ -328,7 +328,7 @@ fn drawing_takes_the_layer_the_cuts_the_view_and_the_screen() {
         s.feed(&format!("\x1b[2;{column}H\x1b_Ga=p,i=1,C=1{z}\x1b\\"));
     }
     let mut pictures = Pictures::default();
-    let (shown, stale) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 5));
+    let (shown, stale) = pictures.shown(&s.shared.lock().unwrap(), &runs(&s.term), 0, (10, 5));
     let layers: Vec<Layer> = shown.iter().map(|shown| shown.layer).collect();
     assert_eq!(layers, [Layer::Under, Layer::Between, Layer::Over]);
     assert!(stale.is_empty());
@@ -339,10 +339,10 @@ fn drawing_takes_the_layer_the_cuts_the_view_and_the_screen() {
     // The lowest starts on the last column; its second goes.
     assert_eq!(clips, [(9., 1.), (3., 2.), (0., 2.)]);
     // Scrolled back a line, it shows a line lower.
-    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), 1, (10, 5));
+    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), &runs(&s.term), 1, (10, 5));
     assert_eq!(shown[0].clip.origin.y, 2.);
     s.feed("\x1b_Ga=d,d=A\x1b\\");
-    let (shown, stale) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 5));
+    let (shown, stale) = pictures.shown(&s.shared.lock().unwrap(), &runs(&s.term), 0, (10, 5));
     assert!(shown.is_empty());
     assert_eq!(stale.len(), 1, "its texture goes");
 }

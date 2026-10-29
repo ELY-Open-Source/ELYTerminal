@@ -5,9 +5,12 @@ mod draw;
 mod load;
 mod media;
 mod place;
+mod put;
+mod relate;
 mod store;
 #[cfg(test)]
 mod tests;
+mod unicode;
 
 use std::{
     ops::Range,
@@ -22,7 +25,8 @@ use alacritty_terminal::{
 use command::{Command, Quiet};
 pub use draw::{Layer, Pictures, Shown};
 use load::Loading;
-use place::{Display, Pick, Placement, Screen};
+use place::{Display, Pick, Screen};
+pub use unicode::{PLACEHOLDER, runs};
 
 /// A failure, as its reply names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +42,12 @@ enum Error {
     Space,
     NoId,
     NoImage,
+    VirtualParent,
+    NoParentImage,
+    NoParentPlacement,
+    SelfParent,
+    Cycle,
+    TooDeep,
 }
 
 impl Error {
@@ -55,6 +65,12 @@ impl Error {
             Self::Space => "ENOMEM: out of memory",
             Self::NoId => "EINVAL: image ID or number required",
             Self::NoImage => "ENOENT: image not found",
+            Self::VirtualParent => "EINVAL: virtual placement cannot refer to a parent",
+            Self::NoParentImage => "ENOPARENT: parent image not found",
+            Self::NoParentPlacement => "ENOPARENT: parent placement not found",
+            Self::SelfParent => "EINVAL: placement cannot be its own parent",
+            Self::Cycle => "ECYCLE: parent chain creates a cycle",
+            Self::TooDeep => "ETOODEEP: parent chain too deep",
         }
     }
 }
@@ -286,53 +302,6 @@ impl Graphics {
         let shown = display.and_then(|display| self.display(display, stored, cursor));
         // An image named by neither id nor number hears nothing.
         (ids.id > 0 || ids.number > 0).then(|| shown.unwrap_or(Reply::ok(stored)))
-    }
-
-    /// Places an image; the cursor moves past unless `C=1`.
-    fn display(&mut self, display: Display, ids: Ids, cursor: Point) -> Option<Reply> {
-        let pid = self.pid;
-        if ids.id == 0 && ids.number == 0 {
-            return Some(Reply::failed(ids, Error::NoId));
-        }
-        if display.virtual_ || display.parent > 0 {
-            log::debug!("graphics {pid}: virtual and relative placements are not taken yet");
-            return None;
-        }
-        let mut shared = self.lock();
-        let (cell, (columns, lines)) = (shared.cell, shared.size);
-        let screen = shared.screen();
-        let id = match ids.id {
-            0 => screen.store.newest(ids.number),
-            id => Some(id),
-        };
-        let Some((id, image)) = id.and_then(|id| Some((id, screen.store.get(id)?))) else {
-            return Some(Reply::failed(ids, Error::NoImage));
-        };
-        let placement = Placement {
-            image: id,
-            id: ids.placement,
-            line: cursor.line.0,
-            column: cursor.column.0,
-            display,
-            serial: 0,
-        };
-        let (wide, tall) = placement.cells(image, cell);
-        log::debug!(
-            "graphics {pid}: image {id} placed at {}, {} over {wide} by {tall} cells",
-            cursor.line.0,
-            cursor.column.0
-        );
-        screen.place(placement);
-        drop(shared);
-        if !display.stay {
-            // As Ghostty moves it: down the rows, past the columns.
-            let target = cursor.column.0 + wide as usize;
-            let wraps = target >= columns;
-            let down = (tall as usize).saturating_sub(1) + usize::from(wraps);
-            let room = lines.saturating_sub(1 + cursor.line.0.max(0) as usize) + lines;
-            self.moved = Some((down.min(room), Column(if wraps { 0 } else { target })));
-        }
-        Some(Reply::ok(Ids { id, ..ids }))
     }
 
     /// Deletes what `d` names; capitals free images left unplaced.

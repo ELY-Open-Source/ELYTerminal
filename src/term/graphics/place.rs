@@ -21,7 +21,11 @@ pub(super) struct Display {
     pub z: i32,
     pub stay: bool,
     pub virtual_: bool,
+    /// `P` and `Q`, the parent's image and placement.
     pub parent: u32,
+    pub parent_placement: u32,
+    /// `H` and `V`, cells from the parent's top-left.
+    pub shift: (i32, i32),
 }
 
 impl Display {
@@ -35,20 +39,34 @@ impl Display {
             stay: int(b'C') == 1,
             virtual_: int(b'U') == 1,
             parent: int(b'P'),
+            parent_placement: int(b'Q'),
+            shift: (int(b'H') as i32, int(b'V') as i32),
         }
     }
 }
 
-/// One image shown on the grid, from its top-left cell.
+/// Where a placement stands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Kind {
+    /// At its line and column.
+    Grid,
+    /// Where `U+10EEEE` cells name it.
+    Virtual,
+    /// At its parent's top-left, shifted `H` and `V` cells.
+    Relative { parent: u64, shift: (i32, i32) },
+}
+
+/// One image shown, from its top-left cell.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Placement {
     pub image: u32,
     pub id: u32,
-    /// The grid line of its top, negative in the history.
+    pub kind: Kind,
+    /// A grid placement's line, negative in the history.
     pub line: i32,
     pub column: usize,
     pub display: Display,
-    /// Its order of placing, so equal ones draw alike.
+    /// Its order of placing, and the name its children use.
     pub serial: u64,
 }
 
@@ -197,16 +215,21 @@ impl Screen {
         }
     }
 
-    /// Places it, replacing a placement of its id.
+    /// Places it; a replaced one's serial and children stay.
     pub fn place(&mut self, mut placement: Placement) {
-        if placement.id > 0 {
-            let (image, id) = (placement.image, placement.id);
-            self.placements
-                .retain(|kept| (kept.image, kept.id) != (image, id));
+        let key = (placement.image, placement.id);
+        let same = |kept: &Placement| placement.id > 0 && (kept.image, kept.id) == key;
+        match self.placements.iter().position(same) {
+            Some(at) => {
+                placement.serial = self.placements[at].serial;
+                self.placements[at] = placement;
+            }
+            None => {
+                self.serial += 1;
+                placement.serial = self.serial;
+                self.placements.push(placement);
+            }
         }
-        self.serial += 1;
-        placement.serial = self.serial;
-        self.placements.push(placement);
     }
 
     /// Stores `image`; evicted images take their placements along.
@@ -224,10 +247,27 @@ impl Screen {
         was
     }
 
-    fn orphans(&mut self) {
-        let store = &self.store;
-        self.placements
-            .retain(|kept| store.get(kept.image).is_some());
+    /// Drops placements whose image or parent went; their images.
+    fn orphans(&mut self) -> Vec<u32> {
+        let mut gone = Vec::new();
+        loop {
+            let serials: Vec<u64> = self.placements.iter().map(|kept| kept.serial).collect();
+            let (store, before) = (&self.store, self.placements.len());
+            self.placements.retain(|kept| {
+                let parent = match kept.kind {
+                    Kind::Relative { parent, .. } => serials.contains(&parent),
+                    Kind::Grid | Kind::Virtual => true,
+                };
+                let kept_ = parent && store.get(kept.image).is_some();
+                if !kept_ {
+                    gone.push(kept.image);
+                }
+                kept_
+            });
+            if self.placements.len() == before {
+                return gone;
+            }
+        }
     }
 
     /// Lines in `region` moved up `lines`, as Ghostty moves them.
@@ -245,6 +285,9 @@ impl Screen {
             let Some(image) = store.get(kept.image) else {
                 return false;
             };
+            if kept.kind != Kind::Grid {
+                return true;
+            }
             let (top, bottom) = kept.rows(image, cell);
             // A region from the top moves alacritty's history up too.
             let history = lines > 0 && start == 0 && top < 0;
@@ -265,6 +308,7 @@ impl Screen {
             }
             kept.rows(image, cell).1 >= oldest.0
         });
+        self.orphans();
     }
 
     /// The screen's `lines` cleared: what shows there goes.
@@ -273,9 +317,10 @@ impl Screen {
         self.placements.retain(|kept| {
             store.get(kept.image).is_some_and(|image| {
                 let (top, bottom) = kept.rows(image, cell);
-                bottom < 0 || top >= lines as i32
+                kept.kind != Kind::Grid || bottom < 0 || top >= lines as i32
             })
         });
+        self.orphans();
     }
 
     /// The history cleared: rows above the screen are cut away.
@@ -286,14 +331,18 @@ impl Screen {
                 return false;
             };
             let (top, _) = kept.rows(image, cell);
-            top >= 0 || kept.clip_top(image, cell, (-top) as u32)
+            kept.kind != Kind::Grid || top >= 0 || kept.clip_top(image, cell, (-top) as u32)
         });
+        self.orphans();
     }
 
-    /// Each placement moved to its anchor's new cell, or dropped.
+    /// Grid placements moved to their anchors' new cells, or dropped.
     pub fn resized(&mut self, moved: &[Option<Point>]) {
         let mut moved = moved.iter();
         self.placements.retain_mut(|kept| {
+            if kept.kind != Kind::Grid {
+                return true;
+            }
             let Some(point) = moved.next().copied().flatten() else {
                 return false;
             };
@@ -301,12 +350,17 @@ impl Screen {
             kept.column = point.column.0;
             true
         });
+        self.orphans();
     }
 
-    /// Each placement's top-left cell.
+    /// Each grid placement's top-left cell.
     pub fn anchors(&self) -> Vec<Point> {
-        let anchor = |kept: &Placement| Point::new(Line(kept.line), Column(kept.column));
-        self.placements.iter().map(anchor).collect()
+        let grid = self
+            .placements
+            .iter()
+            .filter(|kept| kept.kind == Kind::Grid);
+        grid.map(|kept| Point::new(Line(kept.line), Column(kept.column)))
+            .collect()
     }
 
     /// Deletes what `pick` names; `free` drops images left unplaced.
@@ -316,39 +370,49 @@ impl Screen {
             Pick::Range(first, last) => self.store.within(first, last),
             _ => Vec::new(),
         };
-        let placed = |kept: &Placement, image: &Image| match pick {
-            Pick::Shown => {
-                let (top, bottom) = kept.rows(image, cell);
-                bottom >= 0 && top < lines as i32
+        // Where each chain puts it; none for a virtual one.
+        let at: Vec<_> = self.placements.iter().map(|kept| self.at(kept)).collect();
+        let placed = |kept: &Placement, image: &Image, at: Option<(i32, usize)>| {
+            let mut here = kept.clone();
+            (here.line, here.column) = at.unwrap_or((kept.line, kept.column));
+            let shown = at.is_some();
+            match pick {
+                Pick::Shown => {
+                    let (top, bottom) = here.rows(image, cell);
+                    shown && bottom >= 0 && top < lines as i32
+                }
+                Pick::Image { id, placement } => {
+                    kept.image == id && (placement == 0 || kept.id == placement)
+                }
+                Pick::Cell { line, column, z } => {
+                    let covers = here.covers(image, cell, line, column);
+                    shown && covers && z.is_none_or(|z| kept.display.z == z)
+                }
+                Pick::Column(column) => {
+                    let columns = here.cells(image, cell).0 as usize;
+                    shown && (here.column..here.column + columns).contains(&column)
+                }
+                Pick::Row(line) => {
+                    let (top, bottom) = here.rows(image, cell);
+                    shown && (top..=bottom).contains(&line)
+                }
+                Pick::Z(z) => kept.kind != Kind::Virtual && kept.display.z == z,
+                Pick::Range(first, last) => (first..=last).contains(&kept.image),
             }
-            Pick::Image { id, placement } => {
-                kept.image == id && (placement == 0 || kept.id == placement)
-            }
-            Pick::Cell { line, column, z } => {
-                kept.covers(image, cell, line, column) && z.is_none_or(|z| kept.display.z == z)
-            }
-            Pick::Column(column) => {
-                let columns = kept.cells(image, cell).0 as usize;
-                (kept.column..kept.column + columns).contains(&column)
-            }
-            Pick::Row(line) => {
-                let (top, bottom) = kept.rows(image, cell);
-                (top..=bottom).contains(&line)
-            }
-            Pick::Z(z) => kept.display.z == z,
-            Pick::Range(first, last) => (first..=last).contains(&kept.image),
         };
-        let store = &self.store;
+        let (store, mut at) = (&self.store, at.into_iter());
         self.placements.retain(|kept| {
+            let at = at.next().flatten();
             let Some(image) = store.get(kept.image) else {
                 return false;
             };
-            let gone = placed(kept, image);
+            let gone = placed(kept, image, at);
             if gone {
                 touched.push(kept.image);
             }
             !gone
         });
+        touched.extend(self.orphans());
         if !free {
             return;
         }
@@ -361,4 +425,4 @@ impl Screen {
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
