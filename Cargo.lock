@@ -1751,6 +1751,7 @@ dependencies = [
  "ely-gpui-component",
  "embed-resource",
  "env_logger",
+ "flate2",
  "foreign-types",
  "futures",
  "gethostname",

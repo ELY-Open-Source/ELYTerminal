@@ -169,7 +169,7 @@ pub fn spawn(
     };
     let grid = TermSize::new(size.num_cols.into(), size.num_lines.into());
     let mut term = Term::new(config, &grid, listener.clone());
-    term.set_graphics(Box::new(Graphics { pid }));
+    term.set_graphics(Box::new(Graphics::new(pid)));
     let term = Arc::new(FairMutex::new(term));
     let tapped = Tapped::new(raw, sender, pid);
     #[cfg(unix)]

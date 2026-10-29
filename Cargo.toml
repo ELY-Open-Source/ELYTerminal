@@ -15,10 +15,12 @@ base64 = "0.22"
 dirs = "7"
 ely-gpui-component = { git = "https://github.com/ELY-Open-Source/Ely-GPUI-Components.git", rev = "494c17d6e631e9e3948f26ff9306ba9c3c8ae47a" }
 env_logger = "0.11"
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
 gethostname = "1.1.0"
 gpui = { package = "gpui-pre", version = "=0.3.8", default-features = false }
 gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "wayland", "x11"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 log = "0.4"
 polling = "3"
 serde = { version = "1", features = ["derive"] }
@@ -58,12 +60,11 @@ unicode-normalization = "0.1"
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 core-graphics = { version = "0.24", features = ["highsierra"] }
 foreign-types = "0.5"
-image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
 raw-window-handle = "0.6"
 sysinfo = { version = "0.39", default-features = false, features = ["system"] }
-windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_Diagnostics_ToolHelp", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_HiDpi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO"] }
