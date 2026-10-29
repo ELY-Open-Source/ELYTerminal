@@ -57,7 +57,7 @@ enum State {
     Held,
     /// An OSC passed on as it comes.
     Passing,
-    /// An APC, DCS, SOS or PM string, where vte runs no control.
+    /// An APC, DCS, SOS or PM string: no control runs.
     String,
 }
 
@@ -178,7 +178,7 @@ impl Prompts {
                 self.read(byte);
                 State::Passing
             }
-            // The string's ESC leaves the parser in its escape: it goes on now.
+            // Its ESC leaves vte in the escape: send now.
             (State::String, ESC) => {
                 self.out.push(ESC);
                 State::Escape { sent: true }
