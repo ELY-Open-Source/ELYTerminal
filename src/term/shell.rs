@@ -346,7 +346,8 @@ mod windows_tests {
                 r"C:\",
                 "failed: True",
                 r"ElyCd:\c\project",
-                "a failed cd is the shell's: True"
+                // The hook marks the command's start first.
+                "\u{1b}]133;C\u{7}a failed cd is the shell's: True"
             ],
             "{}",
             String::from_utf8_lossy(&out.stderr)
