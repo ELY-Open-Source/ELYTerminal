@@ -1,6 +1,6 @@
 use gpui::{Bounds, Decorations, Pixels, Size, Window, WindowBackgroundAppearance, point};
 
-use crate::settings::Settings;
+use crate::settings::{Backdrop, Settings};
 
 #[cfg(target_os = "macos")]
 mod macos;
@@ -22,9 +22,26 @@ pub fn appearance(settings: &Settings) -> WindowBackgroundAppearance {
     if settings.background_opacity >= 1.0 {
         WindowBackgroundAppearance::Opaque
     } else if settings.background_blur {
-        WindowBackgroundAppearance::Blurred
+        blurred(settings.backdrop)
     } else {
         WindowBackgroundAppearance::Transparent
+    }
+}
+
+/// Whether the window can wear Windows 11's Mica.
+pub fn mica() -> bool {
+    #[cfg(windows)]
+    return windows::mica();
+    #[cfg(not(windows))]
+    false
+}
+
+/// The blur the backdrop names: Mica where Windows draws it, else Acrylic.
+fn blurred(backdrop: Backdrop) -> WindowBackgroundAppearance {
+    match backdrop {
+        Backdrop::Mica if mica() => WindowBackgroundAppearance::MicaBackdrop,
+        Backdrop::MicaAlt if mica() => WindowBackgroundAppearance::MicaAltBackdrop,
+        _ => WindowBackgroundAppearance::Blurred,
     }
 }
 
@@ -153,7 +170,9 @@ fn rect(pane: Bounds<Pixels>, scale: f32) -> [i32; 4] {
 
 #[cfg(test)]
 mod tests {
-    use gpui::WindowBackgroundAppearance::{Blurred, Opaque, Transparent};
+    use gpui::WindowBackgroundAppearance::{
+        Blurred, MicaAltBackdrop, MicaBackdrop, Opaque, Transparent,
+    };
 
     use super::*;
 
@@ -170,6 +189,34 @@ mod tests {
         assert_eq!(at(1.0, false), Opaque);
         assert_eq!(at(0.88, true), Blurred);
         assert_eq!(at(0.3, false), Transparent);
+    }
+
+    #[test]
+    fn mica_blurs_only_where_windows_draws_it() {
+        let with = |backdrop| {
+            appearance(&Settings {
+                background_opacity: 0.88,
+                backdrop,
+                ..Settings::default()
+            })
+        };
+        assert_eq!(with(Backdrop::Acrylic), Blurred);
+        let (wanted, alt) = if mica() {
+            (MicaBackdrop, MicaAltBackdrop)
+        } else {
+            (Blurred, Blurred)
+        };
+        assert_eq!(with(Backdrop::Mica), wanted);
+        assert_eq!(with(Backdrop::MicaAlt), alt);
+        // Clear or opaque, the backdrop changes nothing.
+        let clear = Settings {
+            background_opacity: 0.88,
+            background_blur: false,
+            backdrop: Backdrop::Mica,
+            ..Settings::default()
+        };
+        assert_eq!(appearance(&clear), Transparent);
+        assert!(cfg!(windows) || !mica(), "Mica is Windows' alone");
     }
 
     #[cfg(target_os = "linux")]

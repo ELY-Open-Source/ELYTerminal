@@ -22,8 +22,10 @@ use super::{
     terminal::{chosen, path_field},
 };
 use crate::{
+    blur,
     settings::{
-        CursorStyle, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings, SettingsStore,
+        Backdrop, CursorStyle, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings,
+        SettingsStore,
     },
     themes::{self, TerminalTheme},
 };
@@ -34,6 +36,13 @@ const CURSORS: [(CursorStyle, &str, &str); 4] = [
     (CursorStyle::Bar, "bar", "et.cursor.bar"),
     (CursorStyle::Underline, "underline", "et.cursor.underline"),
     (CursorStyle::Hollow, "hollow", "et.cursor.hollow"),
+];
+
+/// Each Windows 11 backdrop, its key and its name's key.
+const BACKDROPS: [(Backdrop, &str, &str); 3] = [
+    (Backdrop::Acrylic, "acrylic", "et.backdrop.acrylic"),
+    (Backdrop::Mica, "mica", "et.backdrop.mica"),
+    (Backdrop::MicaAlt, "mica_alt", "et.backdrop.mica_alt"),
 ];
 
 /// Each language, its key, and its own name's key.
@@ -191,7 +200,7 @@ impl SettingsWindow {
         let image = PathInput::new("settings-background-image", &self.image)
             .on_choose(chosen(&this, "background_image"));
         let image = path_field(image, self.refused_image.clone(), cx);
-        let background = SettingsSection::new(word("et.appearance.window"))
+        let mut background = SettingsSection::new(word("et.appearance.window"))
             .row(SettingsRow::new(word("et.appearance.opacity")).control(opacity))
             .row(
                 SettingsRow::new(word("et.appearance.image"))
@@ -203,7 +212,20 @@ impl SettingsWindow {
                 "background_blur",
                 settings.background_blur,
                 |settings, on| settings.background_blur = on,
-            )))
+            )));
+        if blur::mica() {
+            let backdrop = choice(
+                &this,
+                "backdrop",
+                &BACKDROPS,
+                settings.backdrop,
+                |settings, backdrop| settings.backdrop = backdrop,
+                cx,
+            );
+            background =
+                background.row(SettingsRow::new(word("et.appearance.backdrop")).control(backdrop));
+        }
+        let background = background
             .row(
                 SettingsRow::new(word("et.appearance.padding_x")).control(self.number(
                     "padding_x",

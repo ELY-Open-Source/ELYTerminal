@@ -46,6 +46,16 @@ pub enum OptionAsAlt {
     Both,
 }
 
+/// What blurs behind a see-through window on Windows 11.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Backdrop {
+    #[default]
+    Acrylic,
+    Mica,
+    MicaAlt,
+}
+
 /// The interface's language, by the tag Ely's `I18n` names it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
@@ -101,6 +111,8 @@ pub struct Settings {
     pub cursor_blink: bool,
     pub background_opacity: f32,
     pub background_blur: bool,
+    /// Windows 11's backdrop while blurred.
+    pub backdrop: Backdrop,
     pub padding_x: f32,
     pub padding_y: f32,
     pub scrollback: u32,
@@ -162,6 +174,7 @@ impl Default for Settings {
             cursor_blink: true,
             background_opacity: 0.88,
             background_blur: true,
+            backdrop: Backdrop::Acrylic,
             padding_x: 10.0,
             padding_y: 8.0,
             scrollback: 10_000,

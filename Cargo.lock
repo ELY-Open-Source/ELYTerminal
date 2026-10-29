@@ -2871,7 +2871,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-windows"
 version = "0.3.8"
-source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=b4f0cefd459f028a3bb820056806557e31e0d235#b4f0cefd459f028a3bb820056806557e31e0d235"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=06be77f931f5758a8f3b307e62d7924bb9af01ad#06be77f931f5758a8f3b307e62d7924bb9af01ad"
 dependencies = [
  "accesskit",
  "accesskit_windows",

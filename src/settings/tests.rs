@@ -25,6 +25,16 @@ fn a_file_without_files_menu_leaves_it_off() {
 }
 
 #[test]
+fn a_backdrop_is_acrylic_unless_named() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.backdrop, Backdrop::Acrylic);
+    let settings: Settings =
+        serde_json::from_str(r#"{"backdrop": "mica_alt"}"#).expect("Mica Alt is a backdrop");
+    assert_eq!(settings.backdrop, Backdrop::MicaAlt);
+    assert!(serde_json::from_str::<Settings>(r#"{"backdrop": "glass"}"#).is_err());
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,

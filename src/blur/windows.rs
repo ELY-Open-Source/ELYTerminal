@@ -1,6 +1,9 @@
 //! On Windows 10 a blurred window's acrylic clears while it moves or sizes: that DWM samples the blur again at each step, and the window trails the pointer by seconds.
 
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::{
+    OnceLock,
+    atomic::{AtomicIsize, Ordering},
+};
 
 use anyhow::{Context as _, bail};
 use gpui::Window;
@@ -25,6 +28,8 @@ use windows_sys::{
 
 /// Windows 11's first build, whose DWM moves an acrylic window as fast as a clear one.
 const ELEVEN: u32 = 22000;
+/// Windows 11 22H2, the first build whose DWM draws Mica behind a window.
+const MICA: u32 = 22621;
 
 /// gpui's window procedure, which the main windows' pass every message on to.
 static GPUI: AtomicIsize = AtomicIsize::new(0);
@@ -168,6 +173,22 @@ fn accent(window: HWND, state: u32) -> anyhow::Result<()> {
 }
 
 /// The running Windows' build.
+/// Whether this build draws Mica; read once, logged.
+pub fn mica() -> bool {
+    static MICA_DRAWN: OnceLock<bool> = OnceLock::new();
+    *MICA_DRAWN.get_or_init(|| match build() {
+        Ok(build) => {
+            let drawn = build >= MICA;
+            log::info!("blur: Windows build {build} draws Mica: {drawn}; else Backdrop is Acrylic");
+            drawn
+        }
+        Err(error) => {
+            log::error!("{error:#}; Backdrop is Acrylic");
+            false
+        }
+    })
+}
+
 fn build() -> anyhow::Result<u32> {
     let mut version: OSVERSIONINFOW = unsafe { std::mem::zeroed() };
     version.dwOSVersionInfoSize = size_of::<OSVERSIONINFOW>() as u32;
