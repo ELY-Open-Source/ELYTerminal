@@ -384,3 +384,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 5cb2468: FAIL. The raw captures blend a horizontal line's rows, which the record called sharp. foot, run in the same nested niri, blends alike, so the shift is the composition's, 602 logical rows at 1.25 making 752.5 physical ones; 32d348e records it so. No code changed.
 - Round 2, 32d348e: PASS.
+
+## T122
+
+- Round 1, 99a821b: FAIL. §13 said T102 to T121 each passed a round, but T108 closed on its fifth failing round, so its row was Partial, not Pass; T103 had no rows, OpenConsole nor its one-line composition; a test path selected nothing; a blank line broke the Foundation table. Fixed in d0dfd8f, and every cited path matched against `cargo test --list`.
+- Round 2, d0dfd8f: PASS. `scripts/check.sh` passes with 385 tests.
