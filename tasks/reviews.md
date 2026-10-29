@@ -281,3 +281,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 15d9754: FAIL. A closed menu opened again when the right column or the switch brought it back: Ely's ContextMenu keeps the request it used in keyed state, which goes when it leaves the frame, and Files sent the same request each render. Fixed in ac3a967: a render takes the press's point once.
 - Round 2, ac3a967: PASS. In the app five right presses opened five menus, and a hidden column or a turned switch reopened none; New session here ran.
+
+## T106
+
+- Round 1, 979c02a: FAIL. AGENTS.md said the reporter was asked for logs while #29 held no comment yet. The request was posted, issuecomment-6484160625.
+- Round 2, 979c02a with the comment: PASS.
