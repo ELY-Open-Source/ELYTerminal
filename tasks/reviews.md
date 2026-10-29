@@ -428,3 +428,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 3, 18487a4: FAIL. Replacing `cd` overrode a user's own `cd` and lost its folder-only completion. The approach changed in 7ab6c59: the typed line is rewritten before it runs, `cd` itself untouched.
 - Round 4, 86e6205: FAIL. A line break, curly quotes, a user's own Set-Location function and tr-TR's capital i each slipped through. Fixed in 5211c92.
 - Round 5, 5211c92: PASS.
+
+## T127
+
+- Round 1, the v0.2.0 draft at 0cef65d: FAIL. The notes' clipboard line was too broad, the history figure lacked its measure, Mica lacked its build, and the composition crash fix was missing. Fixed in the draft's notes.
+- Round 2: FAIL. Only the newest paste's password reads unasked; fixed.
+- Round 3: PASS. Published: v0.2.0 at 0cef65d, latest, twelve assets; the website's six version-less links resolve to it.

@@ -250,4 +250,4 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T125 Issue #38: on Windows 11 the window's backdrop may be Mica or Mica Alt beside Acrylic, a setting in Settings › Appearance; Windows 10 keeps Acrylic.
 - [x] T126 The README, its Chinese twin and the guides in `docs/en_us` and `docs/zh_cn` say what 0.2.0 does, each claim true to the code.
 - [x] T128 Issue #39: on Windows, PowerShell's `cd` takes Git Bash's drive paths, `/e` as `E:\` and `/e/x` as `E:\x`, where no such path lies on the current drive, through ELYTerminal's PowerShell integration; every other `cd` as before.
-- [ ] T127 Release 0.2.0: the version raised, the builds for macOS, Windows and Linux on the release, the notes in English and Chinese, the website's links following.
+- [x] T127 Release 0.2.0: the version raised, the builds for macOS, Windows and Linux on the release, the notes in English and Chinese, the website's links following. v0.2.0 at 0cef65d, published with the signed and notarized disk image, the Windows zip and the four Linux packages, each with its version-less alias, which the website's links follow; the notes reviewed in three rounds.
