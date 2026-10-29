@@ -24,7 +24,7 @@ A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) c
 - Sessions sit on the left, the terminal in the middle, Git or Files on the right.
 - Shell integration for zsh, bash, fish and PowerShell, so Files and Git follow the session's folder.
 - Ely peeks over the window's edge and follows the sessions.
-- Images through kitty's graphics protocol, animations too, and the clipboard through kitty's OSC 5522, which asks you before a program reads it.
+- Images through kitty's graphics protocol, animations too, and the clipboard through kitty's OSC 5522, which asks you before a program reads what it holds.
 - Background opacity and blur on macOS, Windows, Wayland and X11, and Mica on Windows 11.
 
 The rest is in [docs/en_us/features.md](docs/en_us/features.md).

@@ -24,7 +24,7 @@
 - 左边是会话，中间是终端，右边是 Git 或文件。
 - zsh、bash、fish 和 PowerShell 的 shell 集成，文件和 Git 跟着会话的文件夹。
 - Ely 从窗口边缘探出头，跟着会话走。
-- 通过 kitty 图形协议显示图片，包括动画；通过 kitty 的 OSC 5522 读写剪贴板，程序读取前先问你。
+- 通过 kitty 图形协议显示图片，包括动画；通过 kitty 的 OSC 5522 读写剪贴板，程序读取其中内容前先问你。
 - macOS、Windows、Wayland 和 X11 上的背景不透明度和模糊，Windows 11 上还有云母。
 
 细则见 [docs/zh_cn/features.md](docs/zh_cn/features.md)。
