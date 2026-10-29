@@ -312,20 +312,20 @@ mod windows_tests {
         let script =
             std::env::temp_dir().join(format!("elyterminal-cd-{}.ps1", std::process::id()));
         std::fs::write(&script, text).expect("the script");
-        // Set-Location's own forms stay; a drive no disk has stays a failure.
+        // Only a whole `cd /x` line to Set-Location, naming nothing here, changes.
         let body = format!(
             "Import-Module PSReadLine; . '{}'; \
-             cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
-             cd -Path C:\\Windows -PassThru:$false; (Get-Location).Path; cd ..; (Get-Location).Path; \
-             'C:\\Windows' | cd; (Get-Location).Path; $h = @{{ Path = 'C:\\' }}; cd @h; (Get-Location).Path; \
+             ElyDrivePath 'cd /c/Windows/System32'; ElyDrivePath 'cd /C'; ElyDrivePath 'cd /c/Windows; ls'; \
              $free = [char[]](70..89) | Where-Object {{ -not (Test-Path \"$($_):\\\") }} | Select-Object -First 1; \
-             cd \"/$free\" 2>$null; \"failed: $(-not $?)\"; \
+             if ((ElyDrivePath \"cd /$free\") -eq \"cd /$free\") {{ 'no drive: kept' }}; \
              $root = New-Item -ItemType Directory -Force \"$env:TEMP\\ely-cd-$PID\\c\\project\"; \
              New-PSDrive -Name ElyCd -PSProvider FileSystem -Root $root.Parent.Parent.FullName | Out-Null; \
-             cd ElyCd:\\; cd /c/proj*; (Get-Location).Path; cd C:\\; \
+             Set-Location ElyCd:\\; ElyDrivePath 'cd /c/proj*'; Set-Location C:\\; \
              Remove-Item -Recurse -Force $root.Parent.Parent.FullName; \
-             $global:ElyReadLine = {{ 'cmd /c exit 7; cd C:\\missing' }}; \
-             $null = PSConsoleHostReadLine; \"a failed cd is the shell's: $global:ElyShell\"",
+             Set-Alias -Name cd -Value Push-Location -Option AllScope -Scope Global -Force; \
+             ElyDrivePath 'cd /c/Windows'; \
+             Set-Alias -Name cd -Value Set-Location -Option AllScope -Scope Global -Force; \
+             $global:ElyReadLine = {{ 'cd /c/Windows' }}; $typed = PSConsoleHostReadLine; \"run: $typed\"",
             script.display()
         );
         let out = std::process::Command::new("powershell.exe")
@@ -338,16 +338,14 @@ mod windows_tests {
         assert_eq!(
             lines,
             [
-                r"C:\Windows\System32",
-                r"C:\",
-                r"C:\Windows",
-                r"C:\",
-                r"C:\Windows",
-                r"C:\",
-                "failed: True",
-                r"ElyCd:\c\project",
+                r"cd C:\Windows\System32",
+                r"cd C:\",
+                "cd /c/Windows; ls",
+                "no drive: kept",
+                "cd /c/proj*",
+                "cd /c/Windows",
                 // The hook marks the command's start first.
-                "\u{1b}]133;C\u{7}a failed cd is the shell's: True"
+                "\u{1b}]133;C\u{7}run: cd C:\\Windows",
             ],
             "{}",
             String::from_utf8_lossy(&out.stderr)

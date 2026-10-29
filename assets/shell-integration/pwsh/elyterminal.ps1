@@ -30,33 +30,23 @@ function global:prompt {
     }
     "$text$esc]133;B$bel"
 }
-# Git Bash's /e/x is E:\x, where no such folder lies here.
-if ($env:OS -eq 'Windows_NT') {
-    & {
-        # Set-Location's own proxy keeps its parameters, pipeline and errors.
-        $command = Get-Command Set-Location -CommandType Cmdlet
-        $proxy = [System.Management.Automation.ProxyCommand]::Create($command)
-        $drive = {
-            $path = $PSBoundParameters['Path']
-            if ($path -is [string] -and $path -match '^/([A-Za-z])(/.*)?$') {
-                $root, $rest = "$($Matches[1]):\", "$($Matches[2])".TrimStart('/')
-                if (-not (Test-Path -Path $path) -and (Test-Path -LiteralPath $root)) {
-                    $PSBoundParameters['Path'] = $root + $rest.Replace('/', '\')
-                }
-            }
-        }
-        $begin = [regex]::Match($proxy, '(?m)^begin\r?\n\{')
-        if (-not $begin.Success) { throw "ELYTerminal: Set-Location's proxy has no begin block" }
-        $ely = $proxy.Insert($begin.Index + $begin.Length, "`n$drive")
-        Set-Item -Path function:global:ElyLocation -Value ([ScriptBlock]::Create($ely)) -ErrorAction Stop
-        Set-Alias -Name cd -Value ElyLocation -Option AllScope -Scope Global -Force
-    }
+# Git Bash's /e/x is E:\x where nothing lies at \e\x here.
+function global:ElyDrivePath([string]$line) {
+    $token = '^(\s*cd\s+)/([A-Za-z])(/[^\s''"$();&|`]*)?(\s*)$'
+    if ($env:OS -ne 'Windows_NT' -or $line -notmatch $token) { return $line }
+    $lead, $letter, $rest, $tail = $Matches[1], $Matches[2], "$($Matches[3])", $Matches[4]
+    $cd = Get-Command cd -ErrorAction Ignore
+    $own = -not ($cd -is [System.Management.Automation.AliasInfo] -and $cd.Definition -eq 'Set-Location')
+    # A cd of the user's own, or a path that exists, stays as typed.
+    if ($own -or (Test-Path -Path "/$letter$rest" -ErrorAction Ignore) -or
+        -not (Test-Path -LiteralPath "${letter}:\" -ErrorAction Ignore)) { return $line }
+    "$lead${letter}:\$($rest.TrimStart('/').Replace('/', '\'))$tail"
 }
 # A command starts once PSReadLine hands over a line that is not blank.
 if (Test-Path Function:\PSConsoleHostReadLine) {
     $global:ElyReadLine = $function:PSConsoleHostReadLine
     function global:PSConsoleHostReadLine {
-        $line = & $global:ElyReadLine
+        $line = ElyDrivePath (& $global:ElyReadLine)
         if (-not [string]::IsNullOrWhiteSpace($line)) {
             $global:ElyRan = $true
             $global:ElyExit = Get-Variable LASTEXITCODE -Scope Global -ValueOnly -ErrorAction Ignore
@@ -74,8 +64,7 @@ if (Test-Path Function:\PSConsoleHostReadLine) {
                 $pattern = [System.Management.Automation.WildcardPattern]::Escape($name)
                 $info = Get-Command -Name $pattern -ErrorAction Ignore | Select-Object -First 1
                 while ($info -and $info.CommandType -eq 'Alias') { $info = $info.ResolvedCommand }
-                # ElyLocation is Set-Location's own proxy.
-                $null -eq $info -or $info.CommandType -eq 'Cmdlet' -or $info.Name -eq 'ElyLocation'
+                $null -eq $info -or $info.CommandType -eq 'Cmdlet'
             } else {
                 $null -eq $last -or -not $last.Find({ $args[0] -is [System.Management.Automation.Language.CommandAst] }, $true)
             }
