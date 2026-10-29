@@ -325,3 +325,10 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 2, e5a5a21: FAIL. The held folder opened for reading, so a file in a folder one may only search (0111) answered EBADF. Fixed in 581f534: O_SEARCH on macOS, O_PATH on Linux.
 - Round 3, 581f534: FAIL. rustfmt had split the Windows shared memory read into a statement and `[range].to_vec()`, which did not compile; the Windows PC, reachable again, found it first. Fixed in 2a27578; 51d9182 counts the ConPTY test's 17 bytes. A fourth round ran under the owner's standing word.
 - Round 4, 51d9182: PASS. Windows: clippy clean and 321 tests, shared memory, temporary files and the ConPTY APC among them; macOS 340; Linux 347 on 581f534.
+
+## T110
+
+- macOS and Linux were proven in ceb4bea; Windows waited on the PC's SSH.
+- Round 1, 488e9a5: FAIL. The Windows Claude Code record ran past the evidence file, whose line filter had dropped the `❯ a` row, drawn with a no-break space, and the version banner. The encoding check passed: the probe picks the listener's own bytes for both modes. Fixed in 842b6b7: whole PROBE blocks in the evidence, and both records name the proof's reach, the encoder and OpenConsole, not gpui's dispatch of a real key.
+- Round 2, 842b6b7: PASS.
+- A first try at a GUI run on the PC grabbed the owner's own ELYTerminal window by name; it was caught at the first capture, before any key, the settings restored and only the test's process stopped. The proof ran headless after.
