@@ -18,7 +18,7 @@ use gpui::{
 };
 
 use super::{Settings, SettingsStore};
-use crate::{app::APP_ID, menus, term::BLINK, themes, updates::Updates};
+use crate::{app::APP_ID, menus, term::BLINK, updates::Updates};
 
 mod appearance;
 mod terminal;
@@ -112,8 +112,9 @@ pub struct SettingsWindow {
     /// The worn custom theme the editor shows, its name and its chosen color.
     editing: Option<String>,
     theme_name: Entity<TextInput>,
+    _named: Subscription,
     slot: usize,
-    _typed: [Subscription; 4],
+    _typed: [Subscription; 3],
     _settings: Subscription,
     _updates: Subscription,
     _language: Subscription,
@@ -134,7 +135,7 @@ impl SettingsWindow {
             input
         });
         let font = cx.new(|cx| TextInput::new(window, cx));
-        let theme_name = cx.new(|cx| TextInput::new(window, cx));
+        let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
             let mut input = TextInput::new(window, cx);
             input.set_text(SettingsStore::get(cx).background_image.clone(), cx);
@@ -166,18 +167,6 @@ impl SettingsWindow {
                     this.refused_image = this.save_typed("background_image", image, put, cx);
                 }
             }),
-            cx.subscribe(&theme_name, |this, input, event: &InputEvent, cx| {
-                if let (InputEvent::Changed, Some(id)) = (event, this.editing.clone()) {
-                    let name = input.read(cx).text().trim().to_string();
-                    let themes = &SettingsStore::get(cx).custom_themes;
-                    if !themes
-                        .iter()
-                        .any(|theme| theme.id == id && theme.name == name)
-                    {
-                        this.rename_theme(id, name, cx);
-                    }
-                }
-            }),
         ];
         // Focus inside, so the window's keys find its context.
         let focus = cx.focus_handle();
@@ -200,6 +189,7 @@ impl SettingsWindow {
             lit: true,
             editing: None,
             theme_name,
+            _named: named,
             slot: 0,
             _typed: typed,
             _settings: cx.observe_global::<SettingsStore>(|_, cx| cx.notify()),
@@ -237,44 +227,6 @@ impl SettingsWindow {
                 }
             }
         })
-    }
-
-    /// Names custom theme `id`; an empty name stays unsaved, the page saying why.
-    fn rename_theme(&mut self, id: String, name: String, cx: &mut Context<Self>) {
-        let saved = SettingsStore::update(cx, |settings| {
-            match settings
-                .custom_themes
-                .iter_mut()
-                .find(|theme| theme.id == id)
-            {
-                Some(theme) => theme.name = name.clone(),
-                None => log::error!("settings: {id} went before its name saved"),
-            }
-        });
-        self.failed = match saved {
-            Ok(()) => {
-                log::info!("settings: {id} is named {name:?}");
-                None
-            }
-            Err(error) => Some(format!("{error:#}").into()),
-        };
-        cx.notify();
-    }
-
-    /// Points the editor at the worn custom theme, its name shown afresh when it changes.
-    fn follow_custom(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let settings = SettingsStore::get(cx);
-        let worn = themes::chosen(settings, window.appearance());
-        let custom = settings.custom_themes.iter().find(|theme| theme.id == worn);
-        let id = custom.map(|theme| theme.id.clone());
-        if id == self.editing {
-            return;
-        }
-        let name = custom.map(|theme| theme.name.clone()).unwrap_or_default();
-        self.editing = id;
-        self.slot = 0;
-        self.theme_name
-            .update(cx, |input, cx| input.set_text(name, cx));
     }
 
     /// Saves Browse's pick as typed; refuses one not in UTF-8.

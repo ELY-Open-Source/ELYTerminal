@@ -1,10 +1,11 @@
-use std::{borrow::Cow, cell::RefCell, rc::Rc, time::Duration};
+use std::{borrow::Cow, cell::RefCell, path::Path, rc::Rc, sync::Arc, time::Duration};
 
 use anyhow::Context as _;
 use ely_gpui_component::theme::ActiveTheme;
 use gpui::{
-    App, AppContext, Bounds, Context, DisplayId, Pixels, Size, Task, TitlebarOptions, Window,
-    WindowBounds, WindowDecorations, WindowHandle, WindowOptions, point, px, size,
+    App, AppContext, Bounds, Context, DisplayId, ImageAssetLoader, Pixels, Resource, Size, Task,
+    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowHandle, WindowOptions, point,
+    px, size,
 };
 
 #[cfg(target_os = "macos")]
@@ -100,6 +101,18 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
             settings.background_opacity,
         )
     };
+    let mut image = SettingsStore::get(cx).background_image.clone();
+    cx.observe_global::<SettingsStore>(move |cx| {
+        let now = SettingsStore::get(cx).background_image.clone();
+        // A picture named anew reads its file, not gpui's cache.
+        if now != image && !now.is_empty() {
+            let path: Arc<Path> = Path::new(&now).into();
+            cx.remove_asset::<ImageAssetLoader>(&Resource::Path(path));
+            log::info!("app: the background image reads {now} afresh");
+        }
+        image = now;
+    })
+    .detach();
     let mut worn = chosen(SettingsStore::get(cx));
     cx.observe_global::<SettingsStore>(move |cx| {
         let now = chosen(SettingsStore::get(cx));

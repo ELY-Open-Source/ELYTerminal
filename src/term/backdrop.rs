@@ -19,17 +19,10 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         if settings.background_image.is_empty() {
-            self.backdrop_shown = None;
             return None;
         }
         let path: Arc<Path> = Path::new(&settings.background_image).into();
         let source = Resource::Path(path.clone());
-        // A path named again reads its file afresh.
-        if self.backdrop_shown.as_deref() != Some(&*path) {
-            cx.remove_asset::<ImageAssetLoader>(&source);
-            self.backdrop_shown = Some(path.to_path_buf());
-            self.backdrop_failed = None;
-        }
         match window.use_asset::<ImageAssetLoader>(&source, cx)? {
             Ok(image) => Some(
                 img(image)

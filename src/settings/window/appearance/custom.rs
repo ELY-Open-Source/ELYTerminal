@@ -2,21 +2,21 @@
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant},
-    forms::{ColorPicker, ColorSwatch, Input},
+    forms::{ColorPicker, ColorSwatch, Input, InputEvent, TextInput},
     i18n::text,
     primitives::{Icon, IconName},
     settings::SettingsRow,
     theme::{ActiveTheme, ControlSize, Radius},
 };
 use gpui::{
-    App, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
-    SharedString, StatefulInteractiveElement, Styled, WindowAppearance, div,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    SharedString, StatefulInteractiveElement, Styled, Subscription, Window, WindowAppearance, div,
 };
 
 use super::super::{SettingsWindow, set};
 use crate::{
     settings::SettingsStore,
-    themes::{CustomTheme, SLOTS, forget, wear},
+    themes::{self, CustomTheme, SLOTS, forget, wear},
 };
 
 /// The card after the last theme: Ely Dark's copy, worn at once.
@@ -72,6 +72,69 @@ pub(super) fn add_card(this: &Entity<SettingsWindow>, cx: &App) -> impl IntoElem
 }
 
 impl SettingsWindow {
+    /// Names custom theme `id`; an empty name stays unsaved, the page saying why.
+    fn rename_theme(&mut self, id: String, name: String, cx: &mut Context<Self>) {
+        let saved = SettingsStore::update(cx, |settings| {
+            match settings
+                .custom_themes
+                .iter_mut()
+                .find(|theme| theme.id == id)
+            {
+                Some(theme) => theme.name = name.clone(),
+                None => log::error!("settings: {id} went before its name saved"),
+            }
+        });
+        self.failed = match saved {
+            Ok(()) => {
+                log::info!("settings: {id} is named {name:?}");
+                None
+            }
+            Err(error) => Some(format!("{error:#}").into()),
+        };
+        cx.notify();
+    }
+
+    /// Points the editor at the worn custom theme, its name shown afresh when it changes.
+    pub(in crate::settings::window) fn follow_custom(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let settings = SettingsStore::get(cx);
+        let worn = themes::chosen(settings, window.appearance());
+        let custom = settings.custom_themes.iter().find(|theme| theme.id == worn);
+        let id = custom.map(|theme| theme.id.clone());
+        if id == self.editing {
+            return;
+        }
+        let name = custom.map(|theme| theme.name.clone()).unwrap_or_default();
+        // A field of its own, so no undo crosses themes.
+        (self.theme_name, self._named) = Self::name_field(id.clone(), name, window, cx);
+        self.editing = id;
+        self.slot = 0;
+    }
+
+    /// A name field for theme `id`, holding `name`, saving each edit.
+    pub(in crate::settings::window) fn name_field(
+        id: Option<String>,
+        name: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> (Entity<TextInput>, Subscription) {
+        let input = cx.new(|cx| {
+            let mut input = TextInput::new(window, cx);
+            input.set_text(name, cx);
+            input
+        });
+        let named = cx.subscribe(&input, move |this, input, event: &InputEvent, cx| {
+            if let (InputEvent::Changed, Some(id)) = (event, id.clone()) {
+                let name = input.read(cx).text().trim().to_string();
+                this.rename_theme(id, name, cx);
+            }
+        });
+        (input, named)
+    }
+
     /// The name, colors and delete of `worn`, when it is a custom theme.
     pub(super) fn custom_editor(&self, worn: &str, cx: &Context<Self>) -> Vec<SettingsRow> {
         let settings = SettingsStore::get(cx);
