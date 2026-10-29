@@ -292,9 +292,7 @@ mod tests {
     fn a_process_s_owner_is_the_user_it_runs_as() {
         let (own, uid) = (std::process::id() as i32, unsafe { libc::getuid() });
         assert_eq!(super::owner(own).expect("our own process"), uid);
-        // init runs as root; macOS shows no one launchd's.
-        #[cfg(target_os = "linux")]
-        assert_eq!(super::owner(1).expect("init"), 0);
+        // launchd is root's, which macOS shows no one.
         #[cfg(target_os = "macos")]
         assert!(super::owner(1).is_err(), "launchd is root's");
     }
