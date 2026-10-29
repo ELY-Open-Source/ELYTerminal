@@ -12,26 +12,35 @@ pub(super) fn holder(master: Option<&std::fs::File>, pid: u32) -> Option<i32> {
     }
 }
 
-/// Whether an interactive shell leading `group` drew it.
+/// What `group`'s leader runs, or its name where that hides.
 #[cfg(unix)]
-pub(super) fn prompts(group: i32, click: Click, pid: u32) -> bool {
-    use crate::term::{shell, unix};
-    let exe = match unix::path(group) {
-        Ok(exe) => exe,
+fn leader(group: i32, pid: u32) -> Option<std::path::PathBuf> {
+    use crate::term::unix;
+    match unix::path(group) {
+        Ok(exe) => Some(exe),
         // Another user's executable hides, its name does not.
         Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
             match unix::name(group) {
-                Ok(name) => name,
+                Ok(name) => Some(name),
                 Err(error) => {
                     log::debug!("pty {pid}: group {group}'s leader has no name: {error}");
-                    return false;
+                    None
                 }
             }
         }
         Err(error) => {
             log::debug!("pty {pid}: group {group}'s leader is gone: {error}");
-            return false;
+            None
         }
+    }
+}
+
+/// Whether an interactive shell leading `group` drew it.
+#[cfg(unix)]
+pub(super) fn prompts(group: i32, click: Click, pid: u32) -> bool {
+    use crate::term::{shell, unix};
+    let Some(exe) = leader(group, pid) else {
+        return false;
     };
     // A relay's own pty shows its foreground, sudo's among them.
     if shell::relays(&exe) {
@@ -62,6 +71,11 @@ pub(super) fn prompts(group: i32, click: Click, pid: u32) -> bool {
             true
         }
     };
+    // An exec between the two reads mixes two programs.
+    if interactive && leader(group, pid).as_ref() != Some(&exe) {
+        log::debug!("pty {pid}: group {group} left {exe:?} mid-read");
+        return false;
+    }
     // fish and nu mark their own lines and fork no copy.
     interactive
         && ((click != Click::Arrows && shell::clicks(&exe))
@@ -342,6 +356,39 @@ mod tests {
         assert!(!crate::term::shell::relays(Path::new("/bin/zsh")));
         let own = crate::term::unix::name(std::process::id() as i32).expect("its own name");
         assert!(own.to_string_lossy().starts_with("elyterminal"), "{own:?}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_shell_caught_in_its_exec_names_no_shell() {
+        use std::{
+            io::{BufRead, BufReader},
+            os::unix::process::CommandExt,
+            process::{Command, Stdio},
+        };
+        let shells = (0..200)
+            .filter(|_| {
+                let mut child = Command::new("sh")
+                    .args(["-c", "echo ready; exec /bin/cat"])
+                    .process_group(0)
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .expect("it starts");
+                let mut ready = String::new();
+                let output = child.stdout.as_mut().expect("its output");
+                BufReader::new(output)
+                    .read_line(&mut ready)
+                    .expect("it says");
+                // Reads across the exec, so one may straddle it.
+                let read = (0..50).any(|_| prompts(child.id() as i32, Click::Arrows, 0));
+                // SAFETY: a signal to the test's own group.
+                unsafe { libc::kill(-(child.id() as i32), libc::SIGKILL) };
+                child.wait().expect("it ends");
+                read
+            })
+            .count();
+        assert_eq!(shells, 0, "cat read as a shell");
     }
 
     #[cfg(unix)]
