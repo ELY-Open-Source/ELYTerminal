@@ -11,7 +11,7 @@
 - Cmd-Up 和 Cmd-Down，非 macOS 上是 Ctrl-Shift-Up 和 Ctrl-Shift-Down，跳到视口顶部之前或之后的提示符。
 - macOS 上的自然文本编辑，设置 › 终端 里默认关闭：Option-Left 和 Option-Right 按词移动，Option-Backspace 和 Option-Delete 按词删除，Command-Left 和 Command-Right 移到行首行尾，Command-Backspace 和 Command-Delete 删到行首行尾，发出的是 shell 期望的编辑字节。
 - 设置 › 终端 里的 Option 键作为 Alt 把所选的 macOS Option 键变成终端的 Alt，选了拼音之类的输入法时也一样；未选的 Option 键仍输入特殊字符。
-- 标题栏两端各有一个按钮，隐藏或显示该侧栏；侧栏与终端之间的边框可拖动改宽度；窗口按离开时的大小和宽度打开。在 Windows 和 Linux 上，右侧按钮旁的齿轮打开设置。
+- 标题栏两端各有一个按钮，隐藏或显示该侧栏；侧栏与终端之间的边框可拖动改宽度；窗口按离开时的大小和宽度打开，在 macOS、Windows 和 X11 上还回到离开时的显示器和位置。在 Windows 和 Linux 上，右侧按钮旁的齿轮打开设置。
 - 文件把会话的文件夹显示为带 Git 标记的树。在 herdr 里，文件夹是 herdr 当前窗格的。
 - Git 显示分支，暂存、取消暂存、丢弃、提交，列出最近提交并打开差异，全部通过 `git` 命令行。
 - 主题：Ely Dark、Ely Light、Catppuccin Mocha、Macchiato、Frappé 和 Latte、Tokyo Night、Dracula、Nord、Gruvbox Dark、Rosé Pine、Solarized Light、One Light 和 Kanagawa Wave。系统为深色时可换第二套主题。在 Omarchy 4 上，Omarchy 主题跟着系统主题切换，并且是那里的默认。

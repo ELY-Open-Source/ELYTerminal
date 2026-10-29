@@ -233,3 +233,23 @@ fn start_in_a_folder_needs_one_that_exists_at_a_full_path() {
     settings.start_folder.clear();
     settings.validate().expect("home, no folder");
 }
+
+#[test]
+fn a_window_place_is_kept_within_its_range() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.window_place, None, "a first start centers");
+    let far = Settings {
+        window_place: Some([-100.0, 40000.0]),
+        ..Settings::default()
+    };
+    let error = far.validate().expect_err("40000 is past every screen");
+    assert_eq!(
+        error.to_string(),
+        "window_place is 40000, outside -32768 to 32768"
+    );
+    let kept = Settings {
+        window_place: Some([-2560.0, -200.0]),
+        ..Settings::default()
+    };
+    kept.validate().expect("a display left of the primary");
+}

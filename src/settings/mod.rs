@@ -125,6 +125,8 @@ pub struct Settings {
     /// The main window's size, unmaximized, in pixels.
     pub window_width: f32,
     pub window_height: f32,
+    /// The main window's top-left, global, as gpui gives it.
+    pub window_place: Option<[f32; 2]>,
 }
 
 impl Default for Settings {
@@ -164,6 +166,7 @@ impl Default for Settings {
             panel_width: 240.0,
             window_width: 1200.0,
             window_height: 760.0,
+            window_place: None,
         }
     }
 }
@@ -176,6 +179,7 @@ pub const SCROLLBACK: RangeInclusive<u32> = 0..=100_000;
 pub const COLUMN: RangeInclusive<f32> = 160.0..=960.0;
 pub const WINDOW: RangeInclusive<f32> = 100.0..=16384.0;
 pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
+pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
@@ -191,6 +195,10 @@ impl Settings {
         within("window_width", self.window_width, &WINDOW)?;
         within("window_height", self.window_height, &WINDOW)?;
         within("ely_left", self.ely_left, &ELY_LEFT)?;
+        if let Some([x, y]) = self.window_place {
+            within("window_place", x, &PLACE)?;
+            within("window_place", y, &PLACE)?;
+        }
         for (field, id) in [
             ("theme", Some(&self.theme)),
             ("dark_theme", self.dark_theme.as_ref()),

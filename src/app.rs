@@ -3,8 +3,8 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc, time::Duration};
 use anyhow::Context as _;
 use ely_gpui_component::theme::ActiveTheme;
 use gpui::{
-    App, AppContext, Bounds, Context, Pixels, Size, Task, TitlebarOptions, Window, WindowBounds,
-    WindowDecorations, WindowHandle, WindowOptions, px, size,
+    App, AppContext, Bounds, Context, DisplayId, Pixels, Size, Task, TitlebarOptions, Window,
+    WindowBounds, WindowDecorations, WindowHandle, WindowOptions, point, px, size,
 };
 
 #[cfg(target_os = "macos")]
@@ -110,14 +110,12 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
 
 /// Opens the main window running `launch`.
 pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspace>> {
-    let kept = opening_size(cx);
-    // macOS grows a window by a point on a side whose edge falls on a half point.
-    let centered = Bounds::centered(None, kept, cx);
-    let bounds = Bounds::new(centered.origin.map(|at| at.round()), kept);
+    let (bounds, display_id) = opening_bounds(cx);
     let background = blur::appearance(SettingsStore::get(cx));
     let least = px(*settings::WINDOW.start());
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
+        display_id,
         // No smaller than the settings keep.
         window_min_size: Some(size(least, least)),
         titlebar: Some(TitlebarOptions {
@@ -140,43 +138,78 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
             .observe_window_appearance(|_, cx| themes::apply(cx))
             .detach();
         cx.new(|cx| {
-            keep_size(window, cx);
+            keep_bounds(window, cx);
             Workspace::new(pty, events, launch, window, cx)
         })
     })?;
     crate::pet::follow(window, cx);
     log::info!(
-        "app: main window open at {} by {}, blur: {background:?} on {}",
-        f32::from(kept.width),
-        f32::from(kept.height),
+        "app: main window open at {:?}, blur: {background:?} on {}",
+        bounds,
         std::env::consts::OS
     );
     Ok(window)
 }
 
-/// The kept size, within the primary display's visible area where that is known.
-fn opening_size(cx: &App) -> Size<Pixels> {
+/// The kept place and size on the display holding them, else centered on the primary.
+fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
     let settings = SettingsStore::get(cx);
+    let kept = size(px(settings.window_width), px(settings.window_height));
+    if let Some([x, y]) = settings.window_place {
+        let place = Bounds::new(point(px(x), px(y)), kept);
+        let displays = cx.displays();
+        let areas: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
+        match home(place, &areas) {
+            Some(at) => {
+                let display = &displays[at];
+                let fitted = fit(kept, Some(display.visible_bounds().size));
+                log::info!(
+                    "app: the window opens where it was left, on {:?}",
+                    areas[at]
+                );
+                return (Bounds::new(place.origin, fitted), Some(display.id()));
+            }
+            None => log::info!("app: the kept place {x}, {y} lies on no display; centered"),
+        }
+    }
     let room = cx
         .primary_display()
         .map(|display| display.visible_bounds().size);
-    let fit = |want: f32, side: Option<Pixels>| match side.map(f32::from) {
-        Some(side) if side > 0.0 && want > side => {
-            log::info!(
-                "app: a kept side of {want} px passes the screen's {side}; the window takes {side}"
-            );
-            px(side)
-        }
-        _ => px(want),
-    };
-    size(
-        fit(settings.window_width, room.map(|area| area.width)),
-        fit(settings.window_height, room.map(|area| area.height)),
+    let fitted = fit(kept, room);
+    // macOS grows a window by a point on a side whose edge falls on a half point.
+    let centered = Bounds::centered(None, fitted, cx);
+    (
+        Bounds::new(centered.origin.map(|at| at.round()), fitted),
+        None,
     )
 }
 
-/// Keeps the window's size in the settings once it settles; maximized, full screen or hidden, the size before stays.
-fn keep_size(window: &mut Window, cx: &mut Context<Workspace>) {
+/// The display, of `areas`, that holds the middle of `place`.
+fn home(place: Bounds<Pixels>, areas: &[Bounds<Pixels>]) -> Option<usize> {
+    areas.iter().position(|area| area.contains(&place.center()))
+}
+
+/// `kept`, each side no wider than `room` where that is known.
+fn fit(kept: Size<Pixels>, room: Option<Size<Pixels>>) -> Size<Pixels> {
+    let side = |want: Pixels, side: Option<Pixels>| match side {
+        Some(side) if side > px(0.) && want > side => {
+            log::info!(
+                "app: a kept side of {} px passes the screen's {}; the window takes it",
+                f32::from(want),
+                f32::from(side)
+            );
+            side
+        }
+        _ => want,
+    };
+    size(
+        side(kept.width, room.map(|area| area.width)),
+        side(kept.height, room.map(|area| area.height)),
+    )
+}
+
+/// Keeps the window's place and size once settled, unless maximized, full screen or hidden.
+fn keep_bounds(window: &mut Window, cx: &mut Context<Workspace>) {
     let settling: Rc<RefCell<Option<Task<()>>>> = Rc::default();
     let settle = move |window: &mut Window, cx: &mut Context<Workspace>| {
         let task = cx.spawn_in(window, async move |_, cx| {
@@ -185,27 +218,31 @@ fn keep_size(window: &mut Window, cx: &mut Context<Workspace>) {
             let kept = cx.update(|window, cx| {
                 if !window.is_visible() || window.is_maximized() || window.is_fullscreen() {
                     log::debug!(
-                        "app: the window is hidden, maximized or full screen; its kept size stays"
+                        "app: the window is hidden, maximized or full screen; its kept bounds stay"
                     );
                     return Ok(());
                 }
-                let area = window.window_bounds().get_bounds().size;
-                let (width, height) = (
-                    f32::from(area.width).round(),
-                    f32::from(area.height).round(),
-                );
+                let bounds = window.window_bounds().get_bounds();
+                let [x, y, width, height] = [
+                    bounds.origin.x,
+                    bounds.origin.y,
+                    bounds.size.width,
+                    bounds.size.height,
+                ]
+                .map(|side| f32::from(side).round());
                 SettingsStore::update(cx, |settings| {
                     settings.window_width = width;
                     settings.window_height = height;
+                    settings.window_place = Some([x, y]);
                 })
                 .with_context(|| {
-                    format!("app: the window's size, {width} by {height}, is not kept")
+                    format!("app: the window at {x}, {y}, {width} by {height}, is not kept")
                 })
             });
             match kept {
                 Ok(Ok(())) => {}
                 Ok(Err(error)) => log::error!("{error:#}"),
-                Err(_) => log::debug!("app: the window closed before its size settled"),
+                Err(_) => log::debug!("app: the window closed before its bounds settled"),
             }
         });
         settling.replace(Some(task));
@@ -213,11 +250,34 @@ fn keep_size(window: &mut Window, cx: &mut Context<Workspace>) {
     let shown = settle.clone();
     cx.observe_window_bounds(window, move |_, window, cx| settle(window, cx))
         .detach();
-    // A size skipped while the window hid is read again once it shows.
+    // Bounds skipped while hidden are read once it shows.
     cx.observe_window_visibility(window, move |_, visibility, window, cx| {
         if visibility.is_visible() {
             shown(window, cx);
         }
     })
     .detach();
+}
+
+#[cfg(test)]
+mod tests {
+    use gpui::{Bounds, point, px, size};
+
+    use super::home;
+
+    fn area(x: f32, y: f32, width: f32, height: f32) -> Bounds<gpui::Pixels> {
+        Bounds::new(point(px(x), px(y)), size(px(width), px(height)))
+    }
+
+    #[test]
+    fn a_window_opens_on_the_display_holding_its_middle() {
+        let left = area(-2560., -200., 2560., 1440.);
+        let main = area(0., 0., 1920., 1080.);
+        let displays = [main, left];
+        assert_eq!(home(area(-1800., 100., 1200., 760.), &displays), Some(1));
+        assert_eq!(home(area(100., 100., 1200., 760.), &displays), Some(0));
+        assert_eq!(home(area(1300., 100., 1200., 760.), &displays), Some(0));
+        assert_eq!(home(area(1800., 100., 1200., 760.), &displays), None);
+        assert_eq!(home(area(4000., 100., 1200., 760.), &[main]), None);
+    }
 }
