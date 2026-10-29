@@ -229,7 +229,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 
 ## 40. Ghostty 1.4
 
-- [ ] T110 Shift+Enter makes a new line in codex and Claude Code, through the kitty keyboard protocol, on macOS, Windows and Linux; proven in each, fixed where not.
+- [ ] T110 Shift+Enter makes a new line in codex and Claude Code, through the kitty keyboard protocol, on macOS, Windows and Linux; proven in each, fixed where not. macOS: codex 0.163 set kitty's disambiguate, events and alternates, Claude Code 2.1.303 disambiguate and alternates; Shift+Enter went as `CSI 13;2u` and each composer held two lines. Linux, under niri on the Omarchy machine: both set the same flags and Shift+Enter went as `CSI 13;2u`; neither agent is signed in there, so no composer showed. Windows waits: the owner's PC resets every SSH connection since 2026-10-28.
 - [ ] T111 APC reaches the terminal: an org fork of vte dispatches APC strings, and the alacritty fork hands kitty graphics commands to ELYTerminal at the cursor.
 - [ ] T112 Kitty graphics transmission: direct, file, temporary file and shared memory; RGB, RGBA and PNG; zlib; chunks; ids and numbers; responses and quiet; storage limit; delete commands.
 - [ ] T113 Kitty graphics placements: at the cursor, the cursor moved after them; z-index under text, under the ground and over text; source rectangle, cell size, offsets; images scroll with text, scroll regions clip them, clears delete them as kitty does.
