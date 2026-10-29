@@ -171,8 +171,10 @@ pub(in super::super) fn shared(
                 .map_err(|error| format!("{shown:?}: {error}"))
                 .map(|range| {
                     // SAFETY: the view holds `RegionSize` bytes; the range lies inside.
-                    unsafe { std::slice::from_raw_parts(view.Value.cast::<u8>(), info.RegionSize) }
-                    [range].to_vec()
+                    let all = unsafe {
+                        std::slice::from_raw_parts(view.Value.cast::<u8>(), info.RegionSize)
+                    };
+                    all[range].to_vec()
                 })
         };
         // SAFETY: the view made above, unused after this.
