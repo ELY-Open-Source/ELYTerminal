@@ -156,21 +156,19 @@ fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
     let settings = SettingsStore::get(cx);
     let kept = size(px(settings.window_width), px(settings.window_height));
     if let Some(place) = &settings.window_place {
-        let named = cx.displays().into_iter().find(|display| {
-            display
-                .uuid()
-                .is_ok_and(|id| id.to_string() == place.display)
-        });
-        match named {
-            Some(display) => {
-                let area = display.visible_bounds();
-                let fitted = fit(kept, Some(area.size));
-                let origin = display.bounds().origin + point(px(place.x), px(place.y));
-                let bounds = inside(Bounds::new(origin, fitted), area);
-                log::info!("app: the window opens where it was left, on {area:?}");
-                return (bounds, Some(display.id()));
-            }
-            None => log::info!("app: display {} is gone; centered", place.display),
+        let displays = cx.displays();
+        let ids: Vec<_> = displays
+            .iter()
+            .map(|display| display.uuid().ok().map(|id| id.to_string()))
+            .collect();
+        if let Some(at) = named(&ids, &place.display) {
+            let display = &displays[at];
+            let area = display.visible_bounds();
+            let fitted = fit(kept, Some(area.size));
+            let origin = display.bounds().origin + point(px(place.x), px(place.y));
+            let bounds = inside(Bounds::new(origin, fitted), area);
+            log::info!("app: the window opens where it was left, on {area:?}");
+            return (bounds, Some(display.id()));
         }
     }
     let room = cx
@@ -183,6 +181,22 @@ fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
         Bounds::new(centered.origin.map(|at| at.round()), fitted),
         None,
     )
+}
+
+/// The one display of `ids` named `kept`; none when gone or shared.
+fn named(ids: &[Option<String>], kept: &str) -> Option<usize> {
+    let mut found = (0..ids.len()).filter(|&at| ids[at].as_deref() == Some(kept));
+    match (found.next(), found.next()) {
+        (Some(at), None) => Some(at),
+        (None, _) => {
+            log::info!("app: display {kept} is gone; centered");
+            None
+        }
+        (Some(_), Some(_)) => {
+            log::info!("app: display {kept} names more than one display; centered");
+            None
+        }
+    }
 }
 
 /// `bounds` moved inside `area`, which holds its size.
@@ -291,10 +305,27 @@ fn keep_bounds(window: &mut Window, cx: &mut Context<Workspace>) {
 mod tests {
     use gpui::{Bounds, point, px, size};
 
-    use super::inside;
+    use super::{inside, named};
 
     fn area(x: f32, y: f32, width: f32, height: f32) -> Bounds<gpui::Pixels> {
         Bounds::new(point(px(x), px(y)), size(px(width), px(height)))
+    }
+
+    #[test]
+    fn a_window_opens_on_the_one_display_its_uuid_names() {
+        let ids = |all: &[&str]| {
+            all.iter()
+                .map(|id| Some(id.to_string()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(named(&ids(&["a", "b"]), "b"), Some(1));
+        assert_eq!(named(&ids(&["a"]), "z"), None);
+        assert_eq!(
+            named(&ids(&["0", "0"]), "0"),
+            None,
+            "X screens share a nil uuid"
+        );
+        assert_eq!(named(&[None, Some("b".into())], "b"), Some(1));
     }
 
     #[test]
