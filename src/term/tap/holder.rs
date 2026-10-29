@@ -61,7 +61,7 @@ pub(super) fn prompts(group: i32, click: Click, pid: u32) -> bool {
         Ok(args) if args.first().is_none_or(String::is_empty) => false,
         // An operand names a script or `-c`'s command.
         Ok(args) => options.interactive(&args[1..]),
-        // macOS refuses our own process mid-exec; it is no shell yet.
+        // macOS refuses our own process mid-exec: no shell yet.
         Err(error) if unix::owner(group).is_ok_and(|uid| uid == unsafe { libc::getuid() }) => {
             log::debug!("pty {pid}: group {group} is ours and mid-exec: {error}");
             false
