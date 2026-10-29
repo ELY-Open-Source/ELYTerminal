@@ -102,6 +102,14 @@ fn a_program_prints_into_the_grid_with_its_variables_and_id() {
 }
 
 #[test]
+fn a_kitty_graphics_command_reaches_its_handler_at_the_cursor() {
+    let ran = run(r"printf 'ab\033_Gi=1,a=q;AAAA\033\\cd'", (24, 4));
+    assert_eq!(ran.text, "abcd", "the command prints nothing");
+    let seen = format!("graphics {}: 12 bytes at 0, 2: i=1,a=q;AAAA", ran.pid);
+    assert!(crate::testlog::logged(&seen), "{seen}");
+}
+
+#[test]
 fn osc_7_reaches_the_session_as_a_folder() {
     let ran = run(
         "printf '\\033]7;file:///tmp/a%%20b\\007x\\033]7;file://elsewhere.invalid/c\\033\\\\'",

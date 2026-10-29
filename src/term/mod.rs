@@ -7,6 +7,7 @@ mod env;
 mod find;
 mod fonts;
 pub mod frame;
+mod graphics;
 mod herdr;
 pub mod ink;
 pub mod input;

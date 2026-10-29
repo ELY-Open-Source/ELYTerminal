@@ -13,6 +13,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 
 use super::{
     drop::Quote,
+    graphics::Graphics,
     marks::Mark,
     mouse::MouseMode,
     notify::Ask,
@@ -167,7 +168,9 @@ pub fn spawn(
         pid,
     };
     let grid = TermSize::new(size.num_cols.into(), size.num_lines.into());
-    let term = Arc::new(FairMutex::new(Term::new(config, &grid, listener.clone())));
+    let mut term = Term::new(config, &grid, listener.clone());
+    term.set_graphics(Box::new(Graphics { pid }));
+    let term = Arc::new(FairMutex::new(term));
     let tapped = Tapped::new(raw, sender, pid);
     #[cfg(unix)]
     let tapped = tapped.holding(master.try_clone().map_err(|error| {

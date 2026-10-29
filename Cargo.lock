@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "alacritty_terminal"
 version = "0.26.0"
-source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=4a10fb38b9497a08dbc698a787b8a0894c654f1c#4a10fb38b9497a08dbc698a787b8a0894c654f1c"
+source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=2c372cf8417261ff2f91d95541758fd9b215100d#2c372cf8417261ff2f91d95541758fd9b215100d"
 dependencies = [
  "base64",
  "bitflags 2.13.2",
@@ -7166,8 +7166,7 @@ dependencies = [
 [[package]]
 name = "vte"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5924018406ce0063cd67f8e008104968b74b563ee1b85dde3ed1f7cb87d3dbd"
+source = "git+https://github.com/ELY-Open-Source/vte.git?rev=12715b4c51b9a31a39e196b04206e31e4861d79b#12715b4c51b9a31a39e196b04206e31e4861d79b"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.2",
