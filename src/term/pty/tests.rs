@@ -107,6 +107,11 @@ fn a_kitty_graphics_command_reaches_its_handler_at_the_cursor() {
     assert_eq!(ran.text, "abcd", "the command prints nothing");
     let seen = format!("graphics {}: 12 bytes at 0, 2: i=1,a=q;AAAA", ran.pid);
     assert!(crate::testlog::logged(&seen), "{seen}");
+    // A control inside the string's ST runs where it stands.
+    let ran = run(r"printf 'ab\033_Gi=1\033\r\\cd\033_Gi=2\033\\'", (24, 4));
+    assert_eq!(ran.text, "cd");
+    let seen = format!("graphics {}: 3 bytes at 0, 2: i=2", ran.pid);
+    assert!(crate::testlog::logged(&seen), "{seen}");
 }
 
 #[test]

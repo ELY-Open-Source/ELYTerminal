@@ -57,6 +57,8 @@ enum State {
     Held,
     /// An OSC passed on as it comes.
     Passing,
+    /// An APC, DCS, SOS or PM string, where vte runs no control.
+    String,
 }
 
 /// Rewrites what goes to the parser so it stamps each prompt's cells with a link of its own, numbered per prompt.
@@ -133,6 +135,11 @@ impl Prompts {
                 self.out.push(byte);
                 State::Escape { sent: true }
             }
+            (State::Escape { .. }, b'_' | b'P' | b'X' | b'^') => {
+                self.held.push(byte);
+                self.release();
+                State::String
+            }
             (State::Escape { .. }, _) => {
                 // A full reset clears the link the parser writes with.
                 if byte == b'c' {
@@ -170,6 +177,19 @@ impl Prompts {
                 self.out.push(byte);
                 self.read(byte);
                 State::Passing
+            }
+            // The string's ESC leaves the parser in its escape: it goes on now.
+            (State::String, ESC) => {
+                self.out.push(ESC);
+                State::Escape { sent: true }
+            }
+            (State::String, 0x18 | 0x1a) => {
+                self.out.push(byte);
+                State::Ground
+            }
+            (State::String, _) => {
+                self.out.push(byte);
+                State::String
             }
         };
     }

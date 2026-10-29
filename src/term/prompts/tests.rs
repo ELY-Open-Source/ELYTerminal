@@ -371,3 +371,16 @@ fn input_carries_the_commands_ended_before_it() {
         "C and D each end it"
     );
 }
+
+#[test]
+fn a_string_s_end_keeps_its_controls_where_they_stand() {
+    for start in [b'_', b'P', b'X', b'^'] {
+        let mut bytes = b"ab\x1b".to_vec();
+        bytes.push(start);
+        bytes.extend_from_slice(b"Gi=1\x1b\r\\cd");
+        for split in 0..bytes.len() {
+            let (head, tail) = bytes.split_at(split);
+            assert_eq!(passed(&[head, tail]), bytes, "{} at {split}", start as char);
+        }
+    }
+}
