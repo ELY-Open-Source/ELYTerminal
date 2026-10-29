@@ -290,3 +290,10 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T107
 
 - Round 1, f79691b: PASS. The reviewer's Windows probe broke the italic glyphs on the old dependency and matched every glyph id on the fork; 120 rasterizations, 20 color glyphs, passed; 24,000 layouts of varied text and sizes kept the cached font ids stable.
+
+## T108
+
+- Round 1, bdc618f: FAIL. A place alone named no display: gpui's macOS displays all stand at 0, 0, and Windows' logical bounds overlap at mixed DPI; a place whose middle lay on screen could leave the title bar above it. Fixed in 88533ed: the display's uuid and an offset, and the window moved inside the visible area.
+- Round 2, 88533ed: FAIL. Two X screens share gpui's nil uuid, so a place on screen 1 reopened on screen 0. Fixed in 5606352: a uuid naming more than one display centers, logged.
+- Round 3, 5606352: FAIL. A monitor gone from one X screen shrinks the screen, and the clamp pulled the window to its edge. Fixed in the next commit: a kept place whose middle left its display centers, logged.
+- On 2026-10-28 the owner's standing word, every recommended option, allowed T108 a fourth review.

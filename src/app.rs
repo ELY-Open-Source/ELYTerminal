@@ -166,9 +166,13 @@ fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
             let area = display.visible_bounds();
             let fitted = fit(kept, Some(area.size));
             let origin = display.bounds().origin + point(px(place.x), px(place.y));
-            let bounds = inside(Bounds::new(origin, fitted), area);
-            log::info!("app: the window opens where it was left, on {area:?}");
-            return (bounds, Some(display.id()));
+            match placed(Bounds::new(origin, fitted), display.bounds(), area) {
+                Some(bounds) => {
+                    log::info!("app: the window opens where it was left, on {area:?}");
+                    return (bounds, Some(display.id()));
+                }
+                None => log::info!("app: the kept place lies off its display; centered"),
+            }
         }
     }
     let room = cx
@@ -197,6 +201,15 @@ fn named(ids: &[Option<String>], kept: &str) -> Option<usize> {
             None
         }
     }
+}
+
+/// `kept` moved inside `area`, or none when its middle left `display`.
+fn placed(
+    kept: Bounds<Pixels>,
+    display: Bounds<Pixels>,
+    area: Bounds<Pixels>,
+) -> Option<Bounds<Pixels>> {
+    display.contains(&kept.center()).then(|| inside(kept, area))
 }
 
 /// `bounds` moved inside `area`, which holds its size.
@@ -305,10 +318,25 @@ fn keep_bounds(window: &mut Window, cx: &mut Context<Workspace>) {
 mod tests {
     use gpui::{Bounds, point, px, size};
 
-    use super::{inside, named};
+    use super::{inside, named, placed};
 
     fn area(x: f32, y: f32, width: f32, height: f32) -> Bounds<gpui::Pixels> {
         Bounds::new(point(px(x), px(y)), size(px(width), px(height)))
+    }
+
+    #[test]
+    fn a_place_whose_monitor_went_opens_nowhere() {
+        let screen = area(0., 0., 1920., 1080.);
+        let window = |x, y| area(x, y, 900., 600.);
+        assert_eq!(placed(window(2500., 100.), screen, screen), None);
+        assert_eq!(
+            placed(window(400., -200.), screen, screen),
+            Some(window(400., 0.))
+        );
+        assert_eq!(
+            placed(window(400., 100.), screen, screen),
+            Some(window(400., 100.))
+        );
     }
 
     #[test]
