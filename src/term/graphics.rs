@@ -436,8 +436,10 @@ impl alacritty_terminal::term::Graphics for Graphics {
 
     fn scrolled(&mut self, region: &Range<Line>, lines: i32, oldest: Line) {
         let mut shared = self.lock();
-        let cell = shared.cell;
-        shared.screen().scrolled(region, lines, oldest, cell);
+        let (cell, screen) = (shared.cell, shared.size.1);
+        shared
+            .screen()
+            .scrolled(region, lines, oldest, cell, screen);
     }
 
     fn changed(&mut self, change: Change) {
@@ -459,15 +461,14 @@ impl alacritty_terminal::term::Graphics for Graphics {
                 shared.alt = true;
             }
             Change::Alt(false) => shared.alt = false,
-            Change::Resized {
-                lines,
-                columns,
-                screen_lines,
-            } => {
-                shared.screen().resized(lines);
-                shared.size = (columns, screen_lines);
-            }
         }
         log::debug!("graphics {pid}: {change:?}");
+    }
+
+    fn resized(&mut self, moved: &dyn Fn(Point) -> Option<Point>, columns: usize, lines: usize) {
+        let mut shared = self.lock();
+        shared.screen().resized(moved);
+        shared.size = (columns, lines);
+        log::debug!("graphics {}: resized to {columns} by {lines}", self.pid);
     }
 }

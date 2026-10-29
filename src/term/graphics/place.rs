@@ -2,7 +2,7 @@
 
 use std::ops::Range;
 
-use alacritty_terminal::index::Line;
+use alacritty_terminal::index::{Column, Line, Point};
 
 use super::{
     command::Command,
@@ -200,7 +200,14 @@ impl Screen {
     }
 
     /// Lines in `region` moved up `lines`, as Ghostty moves them.
-    pub fn scrolled(&mut self, region: &Range<Line>, lines: i32, oldest: Line, cell: (u32, u32)) {
+    pub fn scrolled(
+        &mut self,
+        region: &Range<Line>,
+        lines: i32,
+        oldest: Line,
+        cell: (u32, u32),
+        screen: usize,
+    ) {
         let (start, end) = (region.start.0, region.end.0);
         let store = &self.store;
         self.placements.retain_mut(|kept| {
@@ -208,17 +215,18 @@ impl Screen {
                 return false;
             };
             let (top, bottom) = kept.rows(image, cell);
-            let history = lines > 0 && start == 0;
-            let inside = (history || top >= start) && bottom < end;
-            if !inside {
+            // A region from the top moves alacritty's history up too.
+            let history = lines > 0 && start == 0 && top < 0;
+            let whole = lines > 0 && start == 0 && end == screen as i32;
+            if !(history || whole || (top >= start && bottom < end)) {
                 return true;
             }
             kept.line -= lines;
             let (top, bottom) = kept.rows(image, cell);
-            if !history && top < start {
+            if !(history || whole) && top < start {
                 kept.cut.0 += (start - top) as u32;
             }
-            if bottom >= end {
+            if !(history || whole) && bottom >= end {
                 kept.cut.1 += (bottom - end + 1) as u32;
             }
             !kept.gone(image, cell) && kept.rows(image, cell).1 >= oldest.0
@@ -251,11 +259,15 @@ impl Screen {
         });
     }
 
-    /// Lines moved by `lines` with a resize.
-    pub fn resized(&mut self, lines: i32) {
-        for kept in &mut self.placements {
-            kept.line += lines;
-        }
+    /// Each placement's cell moved as `moved` says; one gone drops.
+    pub fn resized(&mut self, moved: &dyn Fn(Point) -> Option<Point>) {
+        self.placements.retain_mut(|kept| {
+            let Some(point) = moved(Point::new(Line(kept.line), Column(kept.column))) else {
+                return false;
+            };
+            (kept.line, kept.column) = (point.line.0, point.column.0);
+            true
+        });
     }
 
     /// Deletes what `pick` names; `free` drops images left unplaced.

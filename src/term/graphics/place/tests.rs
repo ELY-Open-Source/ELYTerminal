@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use alacritty_terminal::{
     event::{Event, EventListener},
+    index::{Column, Line, Point},
     term::{Config, Term, test::TermSize},
     vte::ansi::Processor,
 };
@@ -176,6 +177,26 @@ fn the_alternate_screen_keeps_its_own_images_and_starts_empty() {
     assert_eq!(s.placed(), [(1, 0, 0, 0, (0, 0))]);
     s.feed("\x1b[?1049h");
     assert!(s.placed().is_empty() && !s.stored(3));
+}
+
+#[test]
+fn a_scroll_it_starts_moves_it_and_a_region_from_the_top_cuts_it() {
+    let mut s = screen();
+    s.feed("\x1b[5;1H\x1b_Ga=p,i=1\x1b\\");
+    assert_eq!(s.placed(), [(1, 0, 3, 0, (0, 0))]);
+    let mut s = screen();
+    s.feed("\x1b[1;4r\x1b_Ga=p,i=1,C=1\x1b\\\x1b[4;1H\n");
+    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
+}
+
+#[test]
+fn a_reflow_keeps_a_placement_on_its_text() {
+    let mut s = screen();
+    s.feed("abcdef\x1b_Ga=p,i=1,C=1\x1b\\X");
+    s.term.resize(TermSize::new(5, 5));
+    let (_, _, line, column, _) = s.placed()[0];
+    let point = Point::new(Line(line), Column(column));
+    assert_eq!(s.term.grid()[point].c, 'X', "{point:?}");
 }
 
 #[test]
