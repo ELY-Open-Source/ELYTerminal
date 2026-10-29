@@ -375,3 +375,7 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, e588ee5 with the fork's f5671c5: FAIL. A search left the whole history unpacked with nothing to pack it again; an unpacked row was sized by its text's bytes, not its cells. Fixed in a9daa00 and the fork's 0baf57d, the sizing with a test that fails without it.
 - Round 2, a9daa00: FAIL. A resize's reflow, and select all or a prompt jump that returned early, still left history unpacked. Fixed in 44a4c0d by design rather than per reader: each terminal packs every two seconds output and scrolling rest, and the fork's compact returns the rows it changed.
 - Round 3, 44a4c0d: PASS. macOS 385, Linux 392, Windows 366; a counting allocator measured 85 to 95% less history memory.
+
+## T120
+
+- Round 1, 00f42ce with vte 5142c08 and alacritty 10d36c1: PASS. macOS 385, Linux 392, Windows 366; a 400-stream fuzz test holds the fast path to the per-character one.
