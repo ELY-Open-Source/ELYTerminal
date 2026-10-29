@@ -40,7 +40,7 @@ function global:ElyDrivePath([string]$line) {
     # A cd of the user's own, or a path that exists, stays as typed.
     if ($own -or (Test-Path -Path "/$letter$rest" -ErrorAction Ignore) -or
         -not (Test-Path -LiteralPath "${letter}:\" -ErrorAction Ignore)) { return $line }
-    "$lead${letter}:\$($rest.TrimStart('/').Replace('/', '\'))$tail"
+    "$lead$($letter.ToUpper()):\$($rest.TrimStart('/').Replace('/', '\'))$tail"
 }
 # A command starts once PSReadLine hands over a line that is not blank.
 if (Test-Path Function:\PSConsoleHostReadLine) {

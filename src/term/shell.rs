@@ -312,7 +312,7 @@ mod windows_tests {
         let script =
             std::env::temp_dir().join(format!("elyterminal-cd-{}.ps1", std::process::id()));
         std::fs::write(&script, text).expect("the script");
-        // Only a whole `cd /x` line to Set-Location, naming nothing here, changes.
+        // Only a whole `cd /x` line naming nothing here changes.
         let body = format!(
             "Import-Module PSReadLine; . '{}'; \
              ElyDrivePath 'cd /c/Windows/System32'; ElyDrivePath 'cd /C'; ElyDrivePath 'cd /c/Windows; ls'; \
