@@ -367,7 +367,7 @@ impl Osc {
         let mut rest = bytes;
         while !rest.is_empty() {
             if self.state == State::Ground {
-                match rest.iter().position(|&byte| byte == 0x1b) {
+                match memchr::memchr(0x1b, rest) {
                     Some(at) => {
                         self.state = State::Escape;
                         rest = &rest[at + 1..];

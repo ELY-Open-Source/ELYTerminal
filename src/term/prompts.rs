@@ -94,8 +94,19 @@ impl Prompts {
     /// What goes to the parser for `read`: marks become links, and a held start waits for its end.
     pub fn pass(&mut self, read: &[u8]) -> &[u8] {
         self.out.clear();
-        for &byte in read {
-            self.step(byte);
+        let mut rest = read;
+        while !rest.is_empty() {
+            // Ground passes on whole, up to the next ESC.
+            if self.state == State::Ground {
+                let run = memchr::memchr(ESC, rest).unwrap_or(rest.len());
+                self.out.extend_from_slice(&rest[..run]);
+                rest = &rest[run..];
+                if rest.is_empty() {
+                    break;
+                }
+            }
+            self.step(rest[0]);
+            rest = &rest[1..];
         }
         &self.out
     }

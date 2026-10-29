@@ -34,7 +34,7 @@ impl Modes {
         let mut rest = bytes;
         while !rest.is_empty() {
             if self.state == Csi::Ground {
-                let Some(at) = rest.iter().position(|&byte| byte == 0x1b) else {
+                let Some(at) = memchr::memchr(0x1b, rest) else {
                     break;
                 };
                 self.state = Csi::Escape;

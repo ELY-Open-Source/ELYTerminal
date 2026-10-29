@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "alacritty_terminal"
 version = "0.26.0"
-source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=fb55887f62b73b594a9574710f2c9de0c878ad85#fb55887f62b73b594a9574710f2c9de0c878ad85"
+source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=10d36c1c8873eddc0b3b3b07dd0fe09f5f8c5157#10d36c1c8873eddc0b3b3b07dd0fe09f5f8c5157"
 dependencies = [
  "base64",
  "bitflags 2.13.2",
@@ -1772,6 +1772,7 @@ dependencies = [
  "image",
  "libc",
  "log",
+ "memchr",
  "objc",
  "polling",
  "raw-window-handle",
@@ -7189,7 +7190,7 @@ dependencies = [
 [[package]]
 name = "vte"
 version = "0.15.0"
-source = "git+https://github.com/ELY-Open-Source/vte.git?rev=7c7404dfc0a8cdd6823df7d3d0e49ef38af8b32d#7c7404dfc0a8cdd6823df7d3d0e49ef38af8b32d"
+source = "git+https://github.com/ELY-Open-Source/vte.git?rev=5142c08caf49148ece94d4ce418e54da8b9eab90#5142c08caf49148ece94d4ce418e54da8b9eab90"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.2",
