@@ -311,3 +311,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, ef2adb2: FAIL. `ESC _ ... ESC CR \` lost its CR: the tap held the string's ESC as one from ground and moved the CR into the APC; vte's no_std tests did not build; a fork comment ran eleven words. Fixed in 6a5df6a.
 - Round 2, 6a5df6a: FAIL. Two new comments in src/term/prompts.rs ran past ten words. Fixed in ff8d0f7.
 - Round 3, ff8d0f7: PASS. Before it, check.sh failed `only_an_interactive_shell_leading_its_group_draws_its_prompt` once under the full suite, as it had in T109's review; alone it passed five times. Its log named the cause, `group's arguments hide, taken as options: Input/output error`: macOS refused the arguments of a process mid-exec, and the holder took that as another user's hidden arguments. T123 fixes it.
+
+## T123
+
+- Round 1, d64e6cb: FAIL. A read that straddled the exec mixed two programs: `sh -c 'echo ready; exec /bin/cat'` read the executable `/bin/bash` and then the arguments `["/bin/cat"]`, so `cat` read as a shell, 52 in 1,000 for the reviewer. One read after `ready` never caught it here, even under load; 50 reads across the exec in each of 200 runs gave 25, 32 and 28 false shells. Fixed in 5ecc9bc: the executable is read again after the arguments, and a change means no shell.
+- Round 2, 5ecc9bc: FAIL. The reviewer's probe gave no false shells in 1,000 runs, and its log showed 44 caught by the second read; one comment ran eleven words. Fixed in 0ef0223.
+- Round 3, 0ef0223: PASS. Linux passed 327 tests on 5ecc9bc; Windows, which reads no groups, went unchecked: the owner's PC reset every SSH connection.
