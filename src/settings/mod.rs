@@ -125,8 +125,17 @@ pub struct Settings {
     /// The main window's size, unmaximized, in pixels.
     pub window_width: f32,
     pub window_height: f32,
-    /// The main window's top-left, global, as gpui gives it.
-    pub window_place: Option<[f32; 2]>,
+    /// Where the main window was left.
+    pub window_place: Option<Place>,
+}
+
+/// A display's gpui uuid, and the window's top-left from its origin.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Place {
+    pub display: String,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Default for Settings {
@@ -195,9 +204,10 @@ impl Settings {
         within("window_width", self.window_width, &WINDOW)?;
         within("window_height", self.window_height, &WINDOW)?;
         within("ely_left", self.ely_left, &ELY_LEFT)?;
-        if let Some([x, y]) = self.window_place {
-            within("window_place", x, &PLACE)?;
-            within("window_place", y, &PLACE)?;
+        if let Some(place) = &self.window_place {
+            anyhow::ensure!(!place.display.is_empty(), "window_place names no display");
+            within("window_place", place.x, &PLACE)?;
+            within("window_place", place.y, &PLACE)?;
         }
         for (field, id) in [
             ("theme", Some(&self.theme)),

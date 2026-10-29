@@ -11,7 +11,7 @@ use gpui::{
 use crate::term::mac;
 use crate::{
     blur, i18n, menus,
-    settings::{self, SettingsStore},
+    settings::{self, Place, SettingsStore},
     term::{ICONS, Launch, MONO, config, input, shell::ShellIntegration, spawn},
     themes, updates,
     workspace::{self, TITLE, Workspace},
@@ -151,25 +151,26 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
     Ok(window)
 }
 
-/// The kept place and size on the display holding them, else centered on the primary.
+/// The kept size and place on its display, else centered on the primary.
 fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
     let settings = SettingsStore::get(cx);
     let kept = size(px(settings.window_width), px(settings.window_height));
-    if let Some([x, y]) = settings.window_place {
-        let place = Bounds::new(point(px(x), px(y)), kept);
-        let displays = cx.displays();
-        let areas: Vec<_> = displays.iter().map(|display| display.bounds()).collect();
-        match home(place, &areas) {
-            Some(at) => {
-                let display = &displays[at];
-                let fitted = fit(kept, Some(display.visible_bounds().size));
-                log::info!(
-                    "app: the window opens where it was left, on {:?}",
-                    areas[at]
-                );
-                return (Bounds::new(place.origin, fitted), Some(display.id()));
+    if let Some(place) = &settings.window_place {
+        let named = cx.displays().into_iter().find(|display| {
+            display
+                .uuid()
+                .is_ok_and(|id| id.to_string() == place.display)
+        });
+        match named {
+            Some(display) => {
+                let area = display.visible_bounds();
+                let fitted = fit(kept, Some(area.size));
+                let origin = display.bounds().origin + point(px(place.x), px(place.y));
+                let bounds = inside(Bounds::new(origin, fitted), area);
+                log::info!("app: the window opens where it was left, on {area:?}");
+                return (bounds, Some(display.id()));
             }
-            None => log::info!("app: the kept place {x}, {y} lies on no display; centered"),
+            None => log::info!("app: display {} is gone; centered", place.display),
         }
     }
     let room = cx
@@ -184,9 +185,25 @@ fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
     )
 }
 
-/// The display, of `areas`, that holds the middle of `place`.
-fn home(place: Bounds<Pixels>, areas: &[Bounds<Pixels>]) -> Option<usize> {
-    areas.iter().position(|area| area.contains(&place.center()))
+/// `bounds` moved inside `area`, which holds its size.
+fn inside(bounds: Bounds<Pixels>, area: Bounds<Pixels>) -> Bounds<Pixels> {
+    let clamp =
+        |at: Pixels, low: Pixels, side: Pixels, room: Pixels| at.min(low + room - side).max(low);
+    let origin = point(
+        clamp(
+            bounds.origin.x,
+            area.origin.x,
+            bounds.size.width,
+            area.size.width,
+        ),
+        clamp(
+            bounds.origin.y,
+            area.origin.y,
+            bounds.size.height,
+            area.size.height,
+        ),
+    );
+    Bounds::new(origin, bounds.size)
 }
 
 /// `kept`, each side no wider than `room` where that is known.
@@ -223,20 +240,31 @@ fn keep_bounds(window: &mut Window, cx: &mut Context<Workspace>) {
                     return Ok(());
                 }
                 let bounds = window.window_bounds().get_bounds();
-                let [x, y, width, height] = [
-                    bounds.origin.x,
-                    bounds.origin.y,
-                    bounds.size.width,
-                    bounds.size.height,
-                ]
-                .map(|side| f32::from(side).round());
+                let place = window.display(cx).and_then(|display| {
+                    let at = bounds.origin - display.bounds().origin;
+                    match display.uuid() {
+                        Ok(id) => Some(Place {
+                            display: id.to_string(),
+                            x: f32::from(at.x).round(),
+                            y: f32::from(at.y).round(),
+                        }),
+                        Err(error) => {
+                            log::warn!("app: the window's display has no uuid: {error:#}");
+                            None
+                        }
+                    }
+                });
+                let [width, height] =
+                    [bounds.size.width, bounds.size.height].map(|side| f32::from(side).round());
                 SettingsStore::update(cx, |settings| {
                     settings.window_width = width;
                     settings.window_height = height;
-                    settings.window_place = Some([x, y]);
+                    if place.is_some() {
+                        settings.window_place = place.clone();
+                    }
                 })
                 .with_context(|| {
-                    format!("app: the window at {x}, {y}, {width} by {height}, is not kept")
+                    format!("app: the window, {width} by {height} at {place:?}, is not kept")
                 })
             });
             match kept {
@@ -263,21 +291,25 @@ fn keep_bounds(window: &mut Window, cx: &mut Context<Workspace>) {
 mod tests {
     use gpui::{Bounds, point, px, size};
 
-    use super::home;
+    use super::inside;
 
     fn area(x: f32, y: f32, width: f32, height: f32) -> Bounds<gpui::Pixels> {
         Bounds::new(point(px(x), px(y)), size(px(width), px(height)))
     }
 
     #[test]
-    fn a_window_opens_on_the_display_holding_its_middle() {
-        let left = area(-2560., -200., 2560., 1440.);
-        let main = area(0., 0., 1920., 1080.);
-        let displays = [main, left];
-        assert_eq!(home(area(-1800., 100., 1200., 760.), &displays), Some(1));
-        assert_eq!(home(area(100., 100., 1200., 760.), &displays), Some(0));
-        assert_eq!(home(area(1300., 100., 1200., 760.), &displays), Some(0));
-        assert_eq!(home(area(1800., 100., 1200., 760.), &displays), None);
-        assert_eq!(home(area(4000., 100., 1200., 760.), &[main]), None);
+    fn a_window_opens_inside_its_display() {
+        let area = area(-2560., 25., 2560., 1415.);
+        let kept = |x, y| {
+            inside(
+                super::Bounds::new(point(px(x), px(y)), size(px(900.), px(600.))),
+                area,
+            )
+            .origin
+        };
+        assert_eq!(kept(-2000., 300.), point(px(-2000.), px(300.)));
+        assert_eq!(kept(-2000., -300.), point(px(-2000.), px(25.)));
+        assert_eq!(kept(-100., 1200.), point(px(-900.), px(840.)));
+        assert_eq!(kept(-9000., 300.), point(px(-2560.), px(300.)));
     }
 }
