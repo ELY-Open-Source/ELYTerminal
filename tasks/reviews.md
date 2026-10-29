@@ -305,3 +305,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, ee5bf13: FAIL. A custom color changed the terminal, not the chrome; New theme on a dark system with a dark theme set the light one; deleting the dark theme let the light one show; a picture overwritten, cleared and named again showed its old pixels. Fixed in f8bfe77.
 - Round 2, f8bfe77: FAIL. Cmd-Z after a theme switch wrote one theme's name onto another; a picture renamed while the terminal was minimized kept its old pixels. Fixed in 8821701: a name field for each theme; the app drops gpui's cached picture where the setting changes.
 - Round 3, 8821701: PASS. Both earlier rounds' inputs replayed in the app; one PTY test failed once in the reviewer's first check.sh and passed in the full rerun, 317 tests. Windows went unchecked on 8821701: the owner's PC reset every SSH connection; f8bfe77 passed clippy and the tests there, and CI's Windows job checks the push.
+
+## T111
+
+- Round 1, ef2adb2: FAIL. `ESC _ ... ESC CR \` lost its CR: the tap held the string's ESC as one from ground and moved the CR into the APC; vte's no_std tests did not build; a fork comment ran eleven words. Fixed in 6a5df6a.
+- Round 2, 6a5df6a: FAIL. Two new comments in src/term/prompts.rs ran past ten words. Fixed in ff8d0f7.
+- Round 3, ff8d0f7: PASS. Before it, check.sh failed `only_an_interactive_shell_leading_its_group_draws_its_prompt` once under the full suite, as it had in T109's review; alone it passed five times. Its log named the cause, `group's arguments hide, taken as options: Input/output error`: macOS refused the arguments of a process mid-exec, and the holder took that as another user's hidden arguments. T123 fixes it.
