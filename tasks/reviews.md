@@ -379,3 +379,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T120
 
 - Round 1, 00f42ce with vte 5142c08 and alacritty 10d36c1: PASS. macOS 385, Linux 392, Windows 366; a 400-stream fuzz test holds the fast path to the per-character one.
+
+## T121
+
+- Round 1, 5cb2468: FAIL. The raw captures blend a horizontal line's rows, which the record called sharp. foot, run in the same nested niri, blends alike, so the shift is the composition's, 602 logical rows at 1.25 making 752.5 physical ones; 32d348e records it so. No code changed.
+- Round 2, 32d348e: PASS.
