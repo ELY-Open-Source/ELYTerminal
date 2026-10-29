@@ -314,11 +314,18 @@ mod windows_tests {
         std::fs::write(&script, text).expect("the script");
         // Set-Location's own forms stay; a drive no disk has stays a failure.
         let body = format!(
-            ". '{}'; cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
+            "Import-Module PSReadLine; . '{}'; \
+             cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
              cd -Path C:\\Windows -PassThru:$false; (Get-Location).Path; cd ..; (Get-Location).Path; \
              'C:\\Windows' | cd; (Get-Location).Path; $h = @{{ Path = 'C:\\' }}; cd @h; (Get-Location).Path; \
              $free = [char[]](70..89) | Where-Object {{ -not (Test-Path \"$($_):\\\") }} | Select-Object -First 1; \
-             cd \"/$free\" 2>$null; \"failed: $(-not $?)\"",
+             cd \"/$free\" 2>$null; \"failed: $(-not $?)\"; \
+             $root = New-Item -ItemType Directory -Force \"$env:TEMP\\ely-cd-$PID\\c\\project\"; \
+             New-PSDrive -Name ElyCd -PSProvider FileSystem -Root $root.Parent.Parent.FullName | Out-Null; \
+             cd ElyCd:\\; cd /c/proj*; (Get-Location).Path; cd C:\\; \
+             Remove-Item -Recurse -Force $root.Parent.Parent.FullName; \
+             $global:ElyReadLine = {{ 'cmd /c exit 7; cd C:\\missing' }}; \
+             $null = PSConsoleHostReadLine; \"a failed cd is the shell's: $global:ElyShell\"",
             script.display()
         );
         let out = std::process::Command::new("powershell.exe")
@@ -337,7 +344,9 @@ mod windows_tests {
                 r"C:\",
                 r"C:\Windows",
                 r"C:\",
-                "failed: True"
+                "failed: True",
+                r"ElyCd:\c\project",
+                "a failed cd is the shell's: True"
             ],
             "{}",
             String::from_utf8_lossy(&out.stderr)

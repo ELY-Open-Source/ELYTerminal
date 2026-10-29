@@ -40,7 +40,7 @@ if ($env:OS -eq 'Windows_NT') {
             $path = $PSBoundParameters['Path']
             if ($path -is [string] -and $path -match '^/([A-Za-z])(/.*)?$') {
                 $root, $rest = "$($Matches[1]):\", "$($Matches[2])".TrimStart('/')
-                if (-not (Test-Path -LiteralPath $path) -and (Test-Path -LiteralPath $root)) {
+                if (-not (Test-Path -Path $path) -and (Test-Path -LiteralPath $root)) {
                     $PSBoundParameters['Path'] = $root + $rest.Replace('/', '\')
                 }
             }
@@ -74,7 +74,8 @@ if (Test-Path Function:\PSConsoleHostReadLine) {
                 $pattern = [System.Management.Automation.WildcardPattern]::Escape($name)
                 $info = Get-Command -Name $pattern -ErrorAction Ignore | Select-Object -First 1
                 while ($info -and $info.CommandType -eq 'Alias') { $info = $info.ResolvedCommand }
-                $null -eq $info -or $info.CommandType -eq 'Cmdlet'
+                # ElyLocation is Set-Location's own proxy.
+                $null -eq $info -or $info.CommandType -eq 'Cmdlet' -or $info.Name -eq 'ElyLocation'
             } else {
                 $null -eq $last -or -not $last.Find({ $args[0] -is [System.Management.Automation.Language.CommandAst] }, $true)
             }
