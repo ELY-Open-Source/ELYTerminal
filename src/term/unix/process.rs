@@ -174,6 +174,26 @@ pub(crate) fn args(pid: i32) -> io::Result<Vec<String>> {
     launch(pid).map(|(args, _)| args)
 }
 
+/// The user process `pid` runs as.
+#[cfg(target_os = "linux")]
+pub(crate) fn owner(pid: i32) -> io::Result<u32> {
+    use std::os::unix::fs::MetadataExt;
+    Ok(std::fs::metadata(format!("/proc/{pid}"))?.uid())
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn owner(pid: i32) -> io::Result<u32> {
+    let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<libc::proc_bsdinfo>() as i32;
+    // SAFETY: `info` holds `size` bytes.
+    let read =
+        unsafe { libc::proc_pidinfo(pid, libc::PROC_PIDTBSDINFO, 0, (&raw mut info).cast(), size) };
+    if read != size {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(info.pbi_uid)
+}
+
 /// The name process `pid` runs, where its executable does not read.
 #[cfg(target_os = "linux")]
 pub(crate) fn name(pid: i32) -> io::Result<PathBuf> {
@@ -264,4 +284,18 @@ pub(crate) fn inner(leader: i32) -> io::Result<Option<i32>> {
         }
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_process_s_owner_is_the_user_it_runs_as() {
+        let (own, uid) = (std::process::id() as i32, unsafe { libc::getuid() });
+        assert_eq!(super::owner(own).expect("our own process"), uid);
+        // init runs as root; macOS shows no one launchd's.
+        #[cfg(target_os = "linux")]
+        assert_eq!(super::owner(1).expect("init"), 0);
+        #[cfg(target_os = "macos")]
+        assert!(super::owner(1).is_err(), "launchd is root's");
+    }
 }

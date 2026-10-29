@@ -65,7 +65,7 @@ mod process;
 pub(super) use process::installed;
 #[cfg(all(test, target_os = "macos"))]
 pub(super) use process::procargs;
-pub(super) use process::{args, inner, launch, lone, name, path};
+pub(super) use process::{args, inner, launch, lone, name, owner, path};
 
 /// Starts `program`, or the login shell, in `cwd` on a new pty of `size`.
 pub(crate) fn spawn(
