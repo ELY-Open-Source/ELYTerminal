@@ -34,7 +34,7 @@ pub struct Shown {
     pub picture: Arc<RenderImage>,
     /// The whole image, scaled as the placement shows its source.
     pub whole: Bounds<f32>,
-    /// The part shown: the placement, its cuts, the screen.
+    /// The part shown: the placement on the screen.
     pub clip: Bounds<f32>,
 }
 
@@ -84,13 +84,7 @@ impl Pictures {
                 point(corner.x - x as f32 * kx, corner.y - y as f32 * ky),
                 size(image.width as f32 * kx, image.height as f32 * ky),
             );
-            let rows = kept.cells(image, cell).1 as f32;
-            let (cut_top, cut_bottom) = (kept.cut.0 as f32, kept.cut.1 as f32);
-            let band = Bounds::new(
-                point(corner.x, row + cut_top),
-                size(area.width, rows - cut_top - cut_bottom),
-            );
-            let clip = Bounds::new(corner, area).intersect(&band).intersect(&grid);
+            let clip = Bounds::new(corner, area).intersect(&grid);
             if clip.size.width <= 0. || clip.size.height <= 0. {
                 continue;
             }

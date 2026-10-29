@@ -314,7 +314,6 @@ impl Graphics {
             line: cursor.line.0,
             column: cursor.column.0,
             display,
-            cut: (0, 0),
             serial: 0,
         };
         let (wide, tall) = placement.cells(image, cell);

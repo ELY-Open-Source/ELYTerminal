@@ -198,7 +198,12 @@ fn paint_pictures(
     for shown in pictures.iter().filter(|shown| shown.layer == layer) {
         let (clip, whole) = (at(shown.clip), at(shown.whole));
         let picture = Arc::clone(&shown.picture);
-        if let Err(error) = window.paint_image(clip, whole, Corners::default(), picture, 0, false) {
+        // A mask clips it; gpui's clip rounds to source pixels.
+        let mask = Some(ContentMask { bounds: clip });
+        let painted = window.with_content_mask(mask, |window| {
+            window.paint_image(whole, whole, Corners::default(), picture, 0, false)
+        });
+        if let Err(error) = painted {
             log::error!("terminal: an image did not paint: {error:#}");
         }
     }

@@ -48,8 +48,6 @@ pub(super) struct Placement {
     pub line: i32,
     pub column: usize,
     pub display: Display,
-    /// Rows a scroll region cut from its top and bottom.
-    pub cut: (u32, u32),
     /// Its order of placing, so equal ones draw alike.
     pub serial: u64,
 }
@@ -111,11 +109,43 @@ impl Placement {
         )
     }
 
-    /// The first and last lines it shows, cuts aside.
+    /// The first and last lines it shows.
     fn rows(&self, image: &Image, cell: (u32, u32)) -> (i32, i32) {
         let rows = self.cells(image, cell).1 as i32;
-        let top = self.line + self.cut.0 as i32;
-        (top, self.line + rows - 1 - self.cut.1 as i32)
+        (self.line, self.line + rows - 1)
+    }
+
+    /// Cuts `rows` off its top into its source, as Ghostty.
+    fn clip_top(&mut self, image: &Image, cell: (u32, u32), rows: u32) -> bool {
+        let [x, y, w, h] = self.source(image);
+        let shown = self.size(image, cell).1;
+        let gone = (cell.1.saturating_mul(rows)).saturating_sub(self.offset(cell).1);
+        let Some(crop) = scaled(gone, h, shown).filter(|&crop| crop < h) else {
+            return false;
+        };
+        self.display.source = [x, y + crop, w, h - crop];
+        self.display.offset.1 = 0;
+        if self.display.cells.1 > 0 {
+            self.display.cells.1 -= rows;
+        }
+        self.line += rows as i32;
+        true
+    }
+
+    /// Cuts `rows` off its bottom into its source, as Ghostty.
+    fn clip_bottom(&mut self, image: &Image, cell: (u32, u32), rows: u32) -> bool {
+        let [x, y, w, h] = self.source(image);
+        let (shown, tall) = (self.size(image, cell).1, self.cells(image, cell).1);
+        let room =
+            (cell.1.saturating_mul(tall.saturating_sub(rows))).saturating_sub(self.offset(cell).1);
+        let Some(keep) = scaled(room.min(shown), h, shown).filter(|&keep| keep > 0) else {
+            return false;
+        };
+        self.display.source = [x, y, w, keep];
+        if self.display.cells.1 > 0 {
+            self.display.cells.1 -= rows;
+        }
+        true
     }
 
     /// Whether it covers the cell at `line` and `column`.
@@ -124,10 +154,12 @@ impl Placement {
         let columns = self.cells(image, cell).0 as usize;
         (top..=bottom).contains(&line) && (self.column..self.column + columns).contains(&column)
     }
+}
 
-    fn gone(&self, image: &Image, cell: (u32, u32)) -> bool {
-        self.cut.0 + self.cut.1 >= self.cells(image, cell).1
-    }
+/// `length` of `whole` shown pixels, in `of` source pixels.
+fn scaled(length: u32, of: u32, whole: u32) -> Option<u32> {
+    let source = u64::from(length) * u64::from(of) / u64::from(whole).max(1);
+    (whole > 0).then(|| u32::try_from(source).unwrap_or(u32::MAX))
 }
 
 /// What a delete picks, as `d` names it.
@@ -222,14 +254,17 @@ impl Screen {
                 return true;
             }
             kept.line -= lines;
-            let (top, bottom) = kept.rows(image, cell);
-            if !(history || whole) && top < start {
-                kept.cut.0 += (start - top) as u32;
+            if !(history || whole) {
+                let (top, _) = kept.rows(image, cell);
+                if top < start && !kept.clip_top(image, cell, (start - top) as u32) {
+                    return false;
+                }
+                let (_, bottom) = kept.rows(image, cell);
+                if bottom >= end && !kept.clip_bottom(image, cell, (bottom - end + 1) as u32) {
+                    return false;
+                }
             }
-            if !(history || whole) && bottom >= end {
-                kept.cut.1 += (bottom - end + 1) as u32;
-            }
-            !kept.gone(image, cell) && kept.rows(image, cell).1 >= oldest.0
+            kept.rows(image, cell).1 >= oldest.0
         });
     }
 
@@ -252,10 +287,7 @@ impl Screen {
                 return false;
             };
             let (top, _) = kept.rows(image, cell);
-            if top < 0 {
-                kept.cut.0 += (-top) as u32;
-            }
-            !kept.gone(image, cell)
+            top >= 0 || kept.clip_top(image, cell, (-top) as u32)
         });
     }
 
@@ -266,16 +298,15 @@ impl Screen {
             let Some(point) = moved.next().copied().flatten() else {
                 return false;
             };
-            kept.line = point.line.0 - kept.cut.0 as i32;
+            kept.line = point.line.0;
             kept.column = point.column.0;
             true
         });
     }
 
-    /// Each placement's first row shown, past a cut top.
+    /// Each placement's top-left cell.
     pub fn anchors(&self) -> Vec<Point> {
-        let anchor =
-            |kept: &Placement| Point::new(Line(kept.line + kept.cut.0 as i32), Column(kept.column));
+        let anchor = |kept: &Placement| Point::new(Line(kept.line), Column(kept.column));
         self.placements.iter().map(anchor).collect()
     }
 

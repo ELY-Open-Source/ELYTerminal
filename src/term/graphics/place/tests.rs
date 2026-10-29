@@ -70,8 +70,10 @@ impl Screen {
     fn placed(&self) -> Vec<Placed> {
         let mut shared = self.shared.lock().unwrap();
         let screen = shared.screen();
-        let each =
-            |kept: &super::Placement| (kept.image, kept.id, kept.line, kept.column, kept.cut);
+        let each = |kept: &super::Placement| {
+            let [_, y, _, h] = kept.display.source;
+            (kept.image, kept.id, kept.line, kept.column, (y, h))
+        };
         screen.placements.iter().map(each).collect()
     }
 
@@ -137,9 +139,27 @@ fn scrolls_move_placements_and_a_region_cuts_them() {
     s.feed("\x1b[4;1H\n");
     assert_eq!(s.placed(), [(1, 1, 1, 0, (0, 0)), (1, 2, 3, 4, (0, 0))]);
     s.feed("\n");
-    assert_eq!(s.placed(), [(1, 1, 0, 0, (1, 0)), (1, 2, 3, 4, (0, 0))]);
+    // The top row went; the source: y 20, 20 high.
+    assert_eq!(s.placed(), [(1, 1, 1, 0, (20, 20)), (1, 2, 3, 4, (0, 0))]);
     s.feed("\n");
     assert_eq!(s.placed(), [(1, 2, 3, 4, (0, 0))]);
+}
+
+#[test]
+fn a_cut_stays_in_source_pixels_whatever_the_cell() {
+    let mut s = screen();
+    s.feed("\x1b[2;4r\x1b[2;1H\x1b_Ga=p,i=1,C=1\x1b\\\x1b[4;1H\n");
+    assert_eq!(s.placed(), [(1, 0, 1, 0, (20, 20))]);
+    s.shared.lock().unwrap().cell = (5, 10);
+    s.term.resize(TermSize::new(10, 6));
+    assert_eq!(s.placed(), [(1, 0, 1, 0, (20, 20))]);
+    let mut pictures = Pictures::default();
+    let (shown, _) = pictures.shown(&s.shared.lock().unwrap(), 0, (10, 6));
+    // Twenty source rows show in two 10-pixel rows.
+    assert_eq!(
+        (shown[0].clip.size.height, shown[0].whole.origin.y),
+        (2., -1.)
+    );
 }
 
 #[test]
@@ -186,7 +206,7 @@ fn a_scroll_it_starts_moves_it_and_a_region_from_the_top_cuts_it() {
     assert_eq!(s.placed(), [(1, 0, 3, 0, (0, 0))]);
     let mut s = screen();
     s.feed("\x1b[1;4r\x1b_Ga=p,i=1,C=1\x1b\\\x1b[4;1H\n");
-    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
+    assert_eq!(s.placed(), [(1, 0, 0, 0, (20, 20))]);
 }
 
 #[test]
@@ -235,9 +255,9 @@ fn a_resize_keeps_a_placement_its_screen_and_history_still_hold() {
 fn a_placement_the_history_s_clear_cut_keeps_its_rows_through_a_resize() {
     let mut s = screen();
     s.feed("\x1b_Ga=p,i=1,C=1\x1b\\\x1b[5;1H\n\x1b[3J");
-    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
+    assert_eq!(s.placed(), [(1, 0, 0, 0, (20, 20))]);
     s.term.resize(TermSize::new(10, 6));
-    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
+    assert_eq!(s.placed(), [(1, 0, 0, 0, (20, 20))]);
 }
 
 #[test]
