@@ -262,10 +262,13 @@ impl Screen {
     /// Each placement's cell moved as `moved` says; one gone drops.
     pub fn resized(&mut self, moved: &dyn Fn(Point) -> Option<Point>) {
         self.placements.retain_mut(|kept| {
-            let Some(point) = moved(Point::new(Line(kept.line), Column(kept.column))) else {
+            // Its first row shown: a cut top may be gone.
+            let shown = kept.line + kept.cut.0 as i32;
+            let Some(point) = moved(Point::new(Line(shown), Column(kept.column))) else {
                 return false;
             };
-            (kept.line, kept.column) = (point.line.0, point.column.0);
+            kept.line = point.line.0 - kept.cut.0 as i32;
+            kept.column = point.column.0;
             true
         });
     }

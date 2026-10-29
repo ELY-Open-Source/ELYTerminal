@@ -191,12 +191,25 @@ fn a_scroll_it_starts_moves_it_and_a_region_from_the_top_cuts_it() {
 
 #[test]
 fn a_reflow_keeps_a_placement_on_its_text() {
+    for text in ["abcdef", "abcd\u{754c}"] {
+        let mut s = screen();
+        s.feed(&format!("{text}\x1b_Ga=p,i=1,C=1\x1b\\X"));
+        for size in [TermSize::new(5, 5), TermSize::new(10, 5)] {
+            s.term.resize(size);
+            let (_, _, line, column, _) = s.placed()[0];
+            let point = Point::new(Line(line), Column(column));
+            assert_eq!(s.term.grid()[point].c, 'X', "{text} {point:?}");
+        }
+    }
+}
+
+#[test]
+fn a_placement_the_history_s_clear_cut_keeps_its_rows_through_a_resize() {
     let mut s = screen();
-    s.feed("abcdef\x1b_Ga=p,i=1,C=1\x1b\\X");
-    s.term.resize(TermSize::new(5, 5));
-    let (_, _, line, column, _) = s.placed()[0];
-    let point = Point::new(Line(line), Column(column));
-    assert_eq!(s.term.grid()[point].c, 'X', "{point:?}");
+    s.feed("\x1b_Ga=p,i=1,C=1\x1b\\\x1b[5;1H\n\x1b[3J");
+    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
+    s.term.resize(TermSize::new(10, 6));
+    assert_eq!(s.placed(), [(1, 0, -1, 0, (1, 0))]);
 }
 
 #[test]
