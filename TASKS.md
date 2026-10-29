@@ -243,3 +243,10 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T120 Throughput: plain ASCII through the tap and the parser measured, the tap's scan made bulk, the numbers recorded.
 - [x] T121 Renderer: on Linux, through gpui's wgpu, text is crisp at 125% and 150% and nothing tears, on Vulkan and on GL; checked on the Omarchy machine, fixed where not, recorded.
 - [x] T122 PRD, AGENTS.md and `tasks/acceptance.md` hold every change of T102 to T121; the acceptance table checked row by row.
+
+## 41. 0.2.0
+
+- [ ] T124 Issue #29, again: on niri's Wayland with fcitx5, Shift held by its key reaches the keystroke's modifiers, so Ctrl+Shift+C and Ctrl+Shift+V copy and paste, and under fcitx5's Shift trigger too; reproduced first, as the reporter's log shows it, then fixed.
+- [ ] T125 Issue #38: on Windows 11 the window's backdrop may be Mica or Mica Alt beside Acrylic, a setting in Settings › Appearance; Windows 10 keeps Acrylic.
+- [ ] T126 The README, its Chinese twin and the guides in `docs/en_us` and `docs/zh_cn` say what 0.2.0 does, each claim true to the code.
+- [ ] T127 Release 0.2.0: the version raised, the builds for macOS, Windows and Linux on the release, the notes in English and Chinese, the website's links following.
