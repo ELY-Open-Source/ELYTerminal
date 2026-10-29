@@ -253,3 +253,42 @@ fn the_quota_evicts_transient_images_then_the_oldest() {
     assert_eq!(past, reply("i=5", "ENOMEM: out of memory"));
     assert_eq!(ids(&graphics), [3, 4]);
 }
+
+#[test]
+fn simd_base64_takes_what_the_old_decoder_took() {
+    use base64::{
+        alphabet,
+        engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
+    };
+    let old = GeneralPurpose::new(
+        &alphabet::STANDARD,
+        GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
+    );
+    // Trailing bits, padding, a stray symbol and a newline.
+    let symbols = b"AQgw/+=_\n";
+    let mut text = Vec::new();
+    for length in 0..=6u32 {
+        for index in 0..symbols.len().pow(length) {
+            text.clear();
+            let mut rest = index;
+            for _ in 0..length {
+                text.push(symbols[rest % symbols.len()]);
+                rest /= symbols.len();
+            }
+            let new = command::decode(&text).ok();
+            assert_eq!(
+                new,
+                old.decode(&text).ok(),
+                "{:?}",
+                String::from_utf8_lossy(&text)
+            );
+        }
+    }
+    let long = encode(&(0..=255).collect::<Vec<u8>>());
+    assert_eq!(
+        command::decode(long.as_bytes()).unwrap(),
+        (0..=255).collect::<Vec<u8>>()
+    );
+    let unpadded = long.trim_end_matches('=');
+    assert_eq!(command::decode(unpadded.as_bytes()).unwrap().len(), 256);
+}

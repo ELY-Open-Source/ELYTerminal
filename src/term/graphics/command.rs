@@ -1,9 +1,3 @@
-use base64::{
-    Engine,
-    alphabet::STANDARD,
-    engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig},
-};
-
 /// The keys whose value is one letter, as in kitty.
 const LETTERS: &[u8] = b"adeot";
 /// The keys whose value may be negative.
@@ -52,13 +46,7 @@ impl Command {
             Some(1) => Quiet::Ok,
             Some(_) => Quiet::Failures,
         };
-        let engine = GeneralPurpose::new(
-            &STANDARD,
-            GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
-        );
-        let payload = engine
-            .decode(payload)
-            .map_err(|error| format!("the payload is no base64: {error}"))?;
+        let payload = decode(payload)?;
         let action = keys[usize::from(b'a')].map_or(b't', |letter| letter as u8);
         Ok(Self {
             action,
@@ -110,4 +98,17 @@ fn read(key: u8, value: &[u8]) -> Result<u32, String> {
 
 fn lossy(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
+}
+
+/// Base64 through SIMD, its padding optional, as kitty takes it.
+pub(super) fn decode(text: &[u8]) -> Result<Vec<u8>, String> {
+    let pad = text.iter().rev().take_while(|&&byte| byte == b'=').count();
+    let bare = &text[..text.len() - pad];
+    // Padding only finishes a partial group, as base64's Indifferent.
+    if pad > 0 && (bare.len() % 4 < 2 || bare.len() % 4 + pad > 4) {
+        return Err(format!("the payload's {pad} padding fits no group"));
+    }
+    base64_simd::STANDARD_NO_PAD
+        .decode_to_vec(bare)
+        .map_err(|error| format!("the payload is no base64: {error}"))
 }

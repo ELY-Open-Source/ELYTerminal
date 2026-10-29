@@ -12,6 +12,7 @@ publish = false
 alacritty_terminal = { version = "=0.26.0", default-features = false }
 anyhow = "1"
 base64 = "0.22"
+base64-simd = "0.8"
 dirs = "7"
 ely-gpui-component = { git = "https://github.com/ELY-Open-Source/Ely-GPUI-Components.git", rev = "494c17d6e631e9e3948f26ff9306ba9c3c8ae47a" }
 env_logger = "0.11"
@@ -71,7 +72,7 @@ windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO
 
 [patch.crates-io]
 alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "9075bf161e514edf11698cc3ac4d5a687462904a" }
-vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "809757d59985b3b1d185b5496122569985143bc1" }
+vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "7c7404dfc0a8cdd6823df7d3d0e49ef38af8b32d" }
 xim-ctext = { path = "vendor/xim-ctext" }
 gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "825bfc3e99bf80bc7705dbbc37f540e8e141d11f" }
 
