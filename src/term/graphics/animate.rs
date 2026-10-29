@@ -95,10 +95,10 @@ impl Graphics {
                 },
             };
             let length = image.pixels.len();
-            if store
-                .reserve(ask.image, length, pid, &|id| placed.contains(&id))
-                .is_err()
-            {
+            let reserved = store.reserve(ask.image, length, pid, &|id| placed.contains(&id));
+            // Evicted images take their placements, though it failed.
+            screen.orphans();
+            if reserved.is_err() {
                 return failed(Error::FrameSpace);
             }
             let mut canvas = base.unwrap_or_else(|| {
@@ -111,13 +111,13 @@ impl Graphics {
                 0 => GAP,
                 gap => gap.max(0) as u32,
             };
-            let image = store.get_mut(ask.image).expect("a reserve keeps its image");
+            let image = screen.store.get_mut(ask.image);
+            let image = image.expect("a reserve keeps its image");
             let animation = image.animation.get_or_insert_default();
             animation.frames.push(Frame {
                 pixels: canvas,
                 gap,
             });
-            screen.orphans();
         } else {
             let image = store.get_mut(ask.image).expect("the image was there");
             let animation = image.animation.get_or_insert_default();

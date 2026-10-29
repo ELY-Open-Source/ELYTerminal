@@ -5,7 +5,7 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use super::super::{
     frames::{State, compose},
     place::tests::{Screen, screen},
-    store::Image,
+    store::{Image, Store},
 };
 
 const A: [u8; 4] = [1, 2, 3, 255];
@@ -277,4 +277,24 @@ fn a_blend_is_source_over_as_ghostty_s() {
         true,
     );
     assert_eq!(canvas, [[0; 12].as_slice(), &[1, 2, 3, 4]].concat());
+}
+
+#[test]
+fn a_frame_past_the_quota_takes_its_evicted_placements_along() {
+    let mut s = screen();
+    s.shared.lock().unwrap().screen().store = Store::new(20);
+    let pixels = STANDARD.encode([A, B].concat());
+    s.feed(&format!("\x1b_Gi=5,s=2,v=1,q=2;{pixels}\x1b\\"));
+    send(&mut s, "a=f,i=5,s=2,v=1,q=2", &[A, B].concat());
+    send(&mut s, "a=T,i=6,s=1,v=1,C=1,q=2", &A);
+    assert_eq!(s.placed().len(), 1);
+    send(&mut s, "a=f,i=5,s=2,v=1", &[A, B].concat());
+    let full = reply("i=5", "ENOSPC: animation frame storage full");
+    assert_eq!(s.heard(), [full]);
+    assert!(!s.stored(6) && s.placed().is_empty(), "image 6 went whole");
+    // Sent again past the quota, it takes its placement.
+    send(&mut s, "a=T,i=6,s=1,v=1,C=1,q=2", &A);
+    send(&mut s, "i=6,s=3,v=2", &[0; 24]);
+    assert_eq!(s.heard(), [reply("i=6", "ENOMEM: out of memory")]);
+    assert!(!s.stored(6) && s.placed().is_empty());
 }
