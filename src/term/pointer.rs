@@ -378,8 +378,11 @@ impl TerminalView {
         cx.write_to_clipboard(item);
     }
 
-    /// The clipboard's text to the program, bracketed when it asked.
+    /// The clipboard's text, bracketed if asked; under 5522, its types.
     pub(super) fn paste(&mut self, cx: &mut Context<Self>) {
+        if self.pty.term.lock().mode().contains(TermMode::PASTE_EVENTS) {
+            return self.paste_event(cx);
+        }
         let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) else {
             log::debug!("terminal {}: no text to paste", self.pty.pid);
             return;

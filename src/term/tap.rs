@@ -8,6 +8,7 @@ use futures::channel::mpsc::UnboundedSender;
 use polling::{Event, PollMode, Poller};
 
 use super::{
+    clipboard,
     marks::{self, Mark},
     notify::{self, Kitty},
     prompts::{self, Prompts},
@@ -219,6 +220,10 @@ fn report(
             Some(title) => PtyEvent::Title(title),
             None => return,
         },
+        Found::Long(body) => match body.strip_prefix(b"5522;").and_then(clipboard::long) {
+            Some(packet) => PtyEvent::Clipboard(packet),
+            None => return,
+        },
         Found::Osc(body, length) => {
             if let Some(mark) = body.strip_prefix(b"133;").and_then(marks::read) {
                 let holder = match mark {
@@ -239,7 +244,12 @@ fn report(
                 let group = holder();
                 log::debug!("pty {pid}: {status:?} from group {group:?}");
                 PtyEvent::Status(status, group)
-            } else if let Some(ask) = ask(body, kitty) {
+            } else if let Some(rest) = body.strip_prefix(b"5522;") {
+                match clipboard::read(rest) {
+                    Some(packet) => PtyEvent::Clipboard(packet),
+                    None => return,
+                }
+            } else if let Some(ask) = notify::ask(body, kitty) {
                 let group = holder();
                 log::debug!("pty {pid}: {ask:?} from group {group:?}");
                 PtyEvent::Ask(ask, group)
@@ -263,17 +273,6 @@ fn report(
     };
     if events.unbounded_send(event).is_err() {
         log::debug!("pty {pid}: an event after its session closed");
-    }
-}
-
-/// A notification or progress an OSC 99, 777 or 9 body asks for.
-fn ask(body: &[u8], kitty: &mut Kitty) -> Option<notify::Ask> {
-    if let Some(rest) = body.strip_prefix(b"99;") {
-        kitty.read(rest)
-    } else if let Some(rest) = body.strip_prefix(b"777;") {
-        notify::rxvt(rest)
-    } else {
-        body.strip_prefix(b"9;").and_then(notify::nine)
     }
 }
 
@@ -343,6 +342,8 @@ enum State {
 /// What the scanner finds: an OSC's body with the sequence's length from OSC through ST, a full reset, or the title stack's push and pop.
 pub(crate) enum Found<'a> {
     Osc(&'a [u8], usize),
+    /// An OSC past its bound: the body kept before it.
+    Long(&'a [u8]),
     Reset,
     Push,
     Pop,
@@ -459,6 +460,8 @@ impl Osc {
     fn most(&self) -> usize {
         if self.body.starts_with(b"99;") {
             notify::BODY
+        } else if self.body.starts_with(b"5522;") {
+            clipboard::BODY
         } else if self.body.starts_with(b"0;") || self.body.starts_with(b"2;") {
             titles::LONGEST
         } else {
@@ -469,6 +472,7 @@ impl Osc {
     fn finish(&mut self, end: usize, found: &mut impl FnMut(Found)) {
         if self.overflow {
             log::warn!("pty: an OSC over {} bytes dropped", self.most());
+            found(Found::Long(&self.body));
         } else {
             found(Found::Osc(&self.body, self.length + end));
         }
@@ -486,6 +490,7 @@ mod modes;
 mod tests;
 
 use folder::folder;
+pub(in crate::term) use folder::folder as file_uri;
 #[cfg(windows)]
 use holder::nested;
 use holder::prompter;

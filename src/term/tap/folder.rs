@@ -1,17 +1,14 @@
 use std::path::PathBuf;
 
-/// The local folder an OSC 7 `file://host/path` names; another host's folder is none.
-pub(super) fn folder(body: &[u8]) -> Option<PathBuf> {
+/// The local path a `file://host/path` names; another host's is none.
+pub(in crate::term) fn folder(body: &[u8]) -> Option<PathBuf> {
     folder_on(body, cfg!(windows))
 }
 
 /// The folder an OSC 7 body names; on `windows` a drive's or a share's, as Windows names it, WSL's among them.
 pub(super) fn folder_on(body: &[u8], windows: bool) -> Option<PathBuf> {
     let Some(rest) = body.strip_prefix(b"file://") else {
-        log::warn!(
-            "pty: OSC 7 without file:// ({})",
-            String::from_utf8_lossy(body)
-        );
+        log::warn!("pty: {} is no file:// URI", String::from_utf8_lossy(body));
         return None;
     };
     let slash = rest.iter().position(|&byte| byte == b'/')?;
@@ -23,11 +20,11 @@ pub(super) fn folder_on(body: &[u8], windows: bool) -> Option<PathBuf> {
             .to_str()
             .is_some_and(|name| host.eq_ignore_ascii_case(name)))
     {
-        log::debug!("pty: OSC 7 from host {host}, not this one");
+        log::debug!("pty: a file URI from host {host}, not this one");
         return None;
     }
     let Some(path) = decode(&rest[slash..]) else {
-        log::warn!("pty: OSC 7 path is not UTF-8 after decoding");
+        log::warn!("pty: a file URI's path is not UTF-8 after decoding");
         return None;
     };
     if !windows {
@@ -40,7 +37,7 @@ pub(super) fn folder_on(body: &[u8], windows: bool) -> Option<PathBuf> {
     } else if drive {
         Some(PathBuf::from(&path[1..]))
     } else {
-        log::debug!("pty: OSC 7 path {path} names no Windows folder");
+        log::debug!("pty: path {path} names no Windows file");
         None
     }
 }

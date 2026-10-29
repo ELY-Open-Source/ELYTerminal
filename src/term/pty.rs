@@ -17,6 +17,7 @@ use alacritty_terminal::{
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 
 use super::{
+    clipboard::Packet,
     drop::Quote,
     graphics::{Graphics, Shared},
     marks::Mark,
@@ -43,6 +44,8 @@ pub enum PtyEvent {
     Title(String),
     /// A full reset, `ESC c`.
     Reset,
+    /// kitty's clipboard protocol, OSC 5522.
+    Clipboard(Packet),
     /// win32-input-mode set or reset.
     #[cfg(windows)]
     Win32(bool),

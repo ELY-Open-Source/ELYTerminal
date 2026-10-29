@@ -9,6 +9,7 @@ fn scan(chunks: &[&[u8]]) -> Vec<String> {
         scanner.feed(chunk, &mut |thing| {
             found.push(match thing {
                 Found::Osc(body, _) => String::from_utf8(body.to_vec()).expect("utf-8"),
+                Found::Long(body) => format!("LONG {}", body.len()),
                 Found::Reset => "RESET".into(),
                 Found::Push => "PUSH".into(),
                 Found::Pop => "POP".into(),
@@ -16,6 +17,11 @@ fn scan(chunks: &[&[u8]]) -> Vec<String> {
         });
     }
     found
+}
+
+/// What the scanner finds of a body past `most`.
+fn long(most: usize) -> Vec<String> {
+    vec![format!("LONG {most}")]
 }
 
 #[test]
@@ -70,18 +76,23 @@ fn controls_vte_skips_stay_out_of_a_body() {
 
 #[test]
 fn an_overlong_body_is_dropped() {
-    let mut long = b"\x1b]7;".to_vec();
-    long.extend(std::iter::repeat_n(b'a', MOST + 1));
-    long.push(0x07);
-    assert!(scan(&[&long]).is_empty());
-    assert_eq!(scan(&[&long, b"\x1b]7;b\x07"]), ["7;b"]);
+    let mut body = b"\x1b]7;".to_vec();
+    body.extend(std::iter::repeat_n(b'a', MOST + 1));
+    body.push(0x07);
+    assert_eq!(scan(&[&body]), long(MOST));
+    assert_eq!(scan(&[&body, b"\x1b]7;b\x07"]), [&long(MOST)[0], "7;b"]);
+    // OSC 5522 keeps a 4096-byte chunk's base64 and keys.
+    let most = clipboard::BODY;
+    let chunk = |n| [&b"\x1b]5522;type=wdata;"[..], &vec![b'A'; n - 16], b"\x07"].concat();
+    assert_eq!(scan(&[&chunk(most)]).concat().len(), most);
+    assert_eq!(scan(&[&chunk(most + 1)]), long(most));
 }
 
 #[test]
 fn an_osc_99_body_holds_its_metadata_and_a_full_payload() {
     let osc = |length: usize| [&b"\x1b]99;"[..], &vec![b'a'; length - 3], b"\x07"].concat();
     assert_eq!(scan(&[&osc(notify::BODY)]).concat().len(), notify::BODY);
-    assert!(scan(&[&osc(notify::BODY + 1)]).is_empty());
+    assert_eq!(scan(&[&osc(notify::BODY + 1)]), long(notify::BODY));
 }
 
 #[test]
@@ -303,9 +314,13 @@ fn a_title_s_body_holds_65536_bytes_and_another_s_4096() {
     };
     let longest = scan(&[&osc("2", titles::LONGEST - 2)]);
     assert_eq!(longest.concat().len(), titles::LONGEST);
-    assert!(scan(&[&osc("0", titles::LONGEST - 1)]).is_empty());
-    assert!(
-        scan(&[&osc("7", MOST - 1)]).is_empty(),
+    assert_eq!(
+        scan(&[&osc("0", titles::LONGEST - 1)]),
+        long(titles::LONGEST)
+    );
+    assert_eq!(
+        scan(&[&osc("7", MOST - 1)]),
+        long(MOST),
         "another stays at 4096"
     );
 }

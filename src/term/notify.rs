@@ -385,5 +385,16 @@ impl Kitty {
     }
 }
 
+/// A notification or progress an OSC 99, 777 or 9 body asks for.
+pub(super) fn ask(body: &[u8], kitty: &mut Kitty) -> Option<Ask> {
+    if let Some(rest) = body.strip_prefix(b"99;") {
+        kitty.read(rest)
+    } else if let Some(rest) = body.strip_prefix(b"777;") {
+        rxvt(rest)
+    } else {
+        body.strip_prefix(b"9;").and_then(nine)
+    }
+}
+
 #[cfg(test)]
 mod tests;

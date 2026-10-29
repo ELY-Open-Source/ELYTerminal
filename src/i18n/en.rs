@@ -214,4 +214,18 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.git.loss_folder", "Its untracked files are deleted."),
     ("et.git.loss_file", "It is deleted."),
     ("et.git.loss_changes", "Its unstaged changes are lost."),
+    (
+        "et.clipboard.title",
+        "A program wants to read the clipboard",
+    ),
+    ("et.clipboard.named", "{name} wants to read: {types}"),
+    (
+        "et.clipboard.unnamed",
+        "A program in this session wants to read: {types}",
+    ),
+    ("et.clipboard.empty", "The clipboard is empty."),
+    ("et.clipboard.more_files", "and {count} more"),
+    ("et.clipboard.deny", "Deny"),
+    ("et.clipboard.always", "Allow for this session"),
+    ("et.clipboard.allow", "Allow"),
 ];

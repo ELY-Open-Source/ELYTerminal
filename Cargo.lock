@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "alacritty_terminal"
 version = "0.26.0"
-source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=9075bf161e514edf11698cc3ac4d5a687462904a#9075bf161e514edf11698cc3ac4d5a687462904a"
+source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=4e3b0e6a7e54b359f5b5231701d03a3afb9ead8b#4e3b0e6a7e54b359f5b5231701d03a3afb9ead8b"
 dependencies = [
  "base64",
  "bitflags 2.13.2",
@@ -1433,7 +1433,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 3.0.9",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1766,6 +1766,7 @@ dependencies = [
  "foreign-types",
  "futures",
  "gethostname",
+ "getrandom 0.3.4",
  "gpui-pre",
  "gpui-pre-platform",
  "image",
@@ -2613,8 +2614,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-linux"
 version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1131746fad5c87b5de74dc9c73105655b0c820a2dd4bb247586573e7cf5720e"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-linux.git?rev=bf0b33557c0541a1f108c9f8a48f494d94d14600#bf0b33557c0541a1f108c9f8a48f494d94d14600"
 dependencies = [
  "accesskit",
  "accesskit_unix",
@@ -2658,8 +2658,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-macos"
 version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d756813ff1cd741a502af60fd18869e0677795936d7349642b41c49f43120c0"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-macos.git?rev=bf1ce7c431459d23522884d7e668183bd5fb9555#bf1ce7c431459d23522884d7e668183bd5fb9555"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -2871,7 +2870,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-windows"
 version = "0.3.8"
-source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=825bfc3e99bf80bc7705dbbc37f540e8e141d11f#825bfc3e99bf80bc7705dbbc37f540e8e141d11f"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=b4f0cefd459f028a3bb820056806557e31e0d235#b4f0cefd459f028a3bb820056806557e31e0d235"
 dependencies = [
  "accesskit",
  "accesskit_windows",

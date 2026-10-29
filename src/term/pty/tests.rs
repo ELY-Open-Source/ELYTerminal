@@ -58,6 +58,7 @@ fn run(script: &str, size: (usize, usize)) -> Ran {
                     statuses.push(None);
                 }
                 PtyEvent::Title(title) => said.push(format!("title {title}")),
+                PtyEvent::Clipboard(packet) => said.push(format!("clipboard {packet:?}")),
                 PtyEvent::Ask(ask, _) => {
                     if let Ask::Show(notice) = &ask {
                         said.push(format!("show {}", notice.title));

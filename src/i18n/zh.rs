@@ -202,4 +202,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.git.loss_folder", "其中未跟踪的文件会被删除。"),
     ("et.git.loss_file", "它会被删除。"),
     ("et.git.loss_changes", "它未暂存的改动会丢失。"),
+    ("et.clipboard.title", "有程序想读取剪贴板"),
+    ("et.clipboard.named", "{name} 想读取：{types}"),
+    ("et.clipboard.unnamed", "此会话中的程序想读取：{types}"),
+    ("et.clipboard.empty", "剪贴板是空的。"),
+    ("et.clipboard.more_files", "另有 {count} 个"),
+    ("et.clipboard.deny", "拒绝"),
+    ("et.clipboard.always", "本会话内允许"),
+    ("et.clipboard.allow", "允许"),
 ];

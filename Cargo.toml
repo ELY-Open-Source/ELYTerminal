@@ -19,6 +19,7 @@ env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
 gethostname = "1.1.0"
+getrandom = "0.3"
 gpui = { package = "gpui-pre", version = "=0.3.8", default-features = false }
 gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "wayland", "x11"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
@@ -71,10 +72,12 @@ windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win3
 windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO"] }
 
 [patch.crates-io]
-alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "9075bf161e514edf11698cc3ac4d5a687462904a" }
+alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "4e3b0e6a7e54b359f5b5231701d03a3afb9ead8b" }
 vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "7c7404dfc0a8cdd6823df7d3d0e49ef38af8b32d" }
 xim-ctext = { path = "vendor/xim-ctext" }
-gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "825bfc3e99bf80bc7705dbbc37f540e8e141d11f" }
+gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "b4f0cefd459f028a3bb820056806557e31e0d235" }
+gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "bf1ce7c431459d23522884d7e668183bd5fb9555" }
+gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "bf0b33557c0541a1f108c9f8a48f494d94d14600" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
