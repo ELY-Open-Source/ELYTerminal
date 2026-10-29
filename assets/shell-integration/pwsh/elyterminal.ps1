@@ -30,6 +30,21 @@ function global:prompt {
     }
     "$text$esc]133;B$bel"
 }
+# Git Bash's /e/x is E:\x, where no such folder lies here.
+if ($env:OS -eq 'Windows_NT') {
+    function global:ElyLocation {
+        $given = $args
+        $path = if ($given.Count -eq 1) { $given[0] }
+        if ($path -is [string] -and $path -match '^/([A-Za-z])(/.*)?$') {
+            $drive, $rest = "$($Matches[1]):\", "$($Matches[2])"
+            if (-not (Test-Path -LiteralPath $path) -and (Test-Path -LiteralPath $drive)) {
+                $given = @($drive + $rest.TrimStart('/').Replace('/', '\'))
+            }
+        }
+        Set-Location @given
+    }
+    Set-Alias -Name cd -Value ElyLocation -Option AllScope -Scope Global -Force
+}
 # A command starts once PSReadLine hands over a line that is not blank.
 if (Test-Path Function:\PSConsoleHostReadLine) {
     $global:ElyReadLine = $function:PSConsoleHostReadLine

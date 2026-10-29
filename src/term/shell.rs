@@ -304,6 +304,45 @@ mod windows_tests {
     }
 
     #[test]
+    fn cd_takes_git_bash_s_drive_paths() {
+        let (_, text) = SCRIPTS
+            .iter()
+            .find(|(name, _)| *name == "pwsh/elyterminal.ps1")
+            .expect("the PowerShell script");
+        let script =
+            std::env::temp_dir().join(format!("elyterminal-cd-{}.ps1", std::process::id()));
+        std::fs::write(&script, text).expect("the script");
+        // A drive no folder names: /x stays PowerShell's.
+        let body = format!(
+            ". '{}'; $ErrorActionPreference = 'Stop'; \
+             cd /c/Windows/System32; (Get-Location).Path; cd /C; (Get-Location).Path; \
+             cd -Path C:\\Windows; (Get-Location).Path; cd ..; (Get-Location).Path; \
+             $free = [char[]](70..89) | Where-Object {{ -not (Test-Path \"$($_):\\\") }} | Select-Object -First 1; \
+             try {{ cd \"/$free\"; 'moved' }} catch {{ 'refused' }}",
+            script.display()
+        );
+        let out = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &body])
+            .output()
+            .expect("powershell runs");
+        std::fs::remove_file(&script).expect("cleanup");
+        let text = String::from_utf8_lossy(&out.stdout);
+        let lines: Vec<_> = text.lines().collect();
+        assert_eq!(
+            lines,
+            [
+                r"C:\Windows\System32",
+                r"C:\",
+                r"C:\Windows",
+                r"C:\",
+                "refused"
+            ],
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    #[test]
     fn an_alias_hides_no_pwsh_later_on_path() {
         let root = std::env::temp_dir().join(format!("elyterminal-shells-{}", std::process::id()));
         let folders = ["WindowsApps", "Tools;PS7", "System32"].map(|name| root.join(name));
