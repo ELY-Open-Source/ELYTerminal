@@ -2615,7 +2615,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-linux"
 version = "0.3.8"
-source = "git+https://github.com/ELY-Open-Source/gpui-pre-linux.git?rev=09711c23034df2ba816beab35f5b79dc24efd11e#09711c23034df2ba816beab35f5b79dc24efd11e"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-linux.git?rev=8fcc867cdb23c12c22bb827343c4f815ccf824e9#8fcc867cdb23c12c22bb827343c4f815ccf824e9"
 dependencies = [
  "accesskit",
  "accesskit_unix",
