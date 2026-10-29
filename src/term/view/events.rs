@@ -6,23 +6,28 @@ use super::*;
 const IDLE: Duration = Duration::from_secs(2);
 
 impl TerminalView {
-    /// Packs idle history once output and scrolling have rested.
-    pub(in crate::term) fn compact_later(&mut self, cx: &mut Context<Self>) {
-        self.compacting = Some(cx.spawn(async move |view, cx| {
-            cx.background_executor().timer(IDLE).await;
-            let packed = view.update(cx, |view, _| {
-                let mut term = view.pty.term.lock();
-                term.compact();
-                let lines = term.grid().history_size();
-                log::debug!(
-                    "terminal {}: {lines} idle history lines packed",
-                    view.pty.pid
-                );
-            });
-            if packed.is_err() {
-                log::debug!("compaction: the terminal closed first");
+    /// Packs idle history every two seconds output and scrolling rest.
+    pub(super) fn compactor(cx: &mut Context<Self>) -> Task<()> {
+        cx.spawn(async move |view, cx| {
+            loop {
+                cx.background_executor().timer(IDLE).await;
+                let alive = view.update(cx, |view, _| {
+                    if view.stirred.elapsed() < IDLE {
+                        return;
+                    }
+                    let changed = view.pty.term.lock().compact();
+                    if changed > 0 {
+                        log::debug!(
+                            "terminal {}: {changed} idle history rows packed",
+                            view.pty.pid
+                        );
+                    }
+                });
+                if alive.is_err() {
+                    break;
+                }
             }
-        }));
+        })
     }
 
     pub(super) fn handle(&mut self, events: Vec<PtyEvent>, cx: &mut Context<Self>) {
@@ -74,7 +79,7 @@ impl TerminalView {
             }
         }
         if drawn {
-            self.compact_later(cx);
+            self.stirred = Instant::now();
             let kitty = *self.pty.term.lock().mode() & TermMode::KITTY_KEYBOARD_PROTOCOL;
             if kitty != self.kitty {
                 log::debug!("terminal {}: kitty keyboard flags {kitty:?}", self.pty.pid);

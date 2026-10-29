@@ -113,7 +113,9 @@ pub struct TerminalView {
     /// Wakes the view at its animations' next frame.
     animate: Option<Task<()>>,
     /// Packs idle history once output and scrolling rest.
-    compacting: Option<Task<()>>,
+    _compactor: Task<()>,
+    /// When output last came or the view last moved.
+    stirred: Instant,
     /// The view's place in the history as last drawn.
     offset: usize,
     _herdr: Task<()>,
@@ -178,7 +180,8 @@ impl TerminalView {
             _events: Self::pump(events, cx),
             _blink: Self::blink(cx),
             animate: None,
-            compacting: None,
+            _compactor: Self::compactor(cx),
+            stirred: Instant::now(),
             offset: 0,
             _herdr: super::herdr::follow(cx),
             _settings: cx.observe_global::<SettingsStore>(|view, cx| {
@@ -320,7 +323,7 @@ impl Render for TerminalView {
         drop(term);
         if offset != self.offset {
             self.offset = offset;
-            self.compact_later(cx);
+            self.stirred = Instant::now();
         }
         let focused = self.focus.is_focused(window) && window.is_window_active();
         self.blinking = focused && blinks;

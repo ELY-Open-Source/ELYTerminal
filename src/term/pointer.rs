@@ -248,7 +248,6 @@ impl TerminalView {
             return;
         }
         let selected = self.selected();
-        self.compact_later(cx);
         let count = selected.as_ref().map_or(0, |text| text.chars().count());
         log::debug!(
             "terminal {}: the selection ends on {count} characters",
@@ -343,7 +342,6 @@ impl TerminalView {
             term.selection = Some(all);
         }
         let selected = self.selected();
-        self.compact_later(cx);
         let count = selected.as_ref().map_or(0, |text| text.chars().count());
         log::debug!("terminal {}: all {count} characters selected", self.pty.pid);
         if let Some(text) = selected.filter(|_| SettingsStore::get(cx).copy_on_select) {
@@ -354,7 +352,6 @@ impl TerminalView {
 
     /// The selection to the clipboard.
     pub(super) fn copy(&mut self, cx: &mut Context<Self>) {
-        self.compact_later(cx);
         match self.selected() {
             Some(text) => self.copy_text(text, false, cx),
             None => log::debug!("terminal {}: nothing selected to copy", self.pty.pid),
