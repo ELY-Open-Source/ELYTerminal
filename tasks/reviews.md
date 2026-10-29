@@ -297,3 +297,4 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 2, 88533ed: FAIL. Two X screens share gpui's nil uuid, so a place on screen 1 reopened on screen 0. Fixed in 5606352: a uuid naming more than one display centers, logged.
 - Round 3, 5606352: FAIL. A monitor gone from one X screen shrinks the screen, and the clamp pulled the window to its edge. Fixed in the next commit: a kept place whose middle left its display centers, logged.
 - On 2026-10-28 the owner's standing word, every recommended option, allowed T108 a fourth review.
+- Round 4, aae8597: FAIL. The middle was checked after fitting: a 1200 by 1269 window kept at 300, -600, its middle on the screen, centered once shrunk to the visible height. Fixed in the next commit: the kept bounds' middle decides, then the fit and the move. The owner's standing word allowed a fifth review.

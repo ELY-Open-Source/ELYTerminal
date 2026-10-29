@@ -164,9 +164,8 @@ fn opening_bounds(cx: &App) -> (Bounds<Pixels>, Option<DisplayId>) {
         if let Some(at) = named(&ids, &place.display) {
             let display = &displays[at];
             let area = display.visible_bounds();
-            let fitted = fit(kept, Some(area.size));
             let origin = display.bounds().origin + point(px(place.x), px(place.y));
-            match placed(Bounds::new(origin, fitted), display.bounds(), area) {
+            match placed(Bounds::new(origin, kept), display.bounds(), area) {
                 Some(bounds) => {
                     log::info!("app: the window opens where it was left, on {area:?}");
                     return (bounds, Some(display.id()));
@@ -203,13 +202,16 @@ fn named(ids: &[Option<String>], kept: &str) -> Option<usize> {
     }
 }
 
-/// `kept` moved inside `area`, or none when its middle left `display`.
+/// `kept` fitted and moved inside `area`; none when its middle left `display`.
 fn placed(
     kept: Bounds<Pixels>,
     display: Bounds<Pixels>,
     area: Bounds<Pixels>,
 ) -> Option<Bounds<Pixels>> {
-    display.contains(&kept.center()).then(|| inside(kept, area))
+    let fitted = Bounds::new(kept.origin, fit(kept.size, Some(area.size)));
+    display
+        .contains(&kept.center())
+        .then(|| inside(fitted, area))
 }
 
 /// `bounds` moved inside `area`, which holds its size.
@@ -337,6 +339,10 @@ mod tests {
             placed(window(400., 100.), screen, screen),
             Some(window(400., 100.))
         );
+        let (display, visible) = (area(0., 0., 3008., 1269.), area(0., 30., 3008., 1148.));
+        let tall = area(300., -600., 1200., 1269.);
+        let fitted = area(300., 30., 1200., 1148.);
+        assert_eq!(placed(tall, display, visible), Some(fitted));
     }
 
     #[test]
