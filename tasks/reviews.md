@@ -434,3 +434,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, the v0.2.0 draft at 0cef65d: FAIL. The notes' clipboard line was too broad, the history figure lacked its measure, Mica lacked its build, and the composition crash fix was missing. Fixed in the draft's notes.
 - Round 2: FAIL. Only the newest paste's password reads unasked; fixed.
 - Round 3: PASS. Published: v0.2.0 at 0cef65d, latest, twelve assets; the website's six version-less links resolve to it.
+
+## T129
+
+- Round 1, 19e0cd2 with the Windows fork's 8b9ce59: FAIL. The fork's README left the Mica change out of its removal condition. Fixed on the fork's main, ef184ce, a README alone.
+- Round 2: PASS. 0.2.0's Windows zip, rebuilt at 19e0cd2 (sha256 b7c9e6f0…), replaced the one on v0.2.0 with its alias.
