@@ -78,7 +78,7 @@ vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "5142c08caf491
 xim-ctext = { path = "vendor/xim-ctext" }
 gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "06be77f931f5758a8f3b307e62d7924bb9af01ad" }
 gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "bf1ce7c431459d23522884d7e668183bd5fb9555" }
-gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "4f8943a9e22340d3f15ec21afa41e4bcae905977" }
+gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "129a74e9c007d392cf2bc2bc5f115bd2a9a8f55c" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("cargo-clippy"))'] }
