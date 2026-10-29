@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 #[cfg(windows)]
 use alacritty_terminal::tty;
@@ -13,7 +18,7 @@ use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 
 use super::{
     drop::Quote,
-    graphics::Graphics,
+    graphics::{Graphics, Shared},
     marks::Mark,
     mouse::MouseMode,
     notify::Ask,
@@ -79,6 +84,8 @@ pub struct Pty {
     pub term: Arc<FairMutex<Term<Listener>>>,
     pub pid: u32,
     pub quote: Quote,
+    /// Its kitty graphics: the parser writes them, the view draws.
+    pub graphics: Arc<Mutex<Shared>>,
     notifier: Notifier,
     #[cfg(unix)]
     master: std::fs::File,
@@ -169,7 +176,9 @@ pub fn spawn(
     };
     let grid = TermSize::new(size.num_cols.into(), size.num_lines.into());
     let mut term = Term::new(config, &grid, listener.clone());
-    term.set_graphics(Box::new(Graphics::new(pid)));
+    let graphics = Graphics::new(pid, (size.num_cols.into(), size.num_lines.into()), cell);
+    let shared = graphics.shared();
+    term.set_graphics(Box::new(graphics));
     let term = Arc::new(FairMutex::new(term));
     let tapped = Tapped::new(raw, sender, pid);
     #[cfg(unix)]
@@ -184,6 +193,7 @@ pub fn spawn(
             term,
             pid,
             quote: launch.quote,
+            graphics: shared,
             notifier,
             #[cfg(unix)]
             master,

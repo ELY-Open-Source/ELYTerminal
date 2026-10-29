@@ -1,17 +1,28 @@
 //! Kitty graphics commands, as the terminal hands them over.
 
 mod command;
+mod draw;
 mod load;
 mod media;
+mod place;
 mod store;
 #[cfg(test)]
 mod tests;
 
-use alacritty_terminal::index::Point;
+use std::{
+    ops::Range,
+    sync::{Arc, Mutex, MutexGuard},
+};
+
+use alacritty_terminal::{
+    index::{Column, Line, Point},
+    term::{Answer, Change},
+};
 
 use command::{Command, Quiet};
+pub use draw::{Layer, Pictures, Shown};
 use load::Loading;
-use store::Store;
+use place::{Display, Pick, Placement, Screen};
 
 /// A failure, as its reply names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,6 +36,8 @@ enum Error {
     NoSize,
     TooLarge,
     Space,
+    NoId,
+    NoImage,
 }
 
 impl Error {
@@ -40,6 +53,8 @@ impl Error {
             Self::NoSize => "EINVAL: dimensions required",
             Self::TooLarge => "EINVAL: dimensions too large",
             Self::Space => "ENOMEM: out of memory",
+            Self::NoId => "EINVAL: image ID or number required",
+            Self::NoImage => "ENOENT: image not found",
         }
     }
 }
@@ -89,23 +104,64 @@ impl Reply {
     }
 }
 
-/// One session's kitty graphics: its images and a transmission.
+/// Images and placements: the parser writes them, the view draws.
+#[derive(Debug)]
+pub struct Shared {
+    screens: [Screen; 2],
+    alt: bool,
+    /// A cell in pixels, as the pty reports it.
+    pub cell: (u32, u32),
+    /// Columns and lines.
+    size: (usize, usize),
+    limit: usize,
+}
+
+impl Shared {
+    fn screen(&mut self) -> &mut Screen {
+        &mut self.screens[usize::from(self.alt)]
+    }
+}
+
+/// One session's kitty graphics: the shared state and a transmission.
 pub struct Graphics {
     pid: u32,
-    store: Store,
+    shared: Arc<Mutex<Shared>>,
     loading: Option<Loading>,
+    /// Where the last placement left the cursor.
+    moved: Option<(usize, Column)>,
 }
 
 impl Graphics {
-    pub fn new(pid: u32) -> Self {
+    pub fn new(pid: u32, size: (usize, usize), cell: (u16, u16)) -> Self {
+        Self::limited(pid, size, cell, store::LIMIT)
+    }
+
+    fn limited(pid: u32, size: (usize, usize), cell: (u16, u16), limit: usize) -> Self {
+        let shared = Shared {
+            screens: [Screen::new(limit), Screen::new(limit)],
+            alt: false,
+            cell: (u32::from(cell.0), u32::from(cell.1)),
+            size,
+            limit,
+        };
         Self {
             pid,
-            store: Store::new(store::LIMIT),
+            shared: Arc::new(Mutex::new(shared)),
             loading: None,
+            moved: None,
         }
     }
 
-    fn execute(&mut self, command: &Command) -> Option<String> {
+    /// The state the view draws from.
+    pub fn shared(&self) -> Arc<Mutex<Shared>> {
+        Arc::clone(&self.shared)
+    }
+
+    fn lock(&self) -> MutexGuard<'_, Shared> {
+        self.shared.lock().expect("graphics: a holder panicked")
+    }
+
+    fn execute(&mut self, command: &Command, cursor: Point) -> Option<String> {
         let pid = self.pid;
         let ids = Ids {
             id: command.int(b'i'),
@@ -130,13 +186,14 @@ impl Graphics {
                             asked => loading.quiet = asked,
                         }
                     }
-                    self.transmit(command, ids)
+                    self.transmit(command, ids, cursor)
                 }
+                b'p' => self.display(Display::of(command), ids, cursor),
                 b'd' => {
-                    self.delete(command);
+                    self.delete(command, cursor);
                     None
                 }
-                b'p' | b'f' | b'a' | b'c' => {
+                b'f' | b'a' | b'c' => {
                     log::debug!(
                         "graphics {pid}: action {} is not taken yet",
                         command.action as char
@@ -179,7 +236,7 @@ impl Graphics {
         })
     }
 
-    fn transmit(&mut self, command: &Command, ids: Ids) -> Option<Reply> {
+    fn transmit(&mut self, command: &Command, ids: Ids, cursor: Point) -> Option<Reply> {
         let pid = self.pid;
         let loading = match self.loading.take() {
             Some(mut loading) => match loading.add(&command.payload, pid) {
@@ -188,11 +245,14 @@ impl Graphics {
             },
             None => {
                 // A reused id drops its image as the new starts.
-                if ids.id > 0 && self.store.remove(ids.id) {
+                if ids.id > 0 && self.lock().screen().remove(ids.id) {
                     log::debug!("graphics {pid}: image {} replaced", ids.id);
                 }
                 match Loading::start(command, ids, pid) {
-                    Ok(loading) => loading,
+                    Ok(mut loading) => {
+                        loading.display = (command.action == b'T').then(|| Display::of(command));
+                        loading
+                    }
                     Err(error) => return Some(Reply::failed(ids, error)),
                 }
             }
@@ -201,13 +261,15 @@ impl Graphics {
             self.loading = Some(loading);
             return None;
         }
-        let (ids, local) = (loading.ids, loading.local());
+        let (ids, local, display) = (loading.ids, loading.local(), loading.display);
         let mut image = match loading.finish(pid) {
             Ok(image) => image,
             Err(error) => return Some(Reply::failed(ids, error)),
         };
+        let mut shared = self.lock();
+        let screen = shared.screen();
         image.id = match ids.id {
-            0 => self.store.free(ids.number > 0),
+            0 => screen.store.free(ids.number > 0),
             id => id,
         };
         image.number = ids.number;
@@ -215,51 +277,141 @@ impl Graphics {
             id: image.id,
             ..ids
         };
-        if let Err(error) = self.store.add(image, pid) {
+        if let Err(error) = screen.store(image, pid) {
             // A local image's size tells of its file.
             let error = if local { Error::Read } else { error };
             return Some(Reply::failed(ids, error));
         }
+        drop(shared);
+        let shown = display.and_then(|display| self.display(display, stored, cursor));
         // An image named by neither id nor number hears nothing.
-        (ids.id > 0 || ids.number > 0).then(|| Reply::ok(stored))
+        (ids.id > 0 || ids.number > 0).then(|| shown.unwrap_or(Reply::ok(stored)))
     }
 
-    /// Deletes the image data `d` names; placements come later.
-    fn delete(&mut self, command: &Command) {
+    /// Places an image; the cursor moves past unless `C=1`.
+    fn display(&mut self, display: Display, ids: Ids, cursor: Point) -> Option<Reply> {
+        let pid = self.pid;
+        if ids.id == 0 && ids.number == 0 {
+            return Some(Reply::failed(ids, Error::NoId));
+        }
+        if display.virtual_ || display.parent > 0 {
+            log::debug!("graphics {pid}: virtual and relative placements are not taken yet");
+            return None;
+        }
+        let mut shared = self.lock();
+        let (cell, (columns, lines)) = (shared.cell, shared.size);
+        let screen = shared.screen();
+        let id = match ids.id {
+            0 => screen.store.newest(ids.number),
+            id => Some(id),
+        };
+        let Some((id, image)) = id.and_then(|id| Some((id, screen.store.get(id)?))) else {
+            return Some(Reply::failed(ids, Error::NoImage));
+        };
+        let placement = Placement {
+            image: id,
+            id: ids.placement,
+            line: cursor.line.0,
+            column: cursor.column.0,
+            display,
+            cut: (0, 0),
+            serial: 0,
+        };
+        let (wide, tall) = placement.cells(image, cell);
+        log::debug!(
+            "graphics {pid}: image {id} placed at {}, {} over {wide} by {tall} cells",
+            cursor.line.0,
+            cursor.column.0
+        );
+        screen.place(placement);
+        drop(shared);
+        if !display.stay {
+            // As Ghostty moves it: down the rows, past the columns.
+            let target = cursor.column.0 + wide as usize;
+            let wraps = target >= columns;
+            let down = (tall as usize).saturating_sub(1) + usize::from(wraps);
+            let room = lines.saturating_sub(1 + cursor.line.0.max(0) as usize) + lines;
+            self.moved = Some((down.min(room), Column(if wraps { 0 } else { target })));
+        }
+        Some(Reply::ok(Ids { id, ..ids }))
+    }
+
+    /// Deletes what `d` names; capitals free images left unplaced.
+    fn delete(&mut self, command: &Command, cursor: Point) {
         let pid = self.pid;
         if self.loading.take().is_some() {
             log::warn!("graphics {pid}: a delete dropped a transmission unfinished");
         }
         let what = command.letter(b'd').unwrap_or(b'a');
-        let ids = match what.to_ascii_lowercase() {
-            // A placement id selects a placement, and none stands yet.
-            b'i' if command.int(b'p') == 0 => vec![command.int(b'i')],
-            b'n' if command.int(b'p') == 0 => {
-                self.store.newest(command.int(b'I')).into_iter().collect()
+        let (x, y, z) = (
+            command.int(b'x'),
+            command.int(b'y'),
+            command.int(b'z') as i32,
+        );
+        let (image, placement) = (command.int(b'i'), command.int(b'p'));
+        // Cells count from 1, as cursor positions do.
+        let at = |z| {
+            (x > 0 && y > 0).then(|| Pick::Cell {
+                line: y as i32 - 1,
+                column: x as usize - 1,
+                z,
+            })
+        };
+        let mut shared = self.lock();
+        let (cell, lines) = (shared.cell, shared.size.1);
+        let screen = shared.screen();
+        let pick = match what.to_ascii_lowercase() {
+            b'a' => Some(Pick::Shown),
+            b'i' => Some(Pick::Image {
+                id: image,
+                placement,
+            }),
+            b'n' => screen
+                .store
+                .newest(command.int(b'I'))
+                .map(|id| Pick::Image { id, placement }),
+            b'c' => Some(Pick::Cell {
+                line: cursor.line.0,
+                column: cursor.column.0,
+                z: None,
+            }),
+            b'p' => at(None),
+            b'q' => at(Some(z)),
+            b'x' => (x > 0).then(|| Pick::Column(x as usize - 1)),
+            b'y' => (y > 0).then(|| Pick::Row(y as i32 - 1)),
+            b'z' => Some(Pick::Z(z)),
+            b'r' => Some(Pick::Range(x, y)),
+            b'f' => {
+                log::debug!("graphics {pid}: animation frames are not taken yet");
+                None
             }
-            b'r' => self.store.within(command.int(b'x'), command.int(b'y')),
-            b'i' | b'n' | b'a' | b'c' | b'p' | b'q' | b'x' | b'y' | b'z' | b'f' => Vec::new(),
             _ => {
                 log::warn!(
                     "graphics {pid}: delete {} is none kitty names",
                     what as char
                 );
-                return;
+                None
             }
         };
-        if !what.is_ascii_uppercase() {
-            return;
+        if let Some(pick) = pick {
+            log::debug!("graphics {pid}: delete {pick:?}");
+            screen.delete(pick, what.is_ascii_uppercase(), lines, cell);
         }
-        for id in ids {
-            if self.store.remove(id) {
-                log::debug!("graphics {pid}: image {id} deleted");
-            }
-        }
+    }
+
+    #[cfg(test)]
+    fn image(&self, id: u32) -> Option<store::Image> {
+        self.lock().screen().store.get(id).cloned()
+    }
+
+    #[cfg(test)]
+    fn ids(&self) -> Vec<u32> {
+        self.lock().screen().store.within(1, u32::MAX)
     }
 }
 
 impl alacritty_terminal::term::Graphics for Graphics {
-    fn command(&mut self, command: &[u8], cursor: Point) -> Option<String> {
+    fn command(&mut self, command: &[u8], cursor: Point) -> Answer {
         let shown = &command[..command.len().min(64)];
         log::debug!(
             "graphics {}: {} bytes at {}, {}: {}",
@@ -269,12 +421,53 @@ impl alacritty_terminal::term::Graphics for Graphics {
             cursor.column.0,
             String::from_utf8_lossy(shown)
         );
-        match Command::parse(command) {
-            Ok(command) => self.execute(&command),
+        let reply = match Command::parse(command) {
+            Ok(command) => self.execute(&command, cursor),
             Err(reason) => {
                 log::warn!("graphics {}: a command drops: {reason}", self.pid);
                 None
             }
+        };
+        Answer {
+            reply,
+            cursor: self.moved.take(),
         }
+    }
+
+    fn scrolled(&mut self, region: &Range<Line>, lines: i32, oldest: Line) {
+        let mut shared = self.lock();
+        let cell = shared.cell;
+        shared.screen().scrolled(region, lines, oldest, cell);
+    }
+
+    fn changed(&mut self, change: Change) {
+        let pid = self.pid;
+        let mut shared = self.lock();
+        let (cell, lines) = (shared.cell, shared.size.1);
+        match change {
+            Change::Screen => shared.screen().screen_cleared(lines, cell),
+            Change::History => shared.screen().history_cleared(cell),
+            Change::Reset => {
+                for screen in &mut shared.screens {
+                    screen.placements.clear();
+                }
+                shared.alt = false;
+            }
+            // The alternate screen starts empty, as its text does.
+            Change::Alt(true) => {
+                shared.screens[1] = Screen::new(shared.limit);
+                shared.alt = true;
+            }
+            Change::Alt(false) => shared.alt = false,
+            Change::Resized {
+                lines,
+                columns,
+                screen_lines,
+            } => {
+                shared.screen().resized(lines);
+                shared.size = (columns, screen_lines);
+            }
+        }
+        log::debug!("graphics {pid}: {change:?}");
     }
 }

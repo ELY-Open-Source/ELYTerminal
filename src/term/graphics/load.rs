@@ -29,6 +29,8 @@ pub(super) struct Loading {
     transient: bool,
     /// Read from a file or shared memory: failures tell nothing.
     local: bool,
+    /// Where `a=T` shows it once whole.
+    pub display: Option<super::place::Display>,
     data: Vec<u8>,
 }
 
@@ -62,6 +64,7 @@ impl Loading {
             height,
             transient: command.int(b'N') & 1 == 1,
             local: true,
+            display: None,
             data: Vec::new(),
         };
         let (offset, size) = (command.int(b'O'), command.int(b'S'));

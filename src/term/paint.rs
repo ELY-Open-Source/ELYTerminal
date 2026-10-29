@@ -1,19 +1,20 @@
 mod glyphs;
 
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use glyphs::draw;
 
 use alacritty_terminal::vte::ansi::CursorShape;
 use gpui::{
-    Bounds, ContentMask, ElementInputHandler, Entity, Font, FontId, FontStyle, FontWeight, Hsla,
-    IntoElement, PathBuilder, Pixels, Point, Size, StrikethroughStyle, Styled, TextRun,
-    UnderlineStyle, Window, canvas, fill, outline, point, px, size,
+    Bounds, ContentMask, Corners, ElementInputHandler, Entity, Font, FontId, FontStyle, FontWeight,
+    Hsla, IntoElement, PathBuilder, Pixels, Point, RenderImage, Size, StrikethroughStyle, Styled,
+    TextRun, UnderlineStyle, Window, canvas, fill, outline, point, px, size,
 };
 
 use super::{
     boxes::{self, Shape},
     frame::{Cursor, Frame, Style, Underline},
+    graphics::{Layer, Shown},
     view::TerminalView,
 };
 
@@ -44,6 +45,7 @@ pub fn grid(
     cursor: Option<(Cursor, CursorShape)>,
     preedit: Option<String>,
     look: Look,
+    (pictures, stale): (Vec<Shown>, Vec<Arc<RenderImage>>),
 ) -> impl IntoElement {
     let cell = look.cell;
     let (fit, input) = (view.clone(), view);
@@ -79,10 +81,21 @@ pub fn grid(
             let focus = input.read(cx).focus.clone();
             window.handle_input(&focus, ElementInputHandler::new(bounds, input.clone()), cx);
             let origin = snapped(bounds.origin, window);
-            for (index, row) in frame.rows.iter().enumerate() {
-                let top = origin + point(px(0.), cell.height * index as f32);
-                paint_row(row, top, &look, window);
+            for picture in stale {
+                if let Err(error) = window.drop_image(picture) {
+                    log::error!("terminal: a texture did not drop: {error:#}");
+                }
             }
+            let top = |index: usize| origin + point(px(0.), cell.height * index as f32);
+            paint_pictures(&pictures, Layer::Under, origin, cell, window);
+            for (index, row) in frame.rows.iter().enumerate() {
+                paint_grounds(row, top(index), &look, window);
+            }
+            paint_pictures(&pictures, Layer::Between, origin, cell, window);
+            for (index, row) in frame.rows.iter().enumerate() {
+                paint_text(row, top(index), &look, window);
+            }
+            paint_pictures(&pictures, Layer::Over, origin, cell, window);
             match (&preedit, at, &cursor) {
                 (Some(text), Some(at), _) => paint_preedit(text, at, origin, &look, window),
                 (None, _, Some((cursor, shape))) => {
@@ -165,16 +178,49 @@ fn spans(row: &super::frame::Row) -> Vec<(usize, usize, Style)> {
         .collect()
 }
 
-fn paint_row(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: &mut Window) {
+/// Kitty graphics placements of `layer`, cells measured from `origin`.
+fn paint_pictures(
+    pictures: &[Shown],
+    layer: Layer,
+    origin: Point<Pixels>,
+    cell: Size<Pixels>,
+    window: &mut Window,
+) {
+    let at = |cells: Bounds<f32>| {
+        Bounds::new(
+            origin + point(cell.width * cells.origin.x, cell.height * cells.origin.y),
+            size(
+                cell.width * cells.size.width,
+                cell.height * cells.size.height,
+            ),
+        )
+    };
+    for shown in pictures.iter().filter(|shown| shown.layer == layer) {
+        let (clip, whole) = (at(shown.clip), at(shown.whole));
+        let picture = Arc::clone(&shown.picture);
+        if let Err(error) = window.paint_image(clip, whole, Corners::default(), picture, 0, false) {
+            log::error!("terminal: an image did not paint: {error:#}");
+        }
+    }
+}
+
+/// A row's grounds, under every row's text.
+fn paint_grounds(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: &mut Window) {
+    let cell = look.cell;
+    for (column, columns, style) in spans(row) {
+        if let Some(bg) = style.bg {
+            let corner = top + point(cell.width * column as f32, px(0.));
+            let width = cell.width * columns as f32;
+            window.paint_quad(fill(Bounds::new(corner, size(width, cell.height)), bg));
+        }
+    }
+}
+
+/// A row's text and decorations.
+fn paint_text(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: &mut Window) {
     let cell = look.cell;
     let at = |column: usize| top + point(cell.width * column as f32, px(0.));
     let spans = spans(row);
-    for (column, columns, style) in &spans {
-        if let Some(bg) = style.bg {
-            let width = cell.width * *columns as f32;
-            window.paint_quad(fill(Bounds::new(at(*column), size(width, cell.height)), bg));
-        }
-    }
     let mut byte = 0;
     let runs: Vec<TextRun> = row
         .runs

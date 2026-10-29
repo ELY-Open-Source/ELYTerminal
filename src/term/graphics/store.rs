@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use super::Error;
 
@@ -6,7 +9,7 @@ use super::Error;
 pub(super) const LIMIT: usize = 320 * 1000 * 1000;
 
 /// An image as it was transmitted, its pixels RGBA.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct Image {
     pub id: u32,
     pub number: u32,
@@ -15,7 +18,7 @@ pub(super) struct Image {
     pub pixels: Vec<u8>,
     pub transient: bool,
     /// When it was stored: newest answers, oldest goes first.
-    generation: u64,
+    pub generation: u64,
 }
 
 impl Image {
@@ -38,7 +41,6 @@ pub(super) struct Store {
     images: HashMap<u32, Image>,
     bytes: usize,
     limit: usize,
-    generation: u64,
     /// The next id an image that names none takes.
     next: u32,
 }
@@ -49,12 +51,10 @@ impl Store {
             images: HashMap::new(),
             bytes: 0,
             limit,
-            generation: 0,
             next: 1,
         }
     }
 
-    #[cfg(test)]
     pub fn get(&self, id: u32) -> Option<&Image> {
         self.images.get(&id)
     }
@@ -71,6 +71,10 @@ impl Store {
         id
     }
 
+    pub(super) fn images(&self) -> impl Iterator<Item = &Image> {
+        self.images.values()
+    }
+
     /// The newest image of `number`.
     pub(super) fn newest(&self, number: u32) -> Option<u32> {
         self.images
@@ -80,8 +84,13 @@ impl Store {
             .map(|image| image.id)
     }
 
-    /// Stores `image`, evicting the oldest past the quota.
-    pub(super) fn add(&mut self, mut image: Image, pid: u32) -> Result<(), Error> {
+    /// Stores `image`, evicting unplaced, then oldest, past the quota.
+    pub(super) fn add(
+        &mut self,
+        mut image: Image,
+        pid: u32,
+        placed: &dyn Fn(u32) -> bool,
+    ) -> Result<(), Error> {
         let size = image.pixels.len();
         if size > self.limit {
             log::warn!(
@@ -95,14 +104,15 @@ impl Store {
             let oldest = self
                 .images
                 .values()
-                .min_by_key(|image| (!image.transient, image.generation))
+                .min_by_key(|image| (placed(image.id), !image.transient, image.generation))
                 .map(|image| image.id)
                 .expect("bytes over zero mean an image");
             log::info!("graphics {pid}: image {oldest} evicted for {size} bytes");
             self.remove(oldest);
         }
-        self.generation += 1;
-        image.generation = self.generation;
+        // One count for both screens: a texture names one image.
+        static GENERATION: AtomicU64 = AtomicU64::new(1);
+        image.generation = GENERATION.fetch_add(1, Ordering::Relaxed);
         self.bytes += size;
         log::debug!(
             "graphics {pid}: image {} stored, {}x{}, {} bytes of {}",

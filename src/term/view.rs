@@ -27,6 +27,7 @@ use super::{
     find::Finder,
     fonts::look,
     frame::frame,
+    graphics::Pictures,
     ink::Ink,
     input::{self, Find, Held, NextPrompt, PreviousPrompt, Went},
     marks::Mark,
@@ -68,6 +69,8 @@ pub struct TerminalView {
     pub(super) mouse: MouseMode,
     /// The background picture that last failed, logged once.
     pub(super) backdrop_failed: Option<std::path::PathBuf>,
+    /// Kitty graphics' textures.
+    pictures: Pictures,
     /// Keys go as Windows' records, as ConPTY asks.
     #[cfg(windows)]
     pub(super) win32: bool,
@@ -141,6 +144,7 @@ impl TerminalView {
             pointer: Pointer::default(),
             mouse: MouseMode::default(),
             backdrop_failed: None,
+            pictures: Pictures::default(),
             #[cfg(windows)]
             win32: false,
             herdr: false,
@@ -373,6 +377,15 @@ impl Render for TerminalView {
             finder.lit(&term, cx.theme().colors.warning)
         });
         let shown = frame(&term, &ink, &lit);
+        let (pictures, stale) = self.pictures.shown(
+            &self
+                .pty
+                .graphics
+                .lock()
+                .expect("graphics: a holder panicked"),
+            term.grid().display_offset(),
+            (term.columns(), term.screen_lines()),
+        );
         let blinks = term.cursor_style().blinking;
         let span = Span::of(&term);
         drop(term);
@@ -425,10 +438,24 @@ impl Render for TerminalView {
             });
         let root = match look(&settings, zoom::size(cx), &ink, window) {
             Ok(look) => {
-                self.cell = (
-                    f32::from(look.cell.width).round() as u16,
-                    f32::from(look.cell.height).round() as u16,
+                // Device pixels, as kitty reports them, so images draw crisp.
+                let scale = window.scale_factor();
+                let cell = (
+                    (f32::from(look.cell.width) * scale).round() as u16,
+                    (f32::from(look.cell.height) * scale).round() as u16,
                 );
+                if cell != self.cell {
+                    log::debug!("terminal {}: a cell is {cell:?} pixels", self.pty.pid);
+                    self.cell = cell;
+                    let mut graphics = self
+                        .pty
+                        .graphics
+                        .lock()
+                        .expect("graphics: a holder panicked");
+                    graphics.cell = (cell.0.into(), cell.1.into());
+                    drop(graphics);
+                    self.pty.resize(self.size, cell);
+                }
                 let preedit = self.marked.clone();
                 root.child(paint::grid(
                     cx.entity(),
@@ -436,6 +463,7 @@ impl Render for TerminalView {
                     cursor,
                     preedit,
                     look,
+                    (pictures, stale),
                 ))
             }
             Err(error) => {

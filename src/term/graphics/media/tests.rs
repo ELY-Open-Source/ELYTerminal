@@ -12,7 +12,9 @@ const UNREAD: &str = "EBADF:Failed to read image file";
 
 fn send(graphics: &mut Graphics, keys: &str, name: &[u8]) -> Option<String> {
     let text = format!("{keys};{}", STANDARD.encode(name));
-    graphics.command(text.as_bytes(), Point::new(Line(0), Column(0)))
+    graphics
+        .command(text.as_bytes(), Point::new(Line(0), Column(0)))
+        .reply
 }
 
 fn reply(id: u32, message: &str) -> Option<String> {
@@ -33,28 +35,22 @@ fn bytes(path: &Path) -> Vec<u8> {
 
 #[test]
 fn a_file_reads_from_its_offset_for_its_size_and_stays() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let file = folder(&std::env::temp_dir(), "file").join("image");
     std::fs::write(&file, [9, 9, 1, 2, 3, 9]).expect("written");
     let path = bytes(&file);
     let first = send(&mut graphics, "i=1,t=f,f=24,s=1,v=1,O=2,S=3", &path);
     assert_eq!(first, reply(1, "OK"));
-    assert_eq!(
-        graphics.store.get(1).expect("stored").pixels,
-        [1, 2, 3, 255]
-    );
+    assert_eq!(graphics.image(1).expect("stored").pixels, [1, 2, 3, 255]);
     let rest = send(&mut graphics, "i=2,t=f,f=24,s=1,v=1,O=3", &path);
     assert_eq!(rest, reply(2, "OK"));
-    assert_eq!(
-        graphics.store.get(2).expect("stored").pixels,
-        [2, 3, 9, 255]
-    );
+    assert_eq!(graphics.image(2).expect("stored").pixels, [2, 3, 9, 255]);
     assert!(file.exists());
 }
 
 #[test]
 fn every_file_that_does_not_read_answers_alike() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let folder = folder(&std::env::temp_dir(), "unread");
     let short = folder.join("short");
     std::fs::write(&short, [0; 6]).expect("written");
@@ -92,12 +88,12 @@ fn every_file_that_does_not_read_answers_alike() {
             "{shown} {keys}"
         );
     }
-    assert!(graphics.store.get(1).is_none());
+    assert!(graphics.image(1).is_none());
 }
 
 #[test]
 fn a_temporary_file_is_read_then_deleted_only_where_kitty_allows() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let temporary = folder(&std::env::temp_dir(), "temporary");
     let file = temporary.join("tty-graphics-protocol-1");
     std::fs::write(&file, [1, 2, 3, 4]).expect("written");
@@ -158,12 +154,12 @@ fn shared_memory_is_read_then_unlinked() {
         libc::munmap(map, 6);
         libc::close(fd);
     }
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     assert_eq!(
         send(&mut graphics, "i=1,t=s,s=1,v=1,O=2", name.as_bytes()),
         reply(1, "OK")
     );
-    assert_eq!(graphics.store.get(1).expect("stored").pixels, [1, 2, 3, 4]);
+    assert_eq!(graphics.image(1).expect("stored").pixels, [1, 2, 3, 4]);
     // SAFETY: a NUL-ended name.
     #[cfg(target_os = "macos")]
     let again = unsafe { libc::shm_open(c.as_ptr(), libc::O_RDONLY, 0 as libc::c_uint) };
@@ -211,12 +207,12 @@ fn shared_memory_is_read_then_closed() {
         std::ptr::copy_nonoverlapping([0u8, 0, 1, 2, 3, 4].as_ptr(), view.Value.cast::<u8>(), 6);
         UnmapViewOfFile(view);
     }
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     assert_eq!(
         send(&mut graphics, "i=1,t=s,s=1,v=1,O=2", name.as_bytes()),
         reply(1, "OK")
     );
-    assert_eq!(graphics.store.get(1).expect("stored").pixels, [1, 2, 3, 4]);
+    assert_eq!(graphics.image(1).expect("stored").pixels, [1, 2, 3, 4]);
     // SAFETY: the handle made above.
     unsafe { CloseHandle(handle) };
     assert_eq!(
@@ -267,7 +263,7 @@ fn a_pipe_in_dev_shm_answers_without_waiting_for_a_writer() {
     let (sent, heard) = std::sync::mpsc::channel();
     let keys = name.clone();
     std::thread::spawn(move || {
-        let mut graphics = Graphics::new(0);
+        let mut graphics = Graphics::new(0, (80, 24), (10, 20));
         let _ = sent.send(send(&mut graphics, "i=1,t=s,s=1,v=1", keys.as_bytes()));
     });
     let answer = heard.recv_timeout(std::time::Duration::from_secs(5));
@@ -278,11 +274,7 @@ fn a_pipe_in_dev_shm_answers_without_waiting_for_a_writer() {
 
 #[test]
 fn a_local_image_past_the_quota_answers_as_one_that_does_not_read() {
-    let mut graphics = Graphics {
-        pid: 0,
-        store: super::super::store::Store::new(40),
-        loading: None,
-    };
+    let mut graphics = Graphics::limited(0, (80, 24), (10, 20), 40);
     let file = folder(&std::env::temp_dir(), "quota").join("image");
     std::fs::write(&file, [0; 48]).expect("written");
     assert_eq!(
@@ -300,7 +292,7 @@ fn a_file_in_a_folder_one_may_only_search_still_reads() {
     std::fs::write(&file, [1, 2, 3, 4]).expect("written");
     let only = std::fs::Permissions::from_mode(0o111);
     std::fs::set_permissions(&searched, only).expect("search alone");
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let read = send(&mut graphics, "i=1,t=f,s=1,v=1", &bytes(&file));
     let back = std::fs::Permissions::from_mode(0o700);
     std::fs::set_permissions(&searched, back).expect("restored");

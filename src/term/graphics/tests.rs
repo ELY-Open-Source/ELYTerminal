@@ -17,7 +17,9 @@ fn send(graphics: &mut Graphics, control: &str, payload: &[u8]) -> Option<String
 }
 
 fn raw(graphics: &mut Graphics, text: &str) -> Option<String> {
-    graphics.command(text.as_bytes(), Point::new(Line(0), Column(0)))
+    graphics
+        .command(text.as_bytes(), Point::new(Line(0), Column(0)))
+        .reply
 }
 
 fn reply(keys: &str, message: &str) -> Option<String> {
@@ -25,25 +27,25 @@ fn reply(keys: &str, message: &str) -> Option<String> {
 }
 
 fn ids(graphics: &Graphics) -> Vec<u32> {
-    graphics.store.within(1, u32::MAX)
+    graphics.ids()
 }
 
 #[test]
 fn a_direct_image_is_stored_as_rgba_and_answered() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let rgb = [1, 2, 3, 4, 5, 6];
     assert_eq!(
         send(&mut graphics, "i=31,f=24,s=2,v=1", &rgb),
         reply("i=31", "OK")
     );
-    let image = graphics.store.get(31).expect("stored");
+    let image = graphics.image(31).expect("stored");
     assert_eq!((image.width, image.height), (2, 1));
     assert_eq!(image.pixels, [1, 2, 3, 255, 4, 5, 6, 255]);
     assert_eq!(
         send(&mut graphics, "i=2,p=4,s=1,v=1", &[9, 8, 7, 6]),
         reply("i=2,p=4", "OK")
     );
-    assert_eq!(graphics.store.get(2).expect("stored").pixels, [9, 8, 7, 6]);
+    assert_eq!(graphics.image(2).expect("stored").pixels, [9, 8, 7, 6]);
     // Without an id or a number, it is stored unanswered.
     assert_eq!(send(&mut graphics, "s=1,v=1", &[0; 4]), None);
     assert_eq!(ids(&graphics).len(), 3);
@@ -51,7 +53,7 @@ fn a_direct_image_is_stored_as_rgba_and_answered() {
 
 #[test]
 fn a_number_takes_the_lowest_free_id_and_the_newest_answers_to_it() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     send(&mut graphics, "i=1,s=1,v=1", &[0; 4]);
     assert_eq!(
         send(&mut graphics, "I=13,s=1,v=1", &[0; 4]),
@@ -74,7 +76,7 @@ fn a_number_takes_the_lowest_free_id_and_the_newest_answers_to_it() {
 
 #[test]
 fn quiet_keeps_back_what_it_names() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     assert_eq!(send(&mut graphics, "i=1,q=1,s=1,v=1", &[0; 4]), None);
     let short = reply("i=2", "EINVAL: invalid data");
     assert_eq!(send(&mut graphics, "i=2,q=1,s=1,v=1", &[0; 3]), short);
@@ -85,7 +87,7 @@ fn quiet_keeps_back_what_it_names() {
 
 #[test]
 fn chunks_join_answer_once_at_the_end_and_keep_their_first_quiet() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let pixels: Vec<u8> = (0..16).collect();
     let text = encode(&pixels);
     let (first, rest) = text.split_at(8);
@@ -99,14 +101,14 @@ fn chunks_join_answer_once_at_the_end_and_keep_their_first_quiet() {
         raw(&mut graphics, &format!("m=0;{last}")),
         reply("i=5", "OK")
     );
-    assert_eq!(graphics.store.get(5).expect("stored").pixels, pixels);
+    assert_eq!(graphics.image(5).expect("stored").pixels, pixels);
     // q=1 on the first chunk holds for the last.
     raw(
         &mut graphics,
         &format!("i=6,q=1,s=2,v=2,m=1;{first}{second}"),
     );
     assert_eq!(raw(&mut graphics, &format!("m=0;{last}")), None);
-    assert!(graphics.store.get(6).is_some());
+    assert!(graphics.image(6).is_some());
     // A file transmission drops one under way.
     raw(&mut graphics, &format!("i=7,s=2,v=2,m=1;{first}"));
     let missing = encode(b"/nonexistent/ely");
@@ -117,7 +119,7 @@ fn chunks_join_answer_once_at_the_end_and_keep_their_first_quiet() {
 
 #[test]
 fn zlib_and_png_decode_to_rgba() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let rgb = [10, 20, 30, 40, 50, 60];
     let mut zlib = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
     zlib.write_all(&rgb).expect("it compresses");
@@ -127,7 +129,7 @@ fn zlib_and_png_decode_to_rgba() {
         reply("i=1", "OK")
     );
     assert_eq!(
-        graphics.store.get(1).expect("stored").pixels,
+        graphics.image(1).expect("stored").pixels,
         [10, 20, 30, 255, 40, 50, 60, 255]
     );
     let rgba = image::RgbaImage::from_raw(1, 2, vec![1, 2, 3, 4, 5, 6, 7, 8]).expect("pixels");
@@ -136,7 +138,7 @@ fn zlib_and_png_decode_to_rgba() {
         .expect("it encodes");
     let png = png.into_inner();
     assert_eq!(send(&mut graphics, "i=2,f=100", &png), reply("i=2", "OK"));
-    let image = graphics.store.get(2).expect("stored");
+    let image = graphics.image(2).expect("stored");
     assert_eq!((image.width, image.height), (1, 2));
     assert_eq!(image.pixels, [1, 2, 3, 4, 5, 6, 7, 8]);
     let mut zlib = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
@@ -148,7 +150,7 @@ fn zlib_and_png_decode_to_rgba() {
 
 #[test]
 fn each_failure_answers_by_name() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     let cases = [
         ("i=1,s=2,v=1", &[0u8; 7][..], "EINVAL: invalid data"),
         ("i=1,f=99,s=1,v=1", &[0; 4], "EINVAL: unsupported format"),
@@ -185,7 +187,7 @@ fn each_failure_answers_by_name() {
 
 #[test]
 fn a_query_loads_and_keeps_nothing() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     assert_eq!(
         raw(&mut graphics, "i=31,s=1,v=1,a=q,t=d,f=24;AAAA"),
         reply("i=31", "OK")
@@ -200,10 +202,10 @@ fn a_query_loads_and_keeps_nothing() {
 
 #[test]
 fn a_reused_id_replaces_its_image() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     send(&mut graphics, "i=4,s=1,v=1", &[1; 4]);
     send(&mut graphics, "i=4,s=1,v=1", &[2; 4]);
-    assert_eq!(graphics.store.get(4).expect("stored").pixels, [2; 4]);
+    assert_eq!(graphics.image(4).expect("stored").pixels, [2; 4]);
     // The old image goes as the new starts, even failing.
     send(&mut graphics, "i=4,s=1,v=1", &[3; 3]);
     assert!(ids(&graphics).is_empty());
@@ -211,7 +213,7 @@ fn a_reused_id_replaces_its_image() {
 
 #[test]
 fn deletes_free_image_data_in_capitals_only() {
-    let mut graphics = Graphics::new(0);
+    let mut graphics = Graphics::new(0, (80, 24), (10, 20));
     for id in 1..=5 {
         send(&mut graphics, &format!("i={id},q=1,s=1,v=1"), &[0; 4]);
     }
@@ -240,11 +242,7 @@ fn deletes_free_image_data_in_capitals_only() {
 
 #[test]
 fn the_quota_evicts_transient_images_then_the_oldest() {
-    let mut graphics = Graphics {
-        pid: 0,
-        store: Store::new(40),
-        loading: None,
-    };
+    let mut graphics = Graphics::limited(0, (80, 24), (10, 20), 40);
     send(&mut graphics, "i=1,s=2,v=2", &[0; 16]);
     send(&mut graphics, "i=2,s=2,v=2,N=1", &[0; 16]);
     send(&mut graphics, "i=3,s=2,v=2", &[0; 16]);
