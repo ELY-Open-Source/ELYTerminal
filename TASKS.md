@@ -248,6 +248,6 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 
 - [x] T124 Issue #29, again: on niri's Wayland with fcitx5, Shift held by its key reaches the keystroke's modifiers, so Ctrl+Shift+C and Ctrl+Shift+V copy and paste, and under fcitx5's Shift trigger too; reproduced first, as the reporter's log shows it, then fixed. The window's state reads the masks, as gpui's did; a shadow xkb state takes every key, and only a key no mask answered settles its modifiers into the window's, the group left to the masks; seventeen review rounds, a fuzz test against a compositor's own state.
 - [x] T125 Issue #38: on Windows 11 the window's backdrop may be Mica or Mica Alt beside Acrylic, a setting in Settings › Appearance; Windows 10 keeps Acrylic.
-- [ ] T126 The README, its Chinese twin and the guides in `docs/en_us` and `docs/zh_cn` say what 0.2.0 does, each claim true to the code.
+- [x] T126 The README, its Chinese twin and the guides in `docs/en_us` and `docs/zh_cn` say what 0.2.0 does, each claim true to the code.
 - [ ] T128 Issue #39: on Windows, PowerShell's `cd` takes Git Bash's drive paths, `/e` as `E:\` and `/e/x` as `E:\x`, where no such path lies on the current drive, through ELYTerminal's PowerShell integration; every other `cd` as before.
 - [ ] T127 Release 0.2.0: the version raised, the builds for macOS, Windows and Linux on the release, the notes in English and Chinese, the website's links following.

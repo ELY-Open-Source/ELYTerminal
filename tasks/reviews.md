@@ -413,3 +413,10 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T125
 
 - Round 1, 1b6e836 and ef30e08 with the Windows fork's a23c98f: PASS. Windows 368 tests, macOS 387; a probe window on the owner's PC drew Acrylic, Mica, Mica Alt and clear as asked.
+
+## T126
+
+- Round 1, a019f5f: FAIL. The history figure read as universal; the drive path's condition, the clipboard's unasked reads, the speed gains and the Wayland fix were missing or loose. Fixed in e49d702.
+- Round 2, e49d702: FAIL. The READMEs still promised every read asked; the paste password's read was said to hold the paste's contents. Fixed in def721a.
+- Round 3, def721a: FAIL. The drive path's condition named a folder where the code tests any path. Fixed in 8626938.
+- Round 4, 8626938: PASS.
