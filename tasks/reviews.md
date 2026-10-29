@@ -317,3 +317,11 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1, d64e6cb: FAIL. A read that straddled the exec mixed two programs: `sh -c 'echo ready; exec /bin/cat'` read the executable `/bin/bash` and then the arguments `["/bin/cat"]`, so `cat` read as a shell, 52 in 1,000 for the reviewer. One read after `ready` never caught it here, even under load; 50 reads across the exec in each of 200 runs gave 25, 32 and 28 false shells. Fixed in 5ecc9bc: the executable is read again after the arguments, and a change means no shell.
 - Round 2, 5ecc9bc: FAIL. The reviewer's probe gave no false shells in 1,000 runs, and its log showed 44 caught by the second read; one comment ran eleven words. Fixed in 0ef0223.
 - Round 3, 0ef0223: PASS. Linux passed 327 tests on 5ecc9bc; Windows, which reads no groups, went unchecked: the owner's PC reset every SSH connection.
+
+## T112
+
+- Round 1, first run on 66e91df: no verdict. The reviewer's provider stopped its race probe as a cybersecurity request; before that it counted two test comments at twelve words. The rerun asked for checks by reading the code and ordinary files.
+- Round 1, 90b1a91: FAIL. A temporary file's folder swapped for a link after the check let the read and delete reach a file outside it; a FIFO under /dev/shm would block Linux's shm_open; a local image past the quota answered ENOMEM where every other local failure answers EBADF; the two comments, left unstaged by an amend. Fixed in e5a5a21: the file opens through its held folder (Windows: the handle's own checked path) and deletes through it; shm_open takes O_NONBLOCK and wants a regular file on Linux; the quota failure maps to EBADF. Each has a test red before.
+- Round 2, e5a5a21: FAIL. The held folder opened for reading, so a file in a folder one may only search (0111) answered EBADF. Fixed in 581f534: O_SEARCH on macOS, O_PATH on Linux.
+- Round 3, 581f534: FAIL. rustfmt had split the Windows shared memory read into a statement and `[range].to_vec()`, which did not compile; the Windows PC, reachable again, found it first. Fixed in 2a27578; 51d9182 counts the ConPTY test's 17 bytes. A fourth round ran under the owner's standing word.
+- Round 4, 51d9182: PASS. Windows: clippy clean and 321 tests, shared memory, temporary files and the ConPTY APC among them; macOS 340; Linux 347 on 581f534.
