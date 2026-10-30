@@ -287,10 +287,10 @@ impl Pty {
     /// Fits the grid and tells the program its new size; both get the same counts.
     pub fn resize(&mut self, (columns, lines): (usize, usize), cell: (u16, u16)) {
         let size = fit(columns, lines, cell);
+        let mut term = self.term.lock();
+        super::prompts::prepare_resize(&mut term, size.num_cols.into());
+        term.resize(TermSize::new(size.num_cols.into(), size.num_lines.into()));
         self.notifier.on_resize(size);
-        self.term
-            .lock()
-            .resize(TermSize::new(size.num_cols.into(), size.num_lines.into()));
     }
 }
 

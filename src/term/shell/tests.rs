@@ -16,6 +16,7 @@ use crate::{
     },
 };
 
+mod resize;
 mod start;
 
 /// A folder name with a space, a percent, a bell and a newline.
