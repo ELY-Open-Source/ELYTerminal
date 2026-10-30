@@ -256,7 +256,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 ## 42. 0.2.1
 
 - [x] T130 PR #48: zsh's prompt drawn again on a resize leaves no copy in the history; the PR checked on macOS and Linux, its cause confirmed, merged with its author or fixed at the cause.
-- [ ] T131 Issues #44 and #45: kitty graphics on Windows draw at the image's own resolution, sharp, and yazi's preview keeps its aspect: the cell size in pixels that programs ask for (CSI 14 t, 16 t, 18 t) answered on every system, reproduced first on the owner's PC.
+- [x] T131 Issues #44 and #45: kitty graphics on Windows draw at the image's own resolution, sharp, and yazi's preview keeps its aspect: the cell size in pixels that programs ask for (CSI 14 t, 16 t, 18 t) answered on every system, reproduced first on the owner's PC.
 - [ ] T132 Issue #47: Files shows a file another program creates, renames or deletes in an open folder within a second, without a prompt, on macOS, Windows and Linux; Git's marks follow.
 - [ ] T133 Issue #46: a command's start clears the last command's failure, so the row and Ely are calm while ssh, cmd or a nested shell runs, and its exit code shows when it ends; a nested cmd on Windows marks its prompts and reports its folder.
 - [ ] T134 Issue #41: the interface's font family and size, as ely-mark sets them: a family picker with a sample and a size from 12 to 16 px in Settings › Appearance, saved, applied to every window at once.

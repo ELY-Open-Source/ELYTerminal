@@ -451,3 +451,7 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 6, af5a8f7: FAIL. A line typed taller than the screen piled up copies: kept rows reached the history zsh's redraw cannot reach. Fixed in 8e2c91f as kitty keeps no history row.
 - Round 7, 8e2c91f: FAIL. A blank line in the prompt hid its start above the screen. Fixed in fbd6231, the start sought past blank rows.
 - Round 8, fbd6231: PASS.
+
+## T131
+
+- Round 1, b0c63b4 with vte 8fa83a9 and alacritty d2781ca: PASS.
