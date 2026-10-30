@@ -16,6 +16,11 @@ const NUMBERED: char = '\u{7f}';
 /// What ends the id of a link on the line typed after a prompt.
 const TYPED: char = 'i';
 
+const REDRAW: char = 'r';
+
+mod resize;
+pub(super) use resize::prepare_resize;
+
 /// What the terminal's own link stamps: a prompt's cells, by its number, or the line typed after it, OSC 133 B to C, by the commands ended before it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Part {
@@ -75,6 +80,7 @@ pub(crate) struct Prompts {
     sent: bool,
     /// The prompt or input open now, from its mark to the next.
     open: Option<Part>,
+    redraw: Option<u32>,
     /// The target of a program's link open now, to open it again with a prompt's number and without.
     target: Option<Vec<u8>>,
     /// The last prompt's number.
@@ -155,6 +161,7 @@ impl Prompts {
                 // A full reset clears the link the parser writes with.
                 if byte == b'c' {
                     (self.open, self.target) = (None, None);
+                    self.redraw = None;
                 }
                 self.held.push(byte);
                 self.release();
@@ -244,11 +251,16 @@ impl Prompts {
                 (Edge::Prompt, _) => {
                     self.count = self.count.wrapping_add(1);
                     self.open = Some(Part::Prompt(self.count));
-                    Some(link(Part::Prompt(self.count), target))
+                    self.redraw = self
+                        .body
+                        .split(|&byte| byte == b';')
+                        .any(|p| p == b"redraw=1")
+                        .then_some(self.count);
+                    Some(link(Part::Prompt(self.count), target, self.redraw))
                 }
                 (Edge::Input, Some(Part::Prompt(_))) => {
                     self.open = Some(Part::Input(self.ended));
-                    Some(link(Part::Input(self.ended), target))
+                    Some(link(Part::Input(self.ended), target, self.redraw))
                 }
                 (Edge::Input, _) => None,
                 (Edge::End, open) => {
@@ -261,7 +273,7 @@ impl Prompts {
             self.target = opens.then(|| target.to_vec());
             // Inside a prompt or input a program's link carries its number; its end takes the terminal's link up again.
             let target = if opens { target } else { LINK.as_bytes() };
-            self.open.map(|part| link(part, target))
+            self.open.map(|part| link(part, target, self.redraw))
         } else {
             None
         };
@@ -312,11 +324,15 @@ fn user(body: &[u8]) -> Option<(bool, &[u8])> {
 }
 
 /// A link to `target` whose id carries `part`'s prompt number.
-fn link(part: Part, target: &[u8]) -> Vec<u8> {
-    let id = match part {
+fn link(part: Part, target: &[u8], redraw: Option<u32>) -> Vec<u8> {
+    let mut id = match part {
         Part::Prompt(number) => format!("{NUMBERED}{number}"),
         Part::Input(number) => format!("{NUMBERED}{number}{TYPED}"),
     };
+    if let Some(number) = redraw {
+        id.push(REDRAW);
+        id.push_str(&number.to_string());
+    }
     let mut link = format!("\x1b]8;id={id};").into_bytes();
     link.extend_from_slice(target);
     link.push(0x07);
@@ -335,10 +351,16 @@ fn plain(target: &[u8]) -> Vec<u8> {
 pub(super) fn part(cell: &Cell) -> Option<Part> {
     let link = cell.hyperlink()?;
     let number = link.id().strip_prefix(NUMBERED)?;
+    let number = number.split_once(REDRAW).map_or(number, |(part, _)| part);
     match number.strip_suffix(TYPED) {
         Some(typed) => typed.parse().ok().map(Part::Input),
         None => number.parse().ok().map(Part::Prompt),
     }
+}
+
+fn redraw_prompt(cell: &Cell) -> Option<u32> {
+    part(cell)?;
+    cell.hyperlink()?.id().split_once(REDRAW)?.1.parse().ok()
 }
 
 /// Whether `cell` belongs to a prompt.

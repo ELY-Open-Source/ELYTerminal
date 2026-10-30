@@ -9,8 +9,9 @@ fi
 if [[ -o interactive ]]; then
   _ely_ran=
   _ely_first=1
+  _ely_mark_scheduled=
   _ely_precmd() {
-    builtin local ret=$? LC_ALL=C char url= dir=$PWD
+    builtin local ret=$? LC_ALL=C char url= dir=$PWD mark_last=$precmd_functions[-1]
     if [[ -n $_ely_ran ]]; then
       builtin printf '\e]133;D;%s\a' $ret
       _ely_ran=
@@ -28,18 +29,24 @@ if [[ -o interactive ]]; then
     done
     [[ -n $dir ]] && builtin printf '\e]7;file://%s\a' "$url"
     builtin printf '\e]2;%s\a' "${${${PWD:t}:-/}//[[:cntrl:]]/}"
-    # Themes set PS1 in later hooks: the marks go on after them, at the first prompt through sched.
+    # Themes move their hooks last; sched marks their final prompt.
     precmd_functions=(${precmd_functions:#_ely_mark} _ely_mark)
     if (( _ely_first )); then
       _ely_first=0
       [[ -o prompt_percent ]] || builtin print -ru2 'ELYTerminal: zsh marks no prompt while prompt_percent is off (setopt prompt_percent)'
-      builtin zmodload zsh/sched && builtin sched +0 _ely_mark $ret
+      builtin zmodload zsh/sched
+      _ely_mark_scheduled=1
+      builtin sched +0 _ely_mark $ret
+    elif [[ $mark_last != _ely_mark && -z $_ely_mark_scheduled ]]; then
+      _ely_mark_scheduled=1
+      builtin sched +0 _ely_mark $ret
     fi
     builtin return ret
   }
   _ely_mark() {
+    _ely_mark_scheduled=
     if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
-      PS1=$'%{\e]133;A;aid=elyterminal\a%}'$PS1$'%{\e]133;B\a%}'
+      PS1=$'%{\e]133;A;aid=elyterminal;redraw=1\a%}'$PS1$'%{\e]133;B\a%}'
     fi
     # sched's command leaves its status for the prompt.
     builtin return ${1:-0}
