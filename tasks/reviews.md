@@ -487,3 +487,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 2: the reviewer's pane read round 1's verdict again; round 3 read the change.
 - Round 3: FAIL. pushd's drive outlives the session. On the owner's PC a session closed through ConPTY left it mapped, on the letter of the owner's remembered `Z:`; cleaned. pushd went: cmd says itself it cannot sit in a share.
 - Round 4: PASS.
+
+## T136
+
+- Round 1: FAIL. `tr` hid a missing zip digest behind an empty SHA, and `MpCmdRun.exe` is not on PATH. The digest fails alone; the guides call it by its full path from an administrator's PowerShell.
+- Round 2: PASS.

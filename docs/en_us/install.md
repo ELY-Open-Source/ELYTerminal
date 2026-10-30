@@ -54,3 +54,33 @@ install -Dm644 elyterminal.1.gz -t ~/.local/share/man/man1
 The desktop entry runs `elyterminal`, so `~/.local/bin` must be on `PATH`.
 Repeat these commands with a newer tarball to update. To uninstall, remove
 the four installed files; settings stay in the config folder.
+
+# Windows
+
+Windows 10 or later, x86_64. Unzip `ELYTerminal-VERSION-windows-x86_64.zip`
+anywhere and run `elyterminal.exe`; keep `conpty.dll` and `OpenConsole.exe`
+beside it. Settings › Terminal › Explorer menu adds Open in ELYTerminal to a
+folder's right-click menu. With winget, once Microsoft's catalog holds it:
+
+```powershell
+winget install ELYOpenSource.ELYTerminal
+```
+
+The build is not code-signed, so two different Windows guards may speak:
+
+- **SmartScreen**, "Windows protected your PC", judges a download by its
+  reputation, not its contents. Check the file's SHA-256 against the release
+  page (`Get-FileHash FILE`), then press More info, then Run anyway.
+- **Microsoft Defender**, a detection such as `Trojan:Script/Wacatac.C!ml`,
+  is a malware verdict. The `!ml` names a machine-learning guess, which often
+  goes away after a definitions update. Do not turn off protection or add an
+  exclusion. In a PowerShell run as administrator, update Defender
+  (`Update-MpSignature`), download again, check the SHA-256, and scan it
+  (`& "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File FILE`). If it is
+  still flagged, report it as a false positive at
+  <https://www.microsoft.com/wdsi/filesubmission> and open an issue with the
+  detection name, the definitions version and the hash.
+
+The zip holds only `elyterminal.exe`, `LICENSE-conpty`, and Microsoft's signed
+`conpty.dll` and `OpenConsole.exe` from NuGet's
+`Microsoft.Windows.Console.ConPTY`.

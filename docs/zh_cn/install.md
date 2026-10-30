@@ -53,3 +53,30 @@ install -Dm644 elyterminal.1.gz -t ~/.local/share/man/man1
 桌面项运行 `elyterminal`，所以 `~/.local/bin` 必须在 `PATH` 上。
 用更新的压缩包再跑一遍这些命令即可更新。卸载则删掉
 这四个已安装的文件；设置仍留在配置文件夹里。
+
+# Windows
+
+Windows 10 或更高，x86_64。把 `ELYTerminal-VERSION-windows-x86_64.zip`
+解压到任意位置，运行 `elyterminal.exe`；`conpty.dll` 和 `OpenConsole.exe`
+须留在它旁边。设置 › 终端 › 资源管理器菜单 可在文件夹的右键菜单中加入
+“在 ELYTerminal 中打开”。微软的目录收录后也可用 winget：
+
+```powershell
+winget install ELYOpenSource.ELYTerminal
+```
+
+构建未做代码签名，所以 Windows 可能有两种不同的拦截：
+
+- **SmartScreen**，“Windows 已保护你的电脑”，依据下载的信誉而非内容判断。
+  先用 `Get-FileHash FILE` 核对文件的 SHA-256 与发行页一致，再点按
+  “更多信息”，然后“仍要运行”。
+- **Microsoft Defender**，如 `Trojan:Script/Wacatac.C!ml` 这样的检测，
+  是恶意软件判定。`!ml` 表示机器学习的推测，病毒库更新后常会消失。
+  不要关闭防护，也不要添加排除项。在以管理员身份运行的 PowerShell 中先更新 Defender
+  （`Update-MpSignature`），重新下载，核对 SHA-256，再扫描
+  （`& "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File FILE`）。
+  若仍报警，请在 <https://www.microsoft.com/wdsi/filesubmission> 提交误报，
+  并开一个 issue，写明检测名称、病毒库版本和哈希。
+
+zip 里只有 `elyterminal.exe`、`LICENSE-conpty`，以及来自 NuGet
+`Microsoft.Windows.Console.ConPTY` 的微软签名 `conpty.dll` 和 `OpenConsole.exe`。
