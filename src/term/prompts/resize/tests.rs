@@ -123,20 +123,19 @@ fn a_prompt_half_printed_is_kept_before_its_input_mark() {
 }
 
 #[test]
-fn a_prompt_reaching_into_the_history_keeps_its_rows_there() {
+fn a_prompt_reaching_into_the_history_reflows_as_output() {
     let (mut term, _) = parsed(
         b"OUTPUT\r\n\x1b]133;A;redraw=1\x07PROMPT12\r\n> \x1b]133;B\x07abcdefghijklmnopqrstuvwxyz",
         8,
         3,
     );
     assert!(start(&term, term.grid().cursor.point.line.0).unwrap() < 0);
-    assert!(resize(&mut term, 4, 3));
-    let shown = rows(&term);
-    assert_eq!(
-        shown.iter().filter(|row| row.starts_with("PROM")).count(),
-        1
+    assert!(!resize(&mut term, 4, 3));
+    let joined = rows(&term).concat();
+    assert!(
+        joined.contains("PROMPT12> abcdefghijklmnopqrstuvwxyz"),
+        "{joined}"
     );
-    assert!(shown.iter().any(|row| row == "OUTP"), "{shown:?}");
 }
 
 #[test]

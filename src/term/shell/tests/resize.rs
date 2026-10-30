@@ -287,3 +287,23 @@ fn zsh_marks_no_new_prompt_when_a_widget_runs_the_precmd_hooks() {
     let shown = text(&run);
     assert_eq!(shown.matches("TOP").count(), 2, "{shown}");
 }
+
+#[test]
+fn zsh_keeps_one_prompt_when_the_line_typed_outgrows_the_screen() {
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", "PROMPT=$'TOP\\n> '\n")]);
+    run.until("the first prompt", |run| run.shows("TOP"));
+    run.ends("print HISTORY_SENTINEL", &ended(0));
+    let typed = format!("echo {}", "x".repeat(2000));
+    run.pty.write(typed.clone().into_bytes());
+    run.until("the typed line", |run| {
+        text(run).replace('\n', "").contains(&typed)
+    });
+    // zsh's redraw climbs past the screen's top without us too.
+    for _ in 0..2 {
+        for columns in [70, 40, 100] {
+            resize(&mut run, columns);
+            let shown = text(&run);
+            assert!(shown.matches("TOP").count() <= 2, "at {columns}: {shown}");
+        }
+    }
+}
