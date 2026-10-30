@@ -14,6 +14,12 @@ fn resize(run: &mut Run, columns: usize) {
     });
 }
 
+/// Resizes, then waits out a redraw that shows no mark.
+fn resize_bare(run: &mut Run, columns: usize) {
+    run.pty.resize((columns, 30), (8, 16));
+    std::thread::sleep(std::time::Duration::from_millis(500));
+}
+
 fn text(run: &Run) -> String {
     let term = run.pty.term.lock();
     (-(term.grid().history_size() as i32)..term.screen_lines() as i32)
@@ -27,6 +33,33 @@ fn text(run: &Run) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Types `line` at a prompt marked only at its start.
+fn ends_bare(run: &mut Run, line: &str, status: i32) {
+    let prompts = run.lines + 1;
+    run.until("the prompt's mark", |run| {
+        let marked = run.marks.iter();
+        marked
+            .filter(|mark| matches!(mark, Mark::Prompt(_)))
+            .count()
+            >= prompts
+    });
+    let from = run.marks.len();
+    run.send(line);
+    // A theme leaving PS1 alone shows two starts.
+    run.until(&format!("the marks of {line}"), |run| {
+        let heard = &run.marks[from..];
+        let done = heard
+            .iter()
+            .position(|mark| *mark == Mark::Done(Some(status)));
+        done.is_some_and(|at| {
+            heard[..at].contains(&Mark::Output)
+                && heard[at..]
+                    .iter()
+                    .any(|mark| matches!(mark, Mark::Prompt(_)))
+        })
+    });
 }
 
 fn ready() -> Run {
@@ -96,9 +129,9 @@ fn zsh_marks_prompts_when_a_theme_keeps_its_hook_last() {
     );
     let mut run = Run::start(&installed("zsh"), &[(".zshrc", &theme)]);
     run.until("the first prompt", |run| run.shows("~/project main"));
-    run.ends("printf 'FIRST\\n'", &ended(0));
-    run.ends("printf 'SECOND\\n'", &ended(0));
-    resize(&mut run, 70);
+    ends_bare(&mut run, "printf 'FIRST\\n'", 0);
+    ends_bare(&mut run, "printf 'SECOND\\n'", 0);
+    resize_bare(&mut run, 70);
     assert_eq!(
         text(&run).matches("~/project main").count(),
         3,
@@ -150,8 +183,8 @@ fn zsh_keeps_pipestatus_when_a_hook_moves_itself_last() {
     );
     let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
     run.until("the first prompt", |run| run.shows("~/project main"));
-    run.ends("false | true", &ended(0));
-    run.ends("print -r -- PIPE=$pipestatus", &ended(0));
+    ends_bare(&mut run, "false | true", 0);
+    ends_bare(&mut run, "print -r -- PIPE=$pipestatus", 0);
     run.until("the pipeline's statuses", |run| run.shows("PIPE=1 0"));
     run.finish();
 }
@@ -163,7 +196,7 @@ const LAST: &str = "setopt promptsubst\nf() {\n  PROMPT='STATUS=%? PIPE=${pipest
 fn zsh_shows_pipestatus_in_a_prompt_a_theme_sets_last() {
     let mut run = Run::start(&installed("zsh"), &[(".zshrc", LAST)]);
     run.until("the first prompt", |run| run.shows("STATUS="));
-    run.ends("false | false", &ended(1));
+    ends_bare(&mut run, "false | false", 1);
     run.until("the prompt's statuses", |run| {
         run.shows("STATUS=1 PIPE=1 1 >")
     });
@@ -187,7 +220,7 @@ fn zsh_promises_no_redraw_once_its_line_editor_goes() {
 
 /// Runs `line` on a cleared screen, then waits for `shown`.
 fn shows_after(run: &mut Run, line: &str, status: i32, shown: &str) {
-    run.ends(&format!("clear; {line}"), &ended(status));
+    ends_bare(run, &format!("clear; {line}"), status);
     run.until(shown, |run| run.shows(shown));
 }
 
@@ -216,7 +249,7 @@ fn zsh_marks_a_failed_pipeline_s_prompt_under_err_return() {
     let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
     run.until("the first prompt", |run| run.shows("STATUS="));
     shows_after(&mut run, "false | false", 1, "PIPE=1 1 >");
-    run.ends("true", &ended(0));
+    ends_bare(&mut run, "true", 0);
     run.finish();
 }
 
@@ -225,8 +258,8 @@ fn zsh_marks_a_theme_s_prompt_without_the_global_files() {
     let files = [(".zshenv", "unsetopt globalrcs\n"), (".zshrc", LAST)];
     let mut run = Run::start(&installed("zsh"), &files);
     run.until("the first prompt", |run| run.shows("STATUS="));
-    run.ends("true", &ended(0));
-    run.ends("true", &ended(0));
+    ends_bare(&mut run, "true", 0);
+    ends_bare(&mut run, "true", 0);
     run.finish();
 }
 

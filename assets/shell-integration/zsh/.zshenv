@@ -9,12 +9,10 @@ fi
 if [[ -o interactive ]]; then
   _ely_ran=
   _ely_first=1
-  _ely_pipe=
   _ely_precmd() {
-    builtin local ret=$? pipe="${pipestatus[*]}" LC_ALL=C char url= dir=$PWD
+    builtin local ret=$? LC_ALL=C char url= dir=$PWD
     # The user's options may not bend the script.
     builtin setopt local_options unset no_ksh_arrays no_sh_word_split no_err_return no_err_exit
-    _ely_pipe=$pipe
     if [[ -n $_ely_ran ]]; then
       builtin printf '\e]133;D;%s\a' $ret
       _ely_ran=
@@ -32,16 +30,18 @@ if [[ -o interactive ]]; then
     done
     [[ -n $dir ]] && builtin printf '\e]7;file://%s\a' "$url"
     builtin printf '\e]2;%s\a' "${${${PWD:t}:-/}//[[:cntrl:]]/}"
+    # A theme holding the last hook rewrites PS1: mark before it.
+    if (( ! _ely_first )) && [[ ${precmd_functions[-1]} != _ely_mark ]]; then
+      builtin local redraw=
+      [[ -o zle ]] && redraw=';redraw=1'
+      builtin printf '\e]133;A;aid=elyterminal%s\a' $redraw
+    fi
     # Themes set PS1 in later hooks: the marks go on after them, at the first prompt through sched.
     precmd_functions=(${precmd_functions:#_ely_mark} _ely_mark)
     if (( _ely_first )); then
       _ely_first=0
       [[ -o prompt_percent ]] || builtin print -ru2 'ELYTerminal: zsh marks no prompt while prompt_percent is off (setopt prompt_percent)'
       builtin zmodload zsh/sched && builtin sched +0 _ely_mark $ret
-      # The line editor is on by the first prompt, not in .zshenv.
-      if [[ -o zle ]] && ! { builtin zmodload zsh/zle && builtin autoload -Uz +X add-zle-hook-widget 2>/dev/null && add-zle-hook-widget line-init _ely_line_init; }; then
-        builtin print -ru2 'ELYTerminal: zsh could not hook its line editor; a theme moving its hook last goes unmarked'
-      fi
     fi
     builtin return ret
   }
@@ -65,26 +65,6 @@ if [[ -o interactive ]]; then
     # sched's command leaves its status for the prompt.
     builtin return ${1:-0}
   }
-  # A theme's later hook set PS1 again: mark it here.
-  _ely_line_init() {
-    builtin setopt local_options unset no_ksh_arrays no_sh_word_split no_err_return no_err_exit
-    if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
-      _ely_mark
-      builtin local one line=
-      builtin local -a statuses
-      statuses=(${=_ely_pipe:-0})
-      # reset-prompt expands at once: give it the command's statuses.
-      if (( $#statuses == 1 )); then
-        line="_ely_status $statuses"
-      else
-        # Functions in a pipeline report statuses past 128 unreliably.
-        for one in $statuses; do line+="( builtin exit $one ) | "; done
-        line=${line% | }
-      fi
-      builtin eval "$line; zle .reset-prompt"
-    fi
-  }
-  _ely_status() { builtin return $1 }
   _ely_preexec() {
     _ely_ran=1
     builtin printf '\e]133;C\a\e]2;%s\a' "${1//[[:cntrl:]]/}"
