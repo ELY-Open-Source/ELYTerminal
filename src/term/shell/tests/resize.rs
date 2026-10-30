@@ -102,3 +102,51 @@ fn zsh_marks_prompts_when_a_theme_keeps_its_hook_last() {
     assert_eq!(text(&run).matches("~/project main").count(), 3);
     run.finish();
 }
+
+#[test]
+fn zsh_keeps_a_continued_command_s_first_line_through_a_resize() {
+    let mut run = ready();
+    run.until("line editor", |run| run.pty.reads_keys());
+    run.pty.write(b"for x in one two; do\r".to_vec());
+    run.until("the continuation", |run| run.shows("for>"));
+    run.pty.write(b"echo $x".to_vec());
+    run.until("the typed line", |run| run.shows("echo $x"));
+    for columns in [70, 40, 90] {
+        resize(&mut run, columns);
+    }
+    assert!(
+        text(&run).contains("for x in one two; do"),
+        "{}",
+        text(&run)
+    );
+    run.pty.write(b"\rdone\r".to_vec());
+    run.until("the loop's output", |run| run.shows("one\ntwo"));
+    run.finish();
+}
+
+#[test]
+fn zsh_without_its_line_editor_promises_no_redraw() {
+    let rc = format!("unsetopt zle\n{THEME}");
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
+    run.until("the first prompt", |run| run.shows("~/project main"));
+    run.pty.write(b"echo hello".to_vec());
+    run.until("the typed line", |run| run.shows("echo hello"));
+    run.pty.resize((70, 30), (8, 16));
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let shown = text(&run);
+    assert!(shown.contains("echo hello"), "{shown}");
+    assert!(shown.contains("~/project main"), "{shown}");
+}
+
+#[test]
+fn zsh_keeps_pipestatus_when_a_hook_moves_itself_last() {
+    let rc = format!(
+        "{THEME}\nf() {{ precmd_functions=(${{precmd_functions:#f}} f) }}\nprecmd_functions+=(f)\n"
+    );
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
+    run.until("the first prompt", |run| run.shows("~/project main"));
+    run.ends("false | true", &ended(0));
+    run.ends("print -r -- PIPE=$pipestatus", &ended(0));
+    run.until("the pipeline's statuses", |run| run.shows("PIPE=1 0"));
+    run.finish();
+}

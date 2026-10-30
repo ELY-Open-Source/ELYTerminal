@@ -16,10 +16,11 @@ const NUMBERED: char = '\u{7f}';
 /// What ends the id of a link on the line typed after a prompt.
 const TYPED: char = 'i';
 
+/// What starts a redraw id in a prompt's link, for a prompt its shell draws again on a resize.
 const REDRAW: char = 'r';
 
 mod resize;
-pub(super) use resize::prepare_resize;
+pub(super) use resize::{keep, restore};
 
 /// What the terminal's own link stamps: a prompt's cells, by its number, or the line typed after it, OSC 133 B to C, by the commands ended before it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,10 +29,11 @@ pub(super) enum Part {
     Input(u32),
 }
 
-/// How a mark moves the link: a prompt starts, its input starts, or the command ends it.
+/// How a mark moves the link: a prompt starts, a secondary one, its input starts, or the command ends it.
 #[derive(Debug, PartialEq)]
 enum Edge {
     Prompt,
+    Secondary,
     Input,
     End,
 }
@@ -80,7 +82,10 @@ pub(crate) struct Prompts {
     sent: bool,
     /// The prompt or input open now, from its mark to the next.
     open: Option<Part>,
+    /// The redraw id of the prompt open now, when its shell draws it again.
     redraw: Option<u32>,
+    /// The last redraw id given.
+    redraws: u32,
     /// The target of a program's link open now, to open it again with a prompt's number and without.
     target: Option<Vec<u8>>,
     /// The last prompt's number.
@@ -251,13 +256,16 @@ impl Prompts {
                 (Edge::Prompt, _) => {
                     self.count = self.count.wrapping_add(1);
                     self.open = Some(Part::Prompt(self.count));
-                    self.redraw = self
-                        .body
-                        .split(|&byte| byte == b';')
-                        .any(|p| p == b"redraw=1")
-                        .then_some(self.count);
+                    self.redraw = redraws(&mut self.redraws, &self.body);
                     Some(link(Part::Prompt(self.count), target, self.redraw))
                 }
+                // A secondary prompt, as zsh's PS2, shares its prompt's number and is redrawn alone.
+                (Edge::Secondary, Some(_)) => {
+                    self.open = Some(Part::Prompt(self.count));
+                    self.redraw = redraws(&mut self.redraws, &self.body);
+                    Some(link(Part::Prompt(self.count), target, self.redraw))
+                }
+                (Edge::Secondary, None) => None,
                 (Edge::Input, Some(Part::Prompt(_))) => {
                     self.open = Some(Part::Input(self.ended));
                     Some(link(Part::Input(self.ended), target, self.redraw))
@@ -299,6 +307,17 @@ impl Prompts {
     }
 }
 
+/// A new redraw id when a mark's body says its shell draws the prompt again.
+fn redraws(last: &mut u32, body: &[u8]) -> Option<u32> {
+    let promised = body
+        .split(|&byte| byte == b';')
+        .any(|option| option == b"redraw=1");
+    promised.then(|| {
+        *last = last.wrapping_add(1);
+        *last
+    })
+}
+
 /// How a mark's body moves the link, as `marks::read` reads its letter; none for no mark.
 fn mark(body: &[u8]) -> Option<Edge> {
     let (&letter, rest) = body.split_first()?;
@@ -307,6 +326,12 @@ fn mark(body: &[u8]) -> Option<Edge> {
     }
     match letter {
         b'A' | b'N' => Some(Edge::Prompt),
+        b'P' if rest
+            .split(|&byte| byte == b';')
+            .any(|option| option == b"k=s") =>
+        {
+            Some(Edge::Secondary)
+        }
         b'B' | b'I' => Some(Edge::Input),
         b'C' | b'D' => Some(Edge::End),
         _ => None,
@@ -358,7 +383,8 @@ pub(super) fn part(cell: &Cell) -> Option<Part> {
     }
 }
 
-fn redraw_prompt(cell: &Cell) -> Option<u32> {
+/// The redraw id of the prompt `cell` belongs to, when its shell draws it again.
+fn redraw(cell: &Cell) -> Option<u32> {
     part(cell)?;
     cell.hyperlink()?.id().split_once(REDRAW)?.1.parse().ok()
 }

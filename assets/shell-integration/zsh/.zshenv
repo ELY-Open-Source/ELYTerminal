@@ -9,9 +9,8 @@ fi
 if [[ -o interactive ]]; then
   _ely_ran=
   _ely_first=1
-  _ely_mark_scheduled=
   _ely_precmd() {
-    builtin local ret=$? LC_ALL=C char url= dir=$PWD mark_last=$precmd_functions[-1]
+    builtin local ret=$? LC_ALL=C char url= dir=$PWD
     if [[ -n $_ely_ran ]]; then
       builtin printf '\e]133;D;%s\a' $ret
       _ely_ran=
@@ -29,27 +28,42 @@ if [[ -o interactive ]]; then
     done
     [[ -n $dir ]] && builtin printf '\e]7;file://%s\a' "$url"
     builtin printf '\e]2;%s\a' "${${${PWD:t}:-/}//[[:cntrl:]]/}"
-    # Themes move their hooks last; sched marks their final prompt.
+    # Themes set PS1 in later hooks: the marks go on after them, at the first prompt through sched.
     precmd_functions=(${precmd_functions:#_ely_mark} _ely_mark)
     if (( _ely_first )); then
       _ely_first=0
       [[ -o prompt_percent ]] || builtin print -ru2 'ELYTerminal: zsh marks no prompt while prompt_percent is off (setopt prompt_percent)'
-      builtin zmodload zsh/sched
-      _ely_mark_scheduled=1
-      builtin sched +0 _ely_mark $ret
-    elif [[ $mark_last != _ely_mark && -z $_ely_mark_scheduled ]]; then
-      _ely_mark_scheduled=1
-      builtin sched +0 _ely_mark $ret
+      builtin zmodload zsh/sched && builtin sched +0 _ely_mark $ret
+      # The line editor is up by the first prompt, not in .zshenv.
+      if [[ -o zle ]]; then
+        if builtin autoload -Uz +X add-zle-hook-widget 2>/dev/null; then
+          add-zle-hook-widget line-init _ely_line_init
+        else
+          builtin print -ru2 'ELYTerminal: zsh lacks add-zle-hook-widget; a theme moving its hook last goes unmarked'
+        fi
+      fi
     fi
     builtin return ret
   }
   _ely_mark() {
-    _ely_mark_scheduled=
+    # Only the line editor redraws a prompt on a resize.
+    builtin local redraw=
+    [[ -o zle ]] && redraw=';redraw=1'
     if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
-      PS1=$'%{\e]133;A;aid=elyterminal;redraw=1\a%}'$PS1$'%{\e]133;B\a%}'
+      PS1=$'%{\e]133;A;aid=elyterminal'$redraw$'\a%}'$PS1$'%{\e]133;B\a%}'
+    fi
+    if [[ -o prompt_percent && $PS2 != *$'\e]133;P'* ]]; then
+      PS2=$'%{\e]133;P;k=s'$redraw$'\a%}'$PS2$'%{\e]133;B\a%}'
     fi
     # sched's command leaves its status for the prompt.
     builtin return ${1:-0}
+  }
+  # A theme's later hook set PS1 again: mark it here.
+  _ely_line_init() {
+    if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
+      _ely_mark
+      zle .reset-prompt
+    fi
   }
   _ely_preexec() {
     _ely_ran=1
