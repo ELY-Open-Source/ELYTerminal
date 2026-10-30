@@ -443,3 +443,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T130
 
 - PR #48 merged at the owner's word: macOS 400 tests and Linux 414 pass on the merge, and the PR's zsh tests fail with its blanking taken out.
+- Round 1, the merged PR: FAIL. Blanking erased a background job's output on the prompt's line, a continued command's first lines and the prompt without zle; a `sched` at every prompt reset `$pipestatus`. Reworked in eb2c3e2 as kitty keeps a prompt's rows.
+- Round 2, eb2c3e2: FAIL. A soft wrap into the prompt joined output to it, `unsetopt zle` kept `redraw=1`, `reset-prompt` lost `$pipestatus`; a background job's output kept and cut, recorded as a limit, as kitty cuts it. Fixed in 81cbbcd.
+- Round 3, 81cbbcd: FAIL. `ksh_arrays`, statuses past 128, `err_return`, `globalrcs` off and an unset PS2 under `nounset` each broke the line-init path. Fixed in c5db798.
+- Round 4, c5db798: FAIL. Five more in the line-init path: a loaded helper, a failing widget before ours, options and locals at expansion, an empty IFS. The path went in 81906b3: a theme holding the last hook gets its A printed, as kitty does.
+- Round 5, 81906b3: FAIL. A widget running the precmd hooks printed a mark mid-line, fixed in af5a8f7 as kitty guards it; a printing hook under such a theme, recorded as kitty's own limit.
