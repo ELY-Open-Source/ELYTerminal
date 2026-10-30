@@ -1433,7 +1433,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d045de693cb712d0b22c6a64be5b953f67b3ce00ab5ad3dd5d8b441886ab8e1a"
 dependencies = [
  "quote",
- "syn 2.0.119",
+ "syn 3.0.9",
 ]
 
 [[package]]
@@ -1704,7 +1704,7 @@ checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 [[package]]
 name = "ely-gpui-component"
 version = "0.1.1"
-source = "git+https://github.com/ELY-Open-Source/Ely-GPUI-Components.git?rev=494c17d6e631e9e3948f26ff9306ba9c3c8ae47a#494c17d6e631e9e3948f26ff9306ba9c3c8ae47a"
+source = "git+https://github.com/ELY-Open-Source/Ely-GPUI-Components.git?rev=d1d7cf78fd276410583c8a7632fd183b0d782397#d1d7cf78fd276410583c8a7632fd183b0d782397"
 dependencies = [
  "alacritty_terminal",
  "anyhow",

@@ -122,7 +122,11 @@ impl Workspace {
             let folder = this.sessions[this.active].folder.clone();
             this.files.update(cx, |files, cx| files.show(&folder, cx));
         });
-        let files = cx.new(|_| Files::new(launch.cwd.clone()));
+        let files = cx.new(|cx| {
+            let mut files = Files::new(launch.cwd.clone());
+            files.poll(cx);
+            files
+        });
         let here = cx.subscribe_in(&files, window, |this, _, Here(folder), window, cx| {
             this.here(folder.clone(), window, cx)
         });

@@ -455,3 +455,13 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T131
 
 - Round 1, b0c63b4 with vte 8fa83a9 and alacritty d2781ca: PASS.
+
+## T132
+
+- Round 1: FAIL. An opened folder's new file went unmarked, an edit inside a closed folder too, and closed folders were still read. Ely `Tree::on_toggle` (d1d7cf7, main 141ecf2); Git's marks every tick.
+- Round 2: FAIL. A remounted tree opened what Files did not read, a renamed folder was read on, marks rebuilt on the main thread. Files seeds the tree, prunes gone folders, builds marks off the main thread.
+- Round 3: FAIL. A Git failure cleared the marks, a deleted root's folders were read on. Failures keep the last marks, logged once; an unreadable parent drops all below.
+- Rounds 4 to 9: FAIL, each a case of an unreadable `.git` that git reports as no repository: a literal path scan, links, `GIT_CEILING_DIRECTORIES`, nested repositories, `core.worktree`. Git answers it exactly as no repository, so Files believes git, as the Git panel does; recorded in AGENTS.
+- Round 10: FAIL. A closed folder's cached listing outlived its deletion; `prune` takes them too.
+- Round 11: FAIL. A closed root was read no more; the root is always read.
+- Round 12: PASS.

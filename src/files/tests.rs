@@ -1,6 +1,6 @@
 use std::env;
 
-use super::*;
+use super::{marks::marks, *};
 
 /// A fresh folder under the temp dir.
 fn folder(name: &str) -> PathBuf {
@@ -56,6 +56,18 @@ fn folders_come_first_then_files_by_name_ignoring_case() {
 }
 
 #[test]
+fn a_file_written_changes_its_folder_s_listing() {
+    let root = folder("files-written");
+    fs::write(root.join("a.txt"), "one").expect("a file");
+    let before = list(&root);
+    let file = fs::File::options().write(true).open(root.join("a.txt"));
+    let later = std::time::SystemTime::now() + std::time::Duration::from_secs(5);
+    file.and_then(|file| file.set_modified(later))
+        .expect("its time moves");
+    assert_ne!(list(&root), before);
+}
+
+#[test]
 fn a_mark_dots_each_folder_above_it_up_to_the_root() {
     let root = Path::new("/r");
     let changes = vec![
@@ -82,6 +94,7 @@ fn the_tree_wears_marks_and_an_untracked_folder_marks_what_it_holds() {
     let entry = |name: &str, folder| Entry {
         name: name.into(),
         folder,
+        modified: std::time::SystemTime::UNIX_EPOCH,
     };
     let mut files = Files::new(root.clone());
     let top = vec![
@@ -143,10 +156,12 @@ fn names_with_newlines_label_on_one_line_and_keep_their_paths() {
         Entry {
             name: "line\nbreak".into(),
             folder: true,
+            modified: std::time::SystemTime::UNIX_EPOCH,
         },
         Entry {
             name: "report\n2026.txt".into(),
             folder: false,
+            modified: std::time::SystemTime::UNIX_EPOCH,
         },
     ];
     files.listings.insert(root.clone(), Ok(entries));
@@ -172,6 +187,7 @@ fn names_that_show_alike_keep_their_own_keys_and_paths() {
     let entry = |name: &OsStr| Entry {
         name: name.into(),
         folder: false,
+        modified: std::time::SystemTime::UNIX_EPOCH,
     };
     let entries = vec![entry(OsStr::new("bad\u{FFFD}.txt")), entry(raw)];
     files.listings.insert(root.clone(), Ok(entries));
@@ -228,7 +244,9 @@ fn decomposed_names_on_disk_wear_the_composed_marks_git_writes() {
 
     let mut files = Files::new(root.clone());
     files.listings.insert(root.clone(), list(&root));
-    let changes = git::changes(&root).expect("status").expect("a work tree");
+    let changes = crate::git::changes(&root)
+        .expect("status")
+        .expect("a work tree");
     (files.marks, files.dirty) = marks(&root, changes);
     let node = |name: &str, icon| TreeNode::new(key(&root.join(name)), name).icon(icon);
     let dotted = |node: TreeNode| node.note("•").tone(Tone::Warning);
@@ -272,4 +290,123 @@ fn a_menu_request_goes_out_once() {
     assert_eq!(files.request(), Some((7, at)));
     assert_eq!(files.request(), None, "a hidden column must not reopen it");
     assert!(files.menu.is_some(), "the open menu keeps its items");
+}
+
+#[test]
+fn a_folder_inside_a_closed_one_is_not_read() {
+    let root = PathBuf::from("/r");
+    let (src, ui) = (root.join("src"), root.join("src").join("ui"));
+    let mut files = Files::new(root.clone());
+    files.open.extend([src.clone(), ui.clone()]);
+    let mut shown = files.shown();
+    shown.sort();
+    assert_eq!(shown, [root.clone(), src.clone(), ui.clone()]);
+    files.open.remove(&src);
+    assert_eq!(files.shown(), std::slice::from_ref(&root));
+    files.open.extend([src.clone()]);
+    files.open.remove(&root);
+    assert_eq!(
+        files.shown(),
+        [root],
+        "a closed root is read, so it can come back"
+    );
+}
+
+#[test]
+fn a_folder_renamed_away_is_gone_with_all_inside_it() {
+    let root = PathBuf::from("/r");
+    let entry = |name: &str| Entry {
+        name: name.into(),
+        folder: true,
+        modified: std::time::SystemTime::UNIX_EPOCH,
+    };
+    let mut files = Files::new(root.clone());
+    let (src, ui) = (root.join("src"), root.join("src").join("ui"));
+    files.listings.insert(root.clone(), Ok(vec![entry("src")]));
+    files.listings.insert(src.clone(), Ok(vec![entry("ui")]));
+    assert!(!files.gone(&ui));
+    files
+        .listings
+        .insert(root.clone(), Ok(vec![entry("moved")]));
+    assert!(files.gone(&src) && files.gone(&ui));
+    assert!(!files.gone(&root));
+    files.listings.insert(root.clone(), Err("deleted".into()));
+    assert!(
+        files.gone(&src) && files.gone(&ui),
+        "the root's own read goes on"
+    );
+    assert!(!files.gone(&root));
+}
+
+/// A repository at `root` holding one untracked file.
+fn repository(root: &Path) {
+    let init = std::process::Command::new("git")
+        .args(["init", "-q"])
+        .current_dir(root)
+        .status();
+    assert!(init.expect("git runs").success());
+    fs::write(root.join("new.txt"), "").expect("a file");
+}
+
+#[test]
+fn unchanged_marks_are_not_built_again() {
+    let root = folder("files-remark");
+    repository(&root);
+    let read = |last: &[_]| remark(&root, last).expect("git reads");
+    let (changes, marks, _) = read(&[]).expect("a new change");
+    assert_eq!(marks.len(), 1);
+    assert!(read(&changes).is_none(), "the same changes build nothing");
+    fs::write(root.join("other.txt"), "").expect("a file");
+    assert!(read(&changes).is_some());
+    fs::write(root.join(".git").join("index"), "garbage").expect("a broken index");
+    assert!(
+        remark(&root, &changes).is_err(),
+        "a failure is no empty change"
+    );
+}
+
+#[test]
+fn a_deleted_git_folder_clears_the_marks() {
+    let root = folder("files-deleted");
+    repository(&root);
+    let changes = remark(&root, &[]).expect("git reads").expect("a change").0;
+    fs::remove_dir_all(root.join(".git")).expect("the repository goes");
+    let marked = remark(&root, &changes).expect("no repository is no failure");
+    assert!(marked.expect("marks change").0.is_empty());
+}
+
+#[test]
+fn a_folder_git_puts_outside_its_work_tree_clears_the_marks() {
+    let root = folder("files-outside");
+    repository(&root);
+    let changes = remark(&root, &[]).expect("git reads").expect("a change").0;
+    let elsewhere = folder("files-outside-tree");
+    let moved = std::process::Command::new("git")
+        .args(["config", "core.worktree"])
+        .arg(&elsewhere)
+        .current_dir(&root)
+        .status();
+    assert!(moved.expect("git runs").success());
+    let marked = remark(&root, &changes).expect("outside is no failure");
+    assert!(marked.expect("marks change").0.is_empty());
+}
+
+#[test]
+fn a_closed_folder_deleted_drops_its_listing_and_all_below() {
+    let root = PathBuf::from("/r");
+    let (src, ui) = (root.join("src"), root.join("src").join("ui"));
+    let entry = |name: &str| Entry {
+        name: name.into(),
+        folder: true,
+        modified: std::time::SystemTime::UNIX_EPOCH,
+    };
+    let mut files = Files::new(root.clone());
+    files.listings.insert(root.clone(), Ok(vec![entry("src")]));
+    files.listings.insert(src.clone(), Ok(vec![entry("ui")]));
+    files.listings.insert(ui.clone(), Ok(Vec::new()));
+    files.prune();
+    assert_eq!(files.listings.len(), 3, "nothing is gone yet");
+    files.listings.insert(root.clone(), Ok(Vec::new()));
+    files.prune();
+    assert_eq!(files.listings.keys().collect::<Vec<_>>(), [&root]);
 }
