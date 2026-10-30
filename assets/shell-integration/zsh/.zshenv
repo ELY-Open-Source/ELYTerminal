@@ -9,8 +9,10 @@ fi
 if [[ -o interactive ]]; then
   _ely_ran=
   _ely_first=1
+  _ely_pipe=
   _ely_precmd() {
-    builtin local ret=$? LC_ALL=C char url= dir=$PWD
+    builtin local ret=$? pipe="$pipestatus" LC_ALL=C char url= dir=$PWD
+    _ely_pipe=$pipe
     if [[ -n $_ely_ran ]]; then
       builtin printf '\e]133;D;%s\a' $ret
       _ely_ran=
@@ -46,14 +48,17 @@ if [[ -o interactive ]]; then
     builtin return ret
   }
   _ely_mark() {
-    # Only the line editor redraws a prompt on a resize.
-    builtin local redraw=
-    [[ -o zle ]] && redraw=';redraw=1'
+    builtin local a=$'\e]133;A;aid=elyterminal' p=$'\e]133;P;k=s' r=';redraw=1'
     if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
-      PS1=$'%{\e]133;A;aid=elyterminal'$redraw$'\a%}'$PS1$'%{\e]133;B\a%}'
+      PS1=$'%{'$a$'\a%}'$PS1$'%{\e]133;B\a%}'
     fi
     if [[ -o prompt_percent && $PS2 != *$'\e]133;P'* ]]; then
-      PS2=$'%{\e]133;P;k=s'$redraw$'\a%}'$PS2$'%{\e]133;B\a%}'
+      PS2=$'%{'$p$'\a%}'$PS2$'%{\e]133;B\a%}'
+    fi
+    # Only the line editor redraws a prompt on a resize, and it may go.
+    PS1=${PS1//"$a$r"/$a} PS2=${PS2//"$p$r"/$p}
+    if [[ -o zle ]]; then
+      PS1=${PS1//"$a"/$a$r} PS2=${PS2//"$p"/$p$r}
     fi
     # sched's command leaves its status for the prompt.
     builtin return ${1:-0}
@@ -62,9 +67,11 @@ if [[ -o interactive ]]; then
   _ely_line_init() {
     if [[ -o prompt_percent && $PS1 != *$'\e]133;A'* ]]; then
       _ely_mark
-      zle .reset-prompt
+      # reset-prompt expands at once: give it the command's statuses.
+      builtin eval "${(j: | :)${(@)${=_ely_pipe:-0}/#/_ely_status }}; zle .reset-prompt"
     fi
   }
+  _ely_status() { builtin return $1 }
   _ely_preexec() {
     _ely_ran=1
     builtin printf '\e]133;C\a\e]2;%s\a' "${1//[[:cntrl:]]/}"

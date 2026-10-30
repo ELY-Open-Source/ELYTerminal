@@ -205,3 +205,21 @@ fn a_cut_wide_character_goes_whole() {
     assert!(resize(&mut term, 3, 4));
     assert_eq!(rows(&term)[0], ">");
 }
+
+#[test]
+fn output_a_prompt_continues_reflows_apart_from_it() {
+    for columns in [16, 6] {
+        let (mut term, _) = parsed(
+            b"OUTPUT123456\x1b]133;A;redraw=1\x07> \x1b]133;B\x07",
+            12,
+            8,
+        );
+        assert!(resize(&mut term, columns, 8));
+        let shown = rows(&term).join("|");
+        assert!(
+            shown.replace('|', "").contains("OUTPUT123456"),
+            "{columns}: {shown}"
+        );
+        assert!(shown.contains(">"), "{columns}: {shown}");
+    }
+}

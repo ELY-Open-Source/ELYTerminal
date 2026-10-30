@@ -50,8 +50,15 @@ pub(crate) fn keep<T>(term: &mut Term<T>, columns: usize) -> Option<Kept> {
     {
         return None;
     }
-    let last = term.bottommost_line().0;
+    let (last, top) = (term.bottommost_line().0, term.topmost_line().0);
     let grid = term.grid_mut();
+    // A soft wrap into the prompt joins output to it.
+    if first > top {
+        let edge = grid.columns() - 1;
+        grid[Line(first - 1)][Column(edge)]
+            .flags
+            .remove(Flags::WRAPLINE);
+    }
     let rows = (first..=last)
         .map(|line| {
             let row = grid[Line(line)].clone();

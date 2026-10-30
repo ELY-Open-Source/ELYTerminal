@@ -150,3 +150,30 @@ fn zsh_keeps_pipestatus_when_a_hook_moves_itself_last() {
     run.until("the pipeline's statuses", |run| run.shows("PIPE=1 0"));
     run.finish();
 }
+
+#[test]
+fn zsh_shows_pipestatus_in_a_prompt_a_theme_sets_last() {
+    let rc = "setopt promptsubst\nf() {\n  PROMPT='STATUS=%? PIPE=${pipestatus} > '\n  precmd_functions=(${precmd_functions:#f} f)\n}\nprecmd_functions+=(f)\n";
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", rc)]);
+    run.until("the first prompt", |run| run.shows("STATUS="));
+    run.ends("false | false", &ended(1));
+    run.until("the prompt's statuses", |run| {
+        run.shows("STATUS=1 PIPE=1 1 >")
+    });
+    run.finish();
+}
+
+#[test]
+fn zsh_promises_no_redraw_once_its_line_editor_goes() {
+    let mut run = ready();
+    run.ends("unsetopt zle", &ended(0));
+    let typed = format!("echo {}", "y".repeat(70));
+    run.pty.write(typed.clone().into_bytes());
+    run.until("the typed line", |run| {
+        text(run).replace('\n', "").contains(&typed)
+    });
+    run.pty.resize((40, 30), (8, 16));
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let shown = text(&run);
+    assert!(shown.replace('\n', "").contains(&typed), "{shown}");
+}
