@@ -492,3 +492,8 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1: FAIL. `tr` hid a missing zip digest behind an empty SHA, and `MpCmdRun.exe` is not on PATH. The digest fails alone; the guides call it by its full path from an administrator's PowerShell.
 - Round 2: PASS.
+
+## T137
+
+- Round 1: FAIL. The folder argument's lines missed cmd's share limit, winget's line its catalog's merge, the guides Windows 11's Show more options, and the acceptance table still pinned Ely `494c17d`. Fixed.
+- Round 2: PASS.

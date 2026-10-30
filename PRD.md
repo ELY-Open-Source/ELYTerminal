@@ -70,6 +70,9 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - On Linux, through gpui's wgpu, text draws on whole device pixels at fractional scales and nothing tears, on Vulkan and on GL.
 - A scrollbar over the history, along the terminal's right edge: a drag on its thumb scrolls, whatever the program does with the wheel.
 - Bell: no sound. The session row marks it until the session is shown.
+- A cell's size in pixels, CSI 16 t, is answered, as 14 t and 18 t are, so image tools size images where the pty carries no pixel size, as on Windows.
+- A prompt zsh draws again on a resize keeps its rows unreflowed, as kitty keeps them, so no copy of it goes into the history.
+- A command's start clears the last command's failure, so the row and Ely are calm while ssh, cmd or a nested shell runs; a cmd session, and a bare `cmd` typed in PowerShell, mark their prompts and report their folder.
 
 ## 6. Main window and layout
 
@@ -82,6 +85,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Ely, the icon's girl, peeks over the window's top edge from behind it, on macOS, Windows and Linux; where no room lies above the window, at the screen's top or full screen, she stands inside it at its bottom left. She moves all the time, as she does in the films: she breathes, sways and blinks, and how the sessions are doing, waiting, an error, work, a finish or calm, moves her. Nothing but her shows: no frame, line or shadow around her. A hop lifts more of her from behind the edge, never her body off it. A press pets her, and wakes her from a doze. A drag moves her along the edge she stands on, and she stays where she is let go. She goes and comes with the window: hidden with it, and on Wayland, whose compositor may lay her over other windows, shown only while it is active; a window kept above it there may still lie under her, as under any popup. A switch in Settings, Terminal, turns her off.
 - The title bar is transparent, as Ghostty's: the window's background, opacity and blur run under it, so it wears the terminal's color.
 - Every control in the title bar takes its own press on every platform, the window buttons Ely draws on Windows and Linux too.
+- Given a folder on the command line, `elyterminal [FOLDER]`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
 
 ## 7. Sessions panel
 
@@ -102,7 +106,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Files shows the active session's working directory as a tree, folders first, Git status colors on names.
 - Double press: a folder opens, a file opens in the system's default app.
 - A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. Off by default; off, a right press opens nothing.
-- It reloads when the session reports a new directory and at each prompt.
+- It reloads when the session reports a new directory and at each prompt, and reads its open folders again each second while it shows, so a file another program makes, renames or deletes shows within a second, Git's marks with it.
 
 ## 9. Right panel: Git
 
@@ -119,6 +123,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 - Appearance
   - Language: English or 简体中文, for every window and the menu bar, applied at once; what programs, git and the system say stays as it comes.
+  - Interface font and Interface size: a family picker with a sample line, the system's font by default, and 12 to 16 px, 13 by default, for the chrome of every window; the terminal keeps its own font.
   - Theme: a grid of previews; on Omarchy, the Omarchy theme first; the user's themes after the built-in ones, then New theme, which makes one from Ely Dark and wears it. While a theme of the user's is worn, its name, its 21 colors (background, foreground, cursor, cursor text, selection and the 16 ANSI colors), each picked as a swatch and set in a color picker, and Delete, after which Ely Dark takes its place.
   - Separate dark theme: a switch; when on, a second grid for dark mode.
   - Font family: a list of installed fonts. Fallbacks: installed families tried in order for a character the family lacks, each added, changed or removed in a list of pickers. Font size. Line height. Ligatures.
@@ -138,6 +143,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Ely: a switch.
   - Check for updates automatically: a switch, on by default, which checks at start and once a day.
   - Updates: what the last check found, and Check now; a newer release brings Download, which opens its page, and one an automatic check finds posts a notification.
+  - Explorer menu (Windows only): adds or removes Open in ELYTerminal on a folder's and a folder background's right-click menu, for the current user, and says which copy it opens.
   - Shortcuts: every shortcut, as this platform's keys, with a search.
 
 ## 11. Background blur
@@ -170,6 +176,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 - A release on GitHub, tagged `vVERSION`, carries three builds: the macOS disk image (Apple silicon, signed with Developer ID and notarized), a Windows zip (x86_64) and a Linux tarball (x86_64). The Linux tarball's binary also comes as a DEB, an RPM and an AppImage, which a maintainer adds to the release.
 - The Windows executable carries the icon. The Linux tarball carries the icon and a desktop entry, and the window names itself after it, `com.zacharyzhang.elyterminal`, as the macOS bundle does.
 - Each build comes from its platform's script: `scripts/mac-app.sh`, `scripts/windows-zip.ps1`, `scripts/linux-packages.sh`, which builds once on Ubuntu 22.04, glibc 2.35, and packs the tarball and the three packages. The macOS one runs on the signing runner, through the Release workflow.
+- Homebrew installs the disk image from the org's tap, `ely-open-source/tap/elyterminal`, and winget the zip as `ELYOpenSource.ELYTerminal` once Microsoft's catalog takes the manifest, both filled from each release's digests by `scripts/package-managers.sh`. The install guide tells SmartScreen's warning from a Defender detection and says how to report a false positive.
 
 ## Deferred
 
