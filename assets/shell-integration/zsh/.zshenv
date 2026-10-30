@@ -31,7 +31,8 @@ if [[ -o interactive ]]; then
     [[ -n $dir ]] && builtin printf '\e]7;file://%s\a' "$url"
     builtin printf '\e]2;%s\a' "${${${PWD:t}:-/}//[[:cntrl:]]/}"
     # A theme holding the last hook rewrites PS1: mark before it.
-    if (( ! _ely_first )) && [[ ${precmd_functions[-1]} != _ely_mark ]]; then
+    # A widget running the hooks is mid-line: no mark there.
+    if (( ! _ely_first )) && ! builtin zle && [[ ${precmd_functions[-1]} != _ely_mark ]]; then
       builtin local redraw=
       [[ -o zle ]] && redraw=';redraw=1'
       builtin printf '\e]133;A;aid=elyterminal%s\a' $redraw

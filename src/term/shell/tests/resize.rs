@@ -273,3 +273,17 @@ fn zsh_leaves_an_unset_ps2_alone_under_nounset() {
     assert!(!run.shows("parameter not set"), "{}", text(&run));
     run.finish();
 }
+
+#[test]
+fn zsh_marks_no_new_prompt_when_a_widget_runs_the_precmd_hooks() {
+    let rc = "PROMPT_EOL_MARK=''\nsetopt promptsubst\nf() {\n  PROMPT='TOP ${(l:$((COLUMNS-10))::-:)}\n> '\n  precmd_functions=(${precmd_functions:#f} f)\n}\nprecmd_functions+=(f)\nw() {\n  local h\n  for h in $precmd_functions; do $h; done\n  zle -R\n}\nzle -N w\nbindkey '^G' w\n";
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", rc)]);
+    run.until("the first prompt", |run| run.shows("TOP"));
+    ends_bare(&mut run, "true", 0);
+    run.pty.write(b"abcdef\x07gh".to_vec());
+    run.until("the typed line", |run| run.shows("abcdefgh"));
+    resize_bare(&mut run, 40);
+    resize_bare(&mut run, 100);
+    let shown = text(&run);
+    assert_eq!(shown.matches("TOP").count(), 2, "{shown}");
+}
