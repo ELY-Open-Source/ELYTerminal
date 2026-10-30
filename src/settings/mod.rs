@@ -89,6 +89,10 @@ pub enum PanelTab {
 #[serde(default, deny_unknown_fields)]
 pub struct Settings {
     pub language: Language,
+    /// The interface's family; empty for the system's.
+    pub interface_font: String,
+    /// The interface's base text, in pixels.
+    pub interface_size: u8,
     /// A program path; empty runs the login shell.
     pub shell: String,
     pub start_in: StartIn,
@@ -158,6 +162,8 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             language: Language::English,
+            interface_font: String::new(),
+            interface_size: 13,
             shell: String::new(),
             start_in: StartIn::Home,
             start_folder: String::new(),
@@ -199,6 +205,7 @@ impl Default for Settings {
     }
 }
 
+pub const INTERFACE_SIZE: RangeInclusive<u8> = 12..=16;
 pub const FONT_SIZE: RangeInclusive<f32> = 6.0..=72.0;
 pub const LINE_HEIGHT: RangeInclusive<f32> = 1.0..=2.0;
 pub const OPACITY: RangeInclusive<f32> = 0.3..=1.0;
@@ -212,6 +219,7 @@ pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
     pub fn validate(&self) -> anyhow::Result<()> {
+        within("interface_size", self.interface_size, &INTERFACE_SIZE)?;
         within("font_size", self.font_size, &FONT_SIZE)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;
         within("background_opacity", self.background_opacity, &OPACITY)?;

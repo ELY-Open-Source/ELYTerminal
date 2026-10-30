@@ -436,7 +436,7 @@ impl Render for Workspace {
             shell = shell.column(terminal.action(end));
         }
         // The context sits above the focus root, so its keys work wherever focus is.
-        div()
+        crate::interface::dress(div(), cx)
             .size_full()
             .key_context(CONTEXT)
             .map(menus::window_actions)

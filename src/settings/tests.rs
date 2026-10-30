@@ -319,3 +319,30 @@ fn a_background_image_is_a_file_at_a_full_path() {
         .validate()
         .expect("a file at a full path");
 }
+
+#[test]
+fn the_interface_wears_the_system_font_at_13_px_unless_named() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(
+        (settings.interface_font.as_str(), settings.interface_size),
+        ("", 13)
+    );
+    let named: Settings =
+        serde_json::from_str(r#"{"interface_font":"Menlo","interface_size":16}"#).expect("parses");
+    assert_eq!(
+        (named.interface_font.as_str(), named.interface_size),
+        ("Menlo", 16)
+    );
+    named.validate().expect("16 px passes");
+    for size in [11, 17] {
+        let settings = Settings {
+            interface_size: size,
+            ..Settings::default()
+        };
+        let error = settings.validate().expect_err("outside 12 to 16");
+        assert_eq!(
+            error.to_string(),
+            format!("interface_size is {size}, outside 12 to 16")
+        );
+    }
+}

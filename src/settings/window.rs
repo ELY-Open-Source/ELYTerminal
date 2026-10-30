@@ -103,6 +103,7 @@ pub struct SettingsWindow {
     /// Refusals so far; a field keyed by it drops its draft and shows the settings again.
     drafts: usize,
     font: Entity<TextInput>,
+    interface_font: Entity<TextInput>,
     /// A picker's input for each fallback family, and one for the family being added.
     fallbacks: Vec<Entity<TextInput>>,
     /// The empty picker that adds a fallback shows.
@@ -135,6 +136,7 @@ impl SettingsWindow {
             input
         });
         let font = cx.new(|cx| TextInput::new(window, cx));
+        let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
             let mut input = TextInput::new(window, cx);
@@ -184,6 +186,7 @@ impl SettingsWindow {
             failed: None,
             drafts: 0,
             font,
+            interface_font,
             fallbacks: Vec::new(),
             adding: false,
             lit: true,
@@ -430,7 +433,7 @@ impl Render for SettingsWindow {
                     .child(body),
             );
         // The context sits above the focus root, so its keys work wherever focus is.
-        div()
+        crate::interface::dress(div(), cx)
             .size_full()
             .key_context(CONTEXT)
             .map(menus::window_actions)

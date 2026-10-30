@@ -474,3 +474,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 4: FAIL. A nested cmd's named A closed PowerShell's command, dropping a program's records. Nested, its A is unnamed.
 - Round 5: FAIL. An inherited marked prompt kept its old name. Ours is marked again for its place.
 - Round 6: PASS.
+
+## T134
+
+- Round 1: FAIL. Tooltips kept the system font, gpui drawing each as a root of its own. Ely `b0350ad` (main `dd727f4`) gives a tooltip the theme's family, which ELYTerminal now sets.
+- Round 2: FAIL. The root's 13 px shrank text of no size of its own from gpui's 16 px. The root takes gpui's 1 rem, scaled.
+- Round 3: PASS.

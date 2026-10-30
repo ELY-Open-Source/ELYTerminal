@@ -43,8 +43,9 @@ impl SettingsStore {
             return Ok(());
         }
         next.validate()?;
-        if (&next.font_family, &next.font_fallbacks)
-            != (&store.settings.font_family, &store.settings.font_fallbacks)
+        let (was, now) = (&store.settings, &next);
+        if (&now.font_family, &now.font_fallbacks, &now.interface_font)
+            != (&was.font_family, &was.font_fallbacks, &was.interface_font)
         {
             fonts(&next, cx)?;
         }
@@ -60,8 +61,10 @@ fn fonts(settings: &Settings, cx: &App) -> anyhow::Result<()> {
         .font_fallbacks
         .iter()
         .map(|family| ("font_fallbacks", family));
-    for (field, family) in std::iter::once(("font_family", &settings.font_family)).chain(fallbacks)
-    {
+    let interface = (!settings.interface_font.is_empty())
+        .then_some(("interface_font", &settings.interface_font));
+    let first = std::iter::once(("font_family", &settings.font_family));
+    for (field, family) in first.chain(fallbacks).chain(interface) {
         crate::term::load_font(&gpui::font(family.clone()), cx.text_system())
             .with_context(|| field.to_string())?;
     }
