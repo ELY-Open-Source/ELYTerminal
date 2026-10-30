@@ -439,3 +439,7 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1, 19e0cd2 with the Windows fork's 8b9ce59: FAIL. The fork's README left the Mica change out of its removal condition. Fixed on the fork's main, ef184ce, a README alone.
 - Round 2: PASS. 0.2.0's Windows zip, rebuilt at 19e0cd2 (sha256 b7c9e6f0…), replaced the one on v0.2.0 with its alias.
+
+## T130
+
+- PR #48 merged at the owner's word: macOS 400 tests and Linux 414 pass on the merge, and the PR's zsh tests fail with its blanking taken out.
