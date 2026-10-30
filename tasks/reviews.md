@@ -448,3 +448,6 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 3, 81cbbcd: FAIL. `ksh_arrays`, statuses past 128, `err_return`, `globalrcs` off and an unset PS2 under `nounset` each broke the line-init path. Fixed in c5db798.
 - Round 4, c5db798: FAIL. Five more in the line-init path: a loaded helper, a failing widget before ours, options and locals at expansion, an empty IFS. The path went in 81906b3: a theme holding the last hook gets its A printed, as kitty does.
 - Round 5, 81906b3: FAIL. A widget running the precmd hooks printed a mark mid-line, fixed in af5a8f7 as kitty guards it; a printing hook under such a theme, recorded as kitty's own limit.
+- Round 6, af5a8f7: FAIL. A line typed taller than the screen piled up copies: kept rows reached the history zsh's redraw cannot reach. Fixed in 8e2c91f as kitty keeps no history row.
+- Round 7, 8e2c91f: FAIL. A blank line in the prompt hid its start above the screen. Fixed in fbd6231, the start sought past blank rows.
+- Round 8, fbd6231: PASS.
