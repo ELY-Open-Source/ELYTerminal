@@ -99,7 +99,12 @@ fn zsh_marks_prompts_when_a_theme_keeps_its_hook_last() {
     run.ends("printf 'FIRST\\n'", &ended(0));
     run.ends("printf 'SECOND\\n'", &ended(0));
     resize(&mut run, 70);
-    assert_eq!(text(&run).matches("~/project main").count(), 3);
+    assert_eq!(
+        text(&run).matches("~/project main").count(),
+        3,
+        "{}",
+        text(&run)
+    );
     run.finish();
 }
 
@@ -151,10 +156,12 @@ fn zsh_keeps_pipestatus_when_a_hook_moves_itself_last() {
     run.finish();
 }
 
+/// A theme that sets its prompt last, showing the statuses.
+const LAST: &str = "setopt promptsubst\nf() {\n  PROMPT='STATUS=%? PIPE=${pipestatus[@]} > '\n  precmd_functions=(${precmd_functions[@]:#f} f)\n}\nprecmd_functions+=(f)\n";
+
 #[test]
 fn zsh_shows_pipestatus_in_a_prompt_a_theme_sets_last() {
-    let rc = "setopt promptsubst\nf() {\n  PROMPT='STATUS=%? PIPE=${pipestatus} > '\n  precmd_functions=(${precmd_functions:#f} f)\n}\nprecmd_functions+=(f)\n";
-    let mut run = Run::start(&installed("zsh"), &[(".zshrc", rc)]);
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", LAST)]);
     run.until("the first prompt", |run| run.shows("STATUS="));
     run.ends("false | false", &ended(1));
     run.until("the prompt's statuses", |run| {
@@ -176,4 +183,60 @@ fn zsh_promises_no_redraw_once_its_line_editor_goes() {
     std::thread::sleep(std::time::Duration::from_millis(300));
     let shown = text(&run);
     assert!(shown.replace('\n', "").contains(&typed), "{shown}");
+}
+
+/// Runs `line` on a cleared screen, then waits for `shown`.
+fn shows_after(run: &mut Run, line: &str, status: i32, shown: &str) {
+    run.ends(&format!("clear; {line}"), &ended(status));
+    run.until(shown, |run| run.shows(shown));
+}
+
+#[test]
+fn zsh_shows_every_status_under_ksh_arrays() {
+    let rc = format!("{LAST}setopt ksh_arrays\n");
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
+    run.until("the first prompt", |run| run.shows("STATUS="));
+    shows_after(&mut run, "false | true", 0, "STATUS=0 PIPE=1 0 >");
+    run.finish();
+}
+
+#[test]
+fn zsh_shows_statuses_past_128_as_they_were() {
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", LAST)]);
+    run.until("the first prompt", |run| run.shows("STATUS="));
+    for _ in 0..10 {
+        shows_after(&mut run, "(exit 130) | (exit 137)", 137, "PIPE=130 137 >");
+    }
+    run.finish();
+}
+
+#[test]
+fn zsh_marks_a_failed_pipeline_s_prompt_under_err_return() {
+    let rc = format!("{LAST}setopt err_return\n");
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", &rc)]);
+    run.until("the first prompt", |run| run.shows("STATUS="));
+    shows_after(&mut run, "false | false", 1, "PIPE=1 1 >");
+    run.ends("true", &ended(0));
+    run.finish();
+}
+
+#[test]
+fn zsh_marks_a_theme_s_prompt_without_the_global_files() {
+    let files = [(".zshenv", "unsetopt globalrcs\n"), (".zshrc", LAST)];
+    let mut run = Run::start(&installed("zsh"), &files);
+    run.until("the first prompt", |run| run.shows("STATUS="));
+    run.ends("true", &ended(0));
+    run.ends("true", &ended(0));
+    run.finish();
+}
+
+#[test]
+fn zsh_leaves_an_unset_ps2_alone_under_nounset() {
+    let rc = "setopt nounset\nunset PS2\nPROMPT='PS1 > '\n";
+    let mut run = Run::start(&installed("zsh"), &[(".zshrc", rc)]);
+    run.until("the first prompt", |run| run.shows("PS1 >"));
+    run.ends("print -r -- ${+PS2}", &ended(0));
+    run.until("PS2 still unset", |run| run.shows("\n0\n"));
+    assert!(!run.shows("parameter not set"), "{}", text(&run));
+    run.finish();
 }
