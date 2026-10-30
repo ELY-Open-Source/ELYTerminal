@@ -73,8 +73,8 @@ windows-sys = { version = "0.61", features = ["Wdk_System_SystemServices", "Win3
 windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO"] }
 
 [patch.crates-io]
-alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "10d36c1c8873eddc0b3b3b07dd0fe09f5f8c5157" }
-vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "5142c08caf49148ece94d4ce418e54da8b9eab90" }
+alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "d2781caf4908e58404a31efa0bbac03c562380bc" }
+vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "8fa83a9b51cadcad3269e1ef3ab059672d875983" }
 xim-ctext = { path = "vendor/xim-ctext" }
 gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "8b9ce598956472934fcd54a060a9153575877475" }
 gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "bf1ce7c431459d23522884d7e668183bd5fb9555" }

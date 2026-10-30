@@ -150,7 +150,7 @@ dependencies = [
 [[package]]
 name = "alacritty_terminal"
 version = "0.26.0"
-source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=10d36c1c8873eddc0b3b3b07dd0fe09f5f8c5157#10d36c1c8873eddc0b3b3b07dd0fe09f5f8c5157"
+source = "git+https://github.com/ELY-Open-Source/alacritty.git?rev=d2781caf4908e58404a31efa0bbac03c562380bc#d2781caf4908e58404a31efa0bbac03c562380bc"
 dependencies = [
  "base64",
  "bitflags 2.13.2",
@@ -7190,7 +7190,7 @@ dependencies = [
 [[package]]
 name = "vte"
 version = "0.15.0"
-source = "git+https://github.com/ELY-Open-Source/vte.git?rev=5142c08caf49148ece94d4ce418e54da8b9eab90#5142c08caf49148ece94d4ce418e54da8b9eab90"
+source = "git+https://github.com/ELY-Open-Source/vte.git?rev=8fa83a9b51cadcad3269e1ef3ab059672d875983#8fa83a9b51cadcad3269e1ef3ab059672d875983"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.2",
