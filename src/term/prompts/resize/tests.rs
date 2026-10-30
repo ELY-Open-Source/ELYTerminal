@@ -222,3 +222,14 @@ fn output_a_prompt_continues_reflows_apart_from_it() {
         assert!(shown.contains(">"), "{columns}: {shown}");
     }
 }
+
+#[test]
+fn a_prompt_above_the_screen_past_a_blank_line_reflows_as_output() {
+    let (mut term, _) = parsed(
+        b"\x1b]133;A;redraw=1\x07TOP\r\n\r\n> \x1b]133;B\x07abcdefgh",
+        8,
+        3,
+    );
+    assert_eq!(rows(&term), ["TOP", "", "> abcdef", "gh"]);
+    assert!(!resize(&mut term, 4, 3));
+}

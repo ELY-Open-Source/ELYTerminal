@@ -26,7 +26,7 @@ pub(crate) fn keep<T>(term: &mut Term<T>, columns: usize) -> Option<Kept> {
     let ours = redraw(&term.grid().cursor.template)?;
     // Up from the cursor to the nearest prompt it is in; a secondary prompt has its own.
     let mut first = None;
-    for line in (0..=cursor.line.0).rev() {
+    for line in (term.topmost_line().0..=cursor.line.0).rev() {
         let (mut current, mut other) = (false, false);
         for cell in &term.grid()[Line(line)] {
             if part(cell).is_some() {
@@ -42,13 +42,7 @@ pub(crate) fn keep<T>(term: &mut Term<T>, columns: usize) -> Option<Kept> {
     }
     let first = first?;
     // A prompt starting above the screen reflows, as in kitty.
-    let above = Line(first - 1);
-    if first == 0
-        && term.topmost_line() <= above
-        && term.grid()[above]
-            .into_iter()
-            .any(|cell| redraw(cell) == Some(ours))
-    {
+    if first < 0 {
         return None;
     }
     // Output before the prompt on its first row would be cut.
