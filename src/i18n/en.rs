@@ -135,6 +135,23 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Check for updates automatically",
     ),
     ("et.terminal.auto_updates_hint", "At start and once a day"),
+    ("et.explorer.title", "Explorer menu"),
+    ("et.explorer.open", "Open in ELYTerminal"),
+    (
+        "et.explorer.added",
+        "A folder's right-click menu opens it here; on Windows 11, under Show more options.",
+    ),
+    (
+        "et.explorer.absent",
+        "Adds Open in ELYTerminal to a folder's right-click menu, for you alone.",
+    ),
+    (
+        "et.explorer.other",
+        "The menu opens another copy: {command}",
+    ),
+    ("et.explorer.add", "Add"),
+    ("et.explorer.remove", "Remove"),
+    ("et.explorer.replace", "Use this copy"),
     ("et.updates.title", "Updates"),
     ("et.updates.unchecked", "ELYTerminal {version}"),
     ("et.updates.checking", "Checking for a newer release…"),

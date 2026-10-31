@@ -1,5 +1,7 @@
 pub mod app;
 pub mod blur;
+#[cfg(windows)]
+pub mod explorer;
 pub mod files;
 pub mod git;
 pub mod i18n;

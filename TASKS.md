@@ -260,7 +260,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T132 Issue #47: Files shows a file another program creates, renames or deletes in an open folder within a second, without a prompt, on macOS, Windows and Linux; Git's marks follow.
 - [x] T133 Issue #46: a command's start clears the last command's failure, so the row and Ely are calm while ssh, cmd or a nested shell runs, and its exit code shows when it ends; a nested cmd on Windows marks its prompts and reports its folder.
 - [x] T134 Issue #41: the interface's font family and size, as ely-mark sets them: a family picker with a sample and a size from 12 to 16 px in Settings › Appearance, saved, applied to every window at once.
-- [ ] T135 Issue #40: on Windows, Settings › Terminal adds or removes "Open in ELYTerminal" on a folder's and a folder background's right-click menu, for the current user, the folder passed to a new window as it starts.
+- [x] T135 Issue #40: on Windows, Settings › Terminal adds or removes "Open in ELYTerminal" on a folder's and a folder background's right-click menu, for the current user, the folder passed to a new window as it starts.
 - [ ] T136 Issues #42 and #50: a Homebrew tap, `ELY-Open-Source/homebrew-tap`, with a cask, and a winget manifest for the portable zip, each refreshed by a script at a release; the install guides tell SmartScreen's prompt from a Defender detection and say how to report a false positive.
 - [ ] T137 The README, its Chinese twin and the guides say what 0.2.1 does; PRD, AGENTS.md and the acceptance table hold T130 to T136.
 - [ ] T138 Release 0.2.1: the version raised, every build on the release, the notes in English and Chinese, the cask and the winget PR following, each issue answered.

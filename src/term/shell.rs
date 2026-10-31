@@ -98,6 +98,14 @@ fn name(path: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// Whether `folder` lies on a share, `\\server\share`.
+#[cfg(windows)]
+fn unc(folder: &Path) -> bool {
+    use std::path::{Component, Prefix};
+    let first = folder.components().next();
+    matches!(first, Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::UNC(..)))
+}
+
 /// How to start `shell`, or the login shell, at `start`.
 pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Result<Launch> {
     let start = start.into();
@@ -183,10 +191,20 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
         "wsl" => {
             let launcher = r#"exec /bin/sh "$ELY_WSL/wsl/elyterminal.sh""#;
             let mut args: Vec<String> = ["-e", "/bin/sh", "-c", launcher].map(String::from).into();
-            // Home is the distribution's own, which WSL resolves, not Windows'.
-            if matches!(start, Start::Home) {
-                args.splice(0..0, ["--cd".to_string(), "~".to_string()]);
-                log::info!("shell integration: wsl starts in its distribution's home");
+            match &start {
+                // Home is the distribution's own, which WSL resolves, not Windows'.
+                Start::Home => {
+                    args.splice(0..0, ["--cd".to_string(), "~".to_string()]);
+                    log::info!("shell integration: wsl starts in its distribution's home");
+                }
+                // A share's folder lies in its own distribution.
+                Start::In(folder) => {
+                    if let Some((share, inside)) = crate::git::wsl::split(folder) {
+                        let distro = crate::git::wsl::distro(share).to_string();
+                        log::info!("shell integration: wsl starts {distro} in {inside}");
+                        args.splice(0..0, ["-d".into(), distro, "--cd".into(), inside]);
+                    }
+                }
             }
             launch.program = Some((path.clone(), args));
             let shared = super::env::fresh()?.get("WSLENV").map(str::to_string);
@@ -199,6 +217,15 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
         // Only cmd's own environment: there a batch's cd is cmd's.
         #[cfg(windows)]
         "cmd" => {
+            // cmd refuses a share as its folder, saying so.
+            if let Start::In(folder) = &start
+                && unc(folder)
+            {
+                log::warn!(
+                    "shell integration: cmd starts in Windows' folder, not {}",
+                    folder.display()
+                );
+            }
             launch.program = Some((path.clone(), Vec::new()));
             let prompt = cmd::prompt(super::env::fresh()?.get("PROMPT"), true);
             launch.env.push(("PROMPT".into(), prompt));

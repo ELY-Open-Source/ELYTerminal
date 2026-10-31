@@ -158,6 +158,8 @@ impl SettingsWindow {
                     .control(auto_check(&this, settings.check_updates)),
             )
             .row(updates_row(cx));
+        #[cfg(windows)]
+        let section = section.row(super::explorer::row(&cx.entity(), cx));
         let keys = SettingsSection::new(word("et.terminal.shortcuts"))
             .row(KeyboardShortcutsList::new(shortcuts(cx), &self.search));
         div().flex().flex_col().gap_6().child(section).child(keys)

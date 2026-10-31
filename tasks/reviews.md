@@ -480,3 +480,10 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 1: FAIL. Tooltips kept the system font, gpui drawing each as a root of its own. Ely `b0350ad` (main `dd727f4`) gives a tooltip the theme's family, which ELYTerminal now sets.
 - Round 2: FAIL. The root's 13 px shrank text of no size of its own from gpui's 16 px. The root takes gpui's 1 rem, scaled.
 - Round 3: PASS.
+
+## T135
+
+- Round 1: FAIL. cmd given a share started in the Windows folder, and wsl given another distribution's share started the default. WSL now starts that distribution there; cmd pushed into the share.
+- Round 2: the reviewer's pane read round 1's verdict again; round 3 read the change.
+- Round 3: FAIL. pushd's drive outlives the session. On the owner's PC a session closed through ConPTY left it mapped, on the letter of the owner's remembered `Z:`; cleaned. pushd went: cmd says itself it cannot sit in a share.
+- Round 4: PASS.

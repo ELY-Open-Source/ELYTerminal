@@ -30,6 +30,14 @@ fn wsl_starts_in_its_own_home_or_in_the_windows_folder_given() {
     let there = launch("wsl", Start::In(folder.clone()), &dir).expect("a launch");
     assert_eq!(there.cwd, folder);
     assert_eq!(there.program.expect("wsl").1[0], "-e");
+    // Another distribution's folder starts that distribution there.
+    let share = std::path::PathBuf::from(r"\\wsl.localhost\Debian\home\me\my repo");
+    let other = launch("wsl", Start::In(share), &dir).expect("a launch");
+    let (_, args) = other.program.expect("wsl");
+    assert_eq!(
+        args[..5],
+        ["-d", "Debian", "--cd", "/home/me/my repo", "-e"]
+    );
 }
 
 #[test]

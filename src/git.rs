@@ -14,7 +14,7 @@ use ely_gpui_component::{
 mod diff;
 pub mod panel;
 #[cfg(any(windows, test))]
-mod wsl;
+pub(crate) mod wsl;
 
 pub use diff::diff;
 

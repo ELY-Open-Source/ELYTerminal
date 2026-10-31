@@ -21,6 +21,8 @@ use super::{Settings, SettingsStore};
 use crate::{app::APP_ID, menus, term::BLINK, updates::Updates};
 
 mod appearance;
+#[cfg(windows)]
+mod explorer;
 mod terminal;
 
 actions!(elyterminal, [OpenSettings, CloseSettings]);

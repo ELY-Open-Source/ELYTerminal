@@ -21,12 +21,14 @@ fn application() -> gpui::Application {
 }
 
 fn run(cx: &mut App) -> anyhow::Result<()> {
+    let named = app::args::folder(std::env::args_os().skip(1))?;
     app::start(cx)?;
     let settings = SettingsStore::get(cx);
     // No session shows yet, so Session's folder means home.
-    let start = match settings.start_in {
-        StartIn::Folder => Start::In(settings::start_folder(&settings.start_folder)?),
-        StartIn::Home | StartIn::Session => Start::Home,
+    let start = match (named, settings.start_in) {
+        (Some(folder), _) => Start::In(folder),
+        (None, StartIn::Folder) => Start::In(settings::start_folder(&settings.start_folder)?),
+        (None, StartIn::Home | StartIn::Session) => Start::Home,
     };
     let launch = launch(&settings.shell, start, &cx.global::<ShellIntegration>().0)?;
     app::open(launch, cx)?;

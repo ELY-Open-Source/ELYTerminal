@@ -18,6 +18,8 @@ use crate::{
     workspace::{self, TITLE, Workspace},
 };
 
+pub mod args;
+
 /// How long the window's size holds before it is kept, so a drag saves once.
 const SETTLE: Duration = Duration::from_millis(500);
 
