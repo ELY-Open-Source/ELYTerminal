@@ -21,5 +21,5 @@
 - Git 显示分支，暂存、取消暂存、丢弃、提交，列出最近提交并打开差异，全部通过 `git` 命令行。
 - 主题：Ely Dark、Ely Light、Catppuccin Mocha、Macchiato、Frappé 和 Latte、Tokyo Night、Dracula、Nord、Gruvbox Dark、Rosé Pine、Solarized Light、One Light 和 Kanagawa Wave，然后是新建主题：从 Ely Dark 复制出你自己的主题，名称和颜色由你设定；内置主题不会改变。背景图片放在终端下方，按背景不透明度显示。系统为深色时可换第二套主题。在 Omarchy 4 上，Omarchy 主题跟着系统主题切换，并且是那里的默认。
 - 设置 › 外观 中的界面字体和字号：任一已安装字体，附示例行，12 到 16 px，作用于每个窗口的界面；终端保留自己的字体。
-- Windows 上，设置 › 终端 › 资源管理器菜单 可为当前用户在文件夹的右键菜单中加入或移除“在 ELYTerminal 中打开”；Windows 11 中它位于“显示更多选项”下。`elyterminal FOLDER` 在各系统上都让第一个会话从 FOLDER 开始；cmd 不接受网络共享作为当前目录，会自行提示并进入 Windows 目录。
+- Windows 上，设置 › 终端 › 资源管理器菜单 可为当前用户在文件夹的右键菜单中加入或移除“在 ELYTerminal 中打开”；Windows 11 中它位于“显示更多选项”下。`elyterminal FOLDER` 在各系统上都让第一个会话从 FOLDER 开始；cmd 不接受网络共享作为当前目录，会自行提示并进入 Windows 目录。从 Windows Terminal 无参数启动时（包括 Windows 11 新版菜单的“在终端中打开”），第一个会话优先使用 Windows Terminal 传入的工作目录，覆盖“起始目录”设置。
 - 背景不透明度和模糊：macOS 上是 NSVisualEffectView，Windows 上是 acrylic，Windows 11 build 22621 起可按设置 › 外观 › 背景材质选云母或云母 Alt，Wayland 上是 `ext_background_effect_v1` 或 `org_kde_kwin_blur`，X11 上是 `_KDE_NET_WM_BLUR_BEHIND_REGION`，KWin 会读它。模糊只在不透明度低于 100% 时出现。Hyprland 只在自己的 `decoration:blur:enabled` 打开时模糊，而 Omarchy 4.0.4 把它关掉了；要在那里打开，把 `hl.config({ decoration = { blur = { enabled = true } } })` 加到 `~/.config/hypr/looknfeel.lua`。

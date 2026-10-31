@@ -4,12 +4,39 @@ use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::Context as _;
 
-const USAGE: &str = "usage: elyterminal [FOLDER]";
+const USAGE: &str = "usage: elyterminal [FOLDER | --working-directory FOLDER | --startingDirectory FOLDER | -d FOLDER]";
 
-/// The one folder `args` names; anything else is an error.
-pub fn folder(mut args: impl Iterator<Item = OsString>) -> anyhow::Result<Option<PathBuf>> {
+const FOLDER_OPTIONS: [&str; 3] = ["--working-directory", "--startingDirectory", "-d"];
+
+/// The explicit folder, else Windows Terminal's inherited directory.
+pub fn folder(args: impl Iterator<Item = OsString>) -> anyhow::Result<Option<PathBuf>> {
+    opening_folder(
+        args,
+        cfg!(windows) && std::env::var_os("WT_SESSION").is_some(),
+    )
+}
+
+fn opening_folder(
+    mut args: impl Iterator<Item = OsString>,
+    windows_terminal: bool,
+) -> anyhow::Result<Option<PathBuf>> {
     let Some(arg) = args.next() else {
+        if windows_terminal {
+            let path = std::env::current_dir()
+                .context("app: cannot read Windows Terminal's starting folder")?;
+            log::info!(
+                "app: the first session starts in {}, from Windows Terminal",
+                path.display()
+            );
+            return Ok(Some(path));
+        }
         return Ok(None);
+    };
+    let arg = if FOLDER_OPTIONS.iter().any(|option| arg == *option) {
+        args.next()
+            .with_context(|| format!("app: the folder option has no value; {USAGE}"))?
+    } else {
+        arg
     };
     anyhow::ensure!(
         args.next().is_none(),
@@ -41,6 +68,27 @@ fn unquoted(arg: OsString, windows: bool) -> PathBuf {
 mod tests {
     use super::*;
 
+    fn folder(args: impl Iterator<Item = OsString>) -> anyhow::Result<Option<PathBuf>> {
+        opening_folder(args, false)
+    }
+
+    #[test]
+    fn windows_terminal_passes_its_directory_without_arguments() {
+        assert_eq!(
+            opening_folder(args(&[]), true).expect("inherited folder"),
+            Some(std::env::current_dir().expect("current folder"))
+        );
+        let here = std::env::temp_dir();
+        let here = here.to_str().expect("text");
+        for arguments in [vec![here], vec!["-d", here]] {
+            assert_eq!(
+                opening_folder(args(&arguments), true).expect("explicit folder"),
+                Some(std::path::absolute(here).expect("full path"))
+            );
+        }
+        assert!(opening_folder(args(&["-d"]), true).is_err());
+    }
+
     fn args(list: &[&str]) -> impl Iterator<Item = OsString> {
         list.iter()
             .map(OsString::from)
@@ -62,6 +110,20 @@ mod tests {
     }
 
     #[test]
+    fn linux_and_windows_directory_options_name_the_folder() {
+        let here = std::env::temp_dir();
+        let here = here.to_str().expect("text");
+        for option in FOLDER_OPTIONS {
+            let named = folder(args(&[option, here])).expect(option);
+            assert_eq!(
+                named,
+                Some(std::path::absolute(here).expect("a full path")),
+                "{option}"
+            );
+        }
+    }
+
+    #[test]
     fn two_arguments_or_a_file_are_refused() {
         let here = std::env::temp_dir();
         let here = here.to_str().expect("text");
@@ -73,6 +135,14 @@ mod tests {
         let file = std::env::current_exe().expect("this test");
         let error = folder(args(&[file.to_str().expect("text")])).expect_err("a file");
         assert!(error.to_string().contains("names no folder"), "{error}");
+
+        let error = folder(args(&["-d"])).expect_err("no value");
+        assert!(error.to_string().contains("has no value"), "{error}");
+        let error = folder(args(&["-d", here, here])).expect_err("two folders");
+        assert!(
+            error.to_string().contains("more than one argument"),
+            "{error}"
+        );
     }
 
     #[test]
