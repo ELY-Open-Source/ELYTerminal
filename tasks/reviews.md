@@ -501,5 +501,5 @@ T01 to T49 are in `reviews-t01-t49.md`.
 ## T138
 
 - v0.2.1 at 0f4696a, published and latest, twelve assets: CI passed on macOS, Windows and Linux; the Windows zip from `scripts/windows-zip.ps1` on the owner's PC after its 405 tests (sha256 a1c84372…); the four Linux packages from the Linux packages run 41159321599, checked against its SHA-256 file; the disk image from the Release run 41159369740, stapled and accepted by Gatekeeper as notarized Developer ID. The website's six version-less links resolve to it.
-- `ELY-Open-Source/homebrew-tap` made; `brew install --cask ely-open-source/tap/elyterminal` installed 0.2.1, team 9PDD8M2SMS, and uninstalled. winget: `winget validate` passed; microsoft/winget-pkgs#466704 waits on the owner's CLA.
+- `ELY-Open-Source/homebrew-tap` made; `brew install --cask ely-open-source/tap/elyterminal` installed 0.2.1, team 9PDD8M2SMS, and uninstalled. winget: `winget validate` passed; microsoft/winget-pkgs#466704, its CLA signed at the owner's word from the owner's account, waits on Microsoft's validation and moderators.
 - Issues #40, #41, #44, #45, #46, #47 and #50 answered and closed; #42 answered and open until winget merges; PR #48 thanked.
