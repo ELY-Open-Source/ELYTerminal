@@ -3,6 +3,7 @@ Type=Application
 Name=ELYTerminal
 Comment=A terminal on GPUI and Ely
 Exec=elyterminal
+X-TerminalArgDir=--working-directory
 Icon=com.zacharyzhang.elyterminal
 Terminal=false
 Categories=System;TerminalEmulator;
