@@ -253,7 +253,7 @@ fn report(
                 let group = holder();
                 log::debug!("pty {pid}: {ask:?} from group {group:?}");
                 PtyEvent::Ask(ask, group)
-            } else if let Some(folder) = body.strip_prefix(b"7;").and_then(folder) {
+            } else if let Some(folder) = reported(body) {
                 if last.as_ref() == Some(&folder) {
                     log::debug!("pty {pid}: folder {} again", folder.display());
                 } else {
@@ -491,7 +491,7 @@ mod modes;
 #[cfg(test)]
 mod tests;
 
-use folder::folder;
+use folder::reported;
 #[cfg(windows)]
 use holder::nested;
 use holder::prompter;

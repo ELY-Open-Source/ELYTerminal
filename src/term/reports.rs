@@ -160,8 +160,9 @@ impl TerminalView {
         if self.ended != status {
             let ended = status.map_or("with no status".into(), |code| format!("with {code}"));
             log::info!("terminal {}: its last command ended {ended}", self.pty.pid);
+            self.ended = status;
+            cx.emit(TerminalEvent::Ended(status));
         }
-        self.ended = status;
         // Only a command C started posts its end, so a prompt bash 3.2 draws again posts nothing.
         if let Some(start) = std::mem::take(&mut self.ran) {
             let now = Instant::now();

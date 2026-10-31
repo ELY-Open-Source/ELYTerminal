@@ -2,9 +2,33 @@
 use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 
-/// The local folder an OSC 7 `file://host/path` names; another host's folder is none.
-pub(super) fn folder(body: &[u8]) -> Option<PathBuf> {
-    folder_on(body, cfg!(windows))
+/// The folder OSC 7's URI or ConEmu's OSC 9;9 names.
+pub(super) fn reported(body: &[u8]) -> Option<PathBuf> {
+    reported_on(body, cfg!(windows))
+}
+
+/// As `reported`, on Windows when `windows`.
+fn reported_on(body: &[u8], windows: bool) -> Option<PathBuf> {
+    if let Some(uri) = body.strip_prefix(b"7;") {
+        return folder_on(uri, windows);
+    }
+    let raw = body.strip_prefix(b"9;9;")?;
+    // ConEmu's path stands as Windows names it, encoding nothing.
+    let Ok(text) = std::str::from_utf8(raw) else {
+        log::warn!("pty: OSC 9;9's path is not UTF-8");
+        return None;
+    };
+    let text = text
+        .strip_prefix('"')
+        .and_then(|text| text.strip_suffix('"'))
+        .unwrap_or(text);
+    let bytes = text.as_bytes();
+    let drive = bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if windows && (drive || text.starts_with(r"\\")) {
+        return Some(PathBuf::from(text));
+    }
+    log::debug!("pty: OSC 9;9 path {text} names no Windows folder");
+    None
 }
 
 /// A `file://` URI's local path; Unix names keep their bytes.
@@ -84,3 +108,6 @@ fn decode(bytes: &[u8]) -> Vec<u8> {
     }
     out
 }
+
+#[cfg(test)]
+mod tests;

@@ -54,6 +54,8 @@ pub enum TerminalEvent {
     Bell,
     /// The state its row shows changed, to this one.
     Shows(Option<State>),
+    /// Its last command's status changed, to this one.
+    Ended(Option<i32>),
     Exited(ExitStatus),
 }
 
@@ -205,7 +207,7 @@ impl TerminalView {
         &self.records
     }
 
-    /// The status its shell's last command ended with.
+    /// The last command's status; none while a command runs.
     pub fn ended(&self) -> Option<i32> {
         self.ended
     }

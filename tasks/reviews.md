@@ -465,3 +465,12 @@ T01 to T49 are in `reviews-t01-t49.md`.
 - Round 10: FAIL. A closed folder's cached listing outlived its deletion; `prune` takes them too.
 - Round 11: FAIL. A closed root was read no more; the root is always read.
 - Round 12: PASS.
+
+## T133
+
+- Round 1: FAIL. Ely kept her error face when C cleared the failure, and a user's `PROMPT` with `&` ran through `/k prompt`. `TerminalEvent::Ended` at each change; the prompt through the environment.
+- Round 2: FAIL. A script block around `cmd` left `$?` true, and OSC 7 decoded a folder named `rel%20one`. The line runs as typed, the next prompt restores `PROMPT`; cmd reports its folder by ConEmu's raw OSC 9;9.
+- Round 3: FAIL. `ElyCmdBack` unset under strict mode, and cmd's first D ended PowerShell's `cmd` early. Initialized; cmd sends no D.
+- Round 4: FAIL. A nested cmd's named A closed PowerShell's command, dropping a program's records. Nested, its A is unnamed.
+- Round 5: FAIL. An inherited marked prompt kept its old name. Ours is marked again for its place.
+- Round 6: PASS.

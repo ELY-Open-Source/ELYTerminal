@@ -45,7 +45,7 @@ impl Workspace {
                 log::debug!("app: hidden session {} waits", index + 1);
                 session.waiting = true;
             }
-            TerminalEvent::Shows(_) => {}
+            TerminalEvent::Shows(_) | TerminalEvent::Ended(_) => {}
             TerminalEvent::Exited(status) => {
                 let pid = session.terminal.read(cx).pid();
                 log::info!("app: session {pid}'s program ended, {status}");

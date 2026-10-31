@@ -55,6 +55,14 @@ impl TerminalView {
                 PtyEvent::Mark(Mark::Output, _) => {
                     self.ran = Some(Instant::now());
                     self.shell = Shell::Busy;
+                    // A command running has not failed, whatever the last did.
+                    if let Some(code) = self.ended.take() {
+                        log::info!(
+                            "terminal {}: a command starts; the last one's {code} clears",
+                            self.pty.pid
+                        );
+                        cx.emit(TerminalEvent::Ended(None));
+                    }
                 }
                 PtyEvent::Mark(Mark::Input, _) => self.shell = self.shell.reads(),
                 PtyEvent::Status(status, owner) => {

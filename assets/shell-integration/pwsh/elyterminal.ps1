@@ -1,9 +1,11 @@
 # ELYTerminal: wrap the prompt to report folder and title and to mark prompts and commands.
 $global:ElyPrompt = $function:prompt
 $global:ElyRan = $false
+$global:ElyCmdBack = $null
 function global:prompt {
     # First: every statement sets $? again.
     $ok = $?
+    ElyCmdBack
     $esc, $bel = [char]27, [char]7
     if ($global:ElyRan) {
         $code = 0
@@ -45,11 +47,28 @@ function global:ElyDrivePath([string]$line) {
         -not (Test-Path -LiteralPath "${letter}:\" -ErrorAction Ignore)) { return $line }
     "$lead$($letter.ToUpperInvariant()):\$($rest.TrimStart('/').Replace('/', '\'))$tail"
 }
+# A bare cmd typed here starts with ELYTerminal's marked prompt.
+function global:ElyCmd([string]$line) {
+    if ($env:OS -ne 'Windows_NT' -or -not $env:ELY_CMD_PROMPT -or $line -notmatch '^[ \t]*(cmd(\.exe)?)[ \t]*$') { return $line }
+    # A cmd of the user's own stays as typed.
+    if ((Get-Command $Matches[1] -ErrorAction Ignore) -isnot [System.Management.Automation.ApplicationInfo]) { return $line }
+    # Through the environment, unparsed; the typed line keeps its status.
+    $global:ElyCmdBack = @{ Prompt = $env:PROMPT }
+    $env:PROMPT = $env:ELY_CMD_PROMPT
+    $line
+}
+# The next prompt gives PowerShell its own PROMPT back.
+function global:ElyCmdBack {
+    if ($global:ElyCmdBack) {
+        $env:PROMPT = $global:ElyCmdBack.Prompt
+        $global:ElyCmdBack = $null
+    }
+}
 # A command starts once PSReadLine hands over a line that is not blank.
 if (Test-Path Function:\PSConsoleHostReadLine) {
     $global:ElyReadLine = $function:PSConsoleHostReadLine
     function global:PSConsoleHostReadLine {
-        $line = ElyDrivePath (& $global:ElyReadLine)
+        $line = ElyCmd (ElyDrivePath (& $global:ElyReadLine))
         if (-not [string]::IsNullOrWhiteSpace($line)) {
             $global:ElyRan = $true
             $global:ElyExit = Get-Variable LASTEXITCODE -Scope Global -ValueOnly -ErrorAction Ignore
