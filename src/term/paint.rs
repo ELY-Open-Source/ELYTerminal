@@ -95,9 +95,14 @@ pub fn grid(
             match (&preedit, at, &cursor) {
                 (Some(text), Some(at), _) => paint_preedit(text, at, origin, &look, window),
                 (None, _, Some((cursor, shape))) => {
-                    paint_cursor(cursor, *shape, origin, &look, window)
+                    let at = input.read(cx).glide_position((cursor.row, cursor.column));
+                    paint_cursor(cursor, *shape, at, origin, &look, window)
                 }
                 _ => {}
+            }
+            // The cursor glides, so it draws again next frame until it settles.
+            if input.read(cx).gliding() {
+                window.request_animation_frame();
             }
         },
     )
@@ -417,26 +422,26 @@ fn decorate(origin: Point<Pixels>, width: Pixels, style: &Style, look: &Look, wi
 fn paint_cursor(
     cursor: &Cursor,
     shape: CursorShape,
+    at: (f32, f32),
     origin: Point<Pixels>,
     look: &Look,
     window: &mut Window,
 ) {
     let cell = look.cell;
-    let corner = origin
-        + point(
-            cell.width * cursor.column as f32,
-            cell.height * cursor.row as f32,
-        );
+    let corner = origin + point(cell.width * at.1, cell.height * at.0);
     let width = cell.width * if cursor.wide { 2. } else { 1. };
     let whole = Bounds::new(corner, size(width, cell.height));
     match shape {
         CursorShape::Block => {
             window.paint_quad(fill(whole, look.cursor));
+            // The character inverts on its own cell, never on half of two.
+            let cell_corner = origin
+                + point(cell.width * cursor.column as f32, cell.height * cursor.row as f32);
             paint_alone(
                 &cursor.text,
                 look.cursor_text,
                 &cursor.style,
-                corner,
+                cell_corner,
                 look,
                 window,
             );

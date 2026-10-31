@@ -175,6 +175,14 @@ impl SettingsWindow {
                     |settings, on| settings.cursor_blink = on,
                 )),
             )
+            .row(
+                SettingsRow::new(word("et.appearance.smooth")).control(switch(
+                    &this,
+                    "cursor_smooth",
+                    settings.cursor_smooth,
+                    |settings, on| settings.cursor_smooth = on,
+                )),
+            )
             .row(SettingsRow::new(word("et.appearance.preview")).control(preview));
         let opacity = percent(settings.background_opacity);
         let slider = Slider::new("background_opacity", opacity)

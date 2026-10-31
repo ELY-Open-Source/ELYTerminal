@@ -56,6 +56,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.cursor.underline", "Underline"),
     ("et.cursor.hollow", "Hollow"),
     ("et.appearance.blink", "Blink"),
+    ("et.appearance.smooth", "Smooth"),
     ("et.appearance.preview", "Preview"),
     ("et.appearance.window", "Window"),
     ("et.appearance.opacity", "Background opacity"),

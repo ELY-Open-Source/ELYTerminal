@@ -113,6 +113,8 @@ pub struct Settings {
     pub ligatures: bool,
     pub cursor_style: CursorStyle,
     pub cursor_blink: bool,
+    /// Glides the cursor to its new cell instead of jumping, as a line editor moves it.
+    pub cursor_smooth: bool,
     pub background_opacity: f32,
     pub background_blur: bool,
     /// Windows 11's backdrop while blurred.
@@ -178,6 +180,7 @@ impl Default for Settings {
             ligatures: true,
             cursor_style: CursorStyle::Block,
             cursor_blink: true,
+            cursor_smooth: true,
             background_opacity: 0.88,
             background_blur: true,
             backdrop: Backdrop::Acrylic,
