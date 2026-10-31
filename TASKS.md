@@ -263,4 +263,4 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T135 Issue #40: on Windows, Settings › Terminal adds or removes "Open in ELYTerminal" on a folder's and a folder background's right-click menu, for the current user, the folder passed to a new window as it starts.
 - [x] T136 Issues #42 and #50: a Homebrew tap, `ELY-Open-Source/homebrew-tap`, with a cask, and a winget manifest for the portable zip, each refreshed by a script at a release; the install guides tell SmartScreen's prompt from a Defender detection and say how to report a false positive.
 - [x] T137 The README, its Chinese twin and the guides say what 0.2.1 does; PRD, AGENTS.md and the acceptance table hold T130 to T136.
-- [ ] T138 Release 0.2.1: the version raised, every build on the release, the notes in English and Chinese, the cask and the winget PR following, each issue answered.
+- [x] T138 Release 0.2.1: the version raised, every build on the release, the notes in English and Chinese, the cask and the winget PR following, each issue answered.

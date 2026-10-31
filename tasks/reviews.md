@@ -497,3 +497,9 @@ T01 to T49 are in `reviews-t01-t49.md`.
 
 - Round 1: FAIL. The folder argument's lines missed cmd's share limit, winget's line its catalog's merge, the guides Windows 11's Show more options, and the acceptance table still pinned Ely `494c17d`. Fixed.
 - Round 2: PASS.
+
+## T138
+
+- v0.2.1 at 0f4696a, published and latest, twelve assets: CI passed on macOS, Windows and Linux; the Windows zip from `scripts/windows-zip.ps1` on the owner's PC after its 405 tests (sha256 a1c84372…); the four Linux packages from the Linux packages run 41159321599, checked against its SHA-256 file; the disk image from the Release run 41159369740, stapled and accepted by Gatekeeper as notarized Developer ID. The website's six version-less links resolve to it.
+- `ELY-Open-Source/homebrew-tap` made; `brew install --cask ely-open-source/tap/elyterminal` installed 0.2.1, team 9PDD8M2SMS, and uninstalled. winget: `winget validate` passed; microsoft/winget-pkgs#466704 waits on the owner's CLA.
+- Issues #40, #41, #44, #45, #46, #47 and #50 answered and closed; #42 answered and open until winget merges; PR #48 thanked.
