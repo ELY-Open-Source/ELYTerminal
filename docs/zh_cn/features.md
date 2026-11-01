@@ -17,7 +17,7 @@
 - macOS 上的自然文本编辑，设置 › 终端 里默认关闭：Option-Left 和 Option-Right 按词移动，Option-Backspace 和 Option-Delete 按词删除，Command-Left 和 Command-Right 移到行首行尾，Command-Backspace 和 Command-Delete 删到行首行尾，发出的是 shell 期望的编辑字节。
 - 设置 › 终端 里的 Option 键作为 Alt 把所选的 macOS Option 键变成终端的 Alt，选了拼音之类的输入法时也一样；未选的 Option 键仍输入特殊字符。
 - 标题栏两端各有一个按钮，隐藏或显示该侧栏；侧栏与终端之间的边框可拖动改宽度；窗口按离开时的大小和宽度打开，在 macOS、Windows 和 X11 上还回到离开时的显示器和位置。在 Windows 和 Linux 上，右侧按钮旁的齿轮打开设置。
-- 文件把会话的文件夹显示为带 Git 标记的树。在 herdr 里，文件夹是 herdr 当前窗格的。打开设置 › 终端 › 文件菜单后，右键点按名称可打开它、在其文件夹开新会话或复制其路径。 文件显示时，每秒重读展开的文件夹和 Git 标记，所以程序或 AI 代理新建的文件无需等提示符就会出现。
+- 文件把会话的文件夹显示为带 Git 标记的树。在 herdr 里，文件夹是 herdr 当前窗格的。打开设置 › 终端 › 文件菜单后，右键点按名称可打开它、在其文件夹开新会话或复制其路径；右键顶部“文件”标签会在标签与文件树之间展开“选择文件夹新建会话…”操作栏，将文件树向下推；再次右键或点击该操作可收起。原会话和默认起始位置保留，空白处右键不弹菜单。文件显示时，每秒重读展开的文件夹和 Git 标记，所以程序或 AI 代理新建的文件无需等提示符就会出现。
 - Git 显示分支，暂存、取消暂存、丢弃、提交，列出最近提交并打开差异，全部通过 `git` 命令行。
 - 主题：Ely Dark、Ely Light、Catppuccin Mocha、Macchiato、Frappé 和 Latte、Tokyo Night、Dracula、Nord、Gruvbox Dark、Rosé Pine、Solarized Light、One Light 和 Kanagawa Wave，然后是新建主题：从 Ely Dark 复制出你自己的主题，名称和颜色由你设定；内置主题不会改变。背景图片放在终端下方，按背景不透明度显示。系统为深色时可换第二套主题。在 Omarchy 4 上，Omarchy 主题跟着系统主题切换，并且是那里的默认。
 - 设置 › 外观 中的界面字体和字号：任一已安装字体，附示例行，12 到 16 px，作用于每个窗口的界面；终端保留自己的字体。

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context as _;
 use gpui::{Context, EntityId, Window};
 
 use super::Workspace;
@@ -28,7 +29,9 @@ impl Workspace {
             },
         };
         let shell = settings.shell.clone();
-        self.open(&shell, start, None, window, cx);
+        if let Err(error) = self.open(&shell, start, None, window, cx) {
+            log::error!("app: no new session: {error:#}");
+        }
     }
 
     /// Session `id` again: the shell it runs, in the folder it last reported.
@@ -44,21 +47,25 @@ impl Workspace {
             return;
         };
         log::info!("app: session {id:?} duplicates into {}", folder.display());
-        self.open(&shell, Start::In(folder), Some(index + 1), window, cx);
+        if let Err(error) = self.open(&shell, Start::In(folder), Some(index + 1), window, cx) {
+            log::error!("app: no duplicate session: {error:#}");
+        }
     }
 
     /// The shown shell in `folder`, right after the shown row.
-    pub fn here(&mut self, folder: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(shell) = self
+    pub fn here(
+        &mut self,
+        folder: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        let shell = self
             .sessions
             .get(self.active)
             .map(|session| session.shell.clone())
-        else {
-            log::error!("app: no session to open {}", folder.display());
-            return;
-        };
+            .context("app: no active session for the chosen folder")?;
         log::info!("app: session here {}", folder.display());
-        self.open(&shell, Start::In(folder), Some(self.active + 1), window, cx);
+        self.open(&shell, Start::In(folder), Some(self.active + 1), window, cx)
     }
 
     /// Shows a `shell` session from `start`, at `at` or last.
@@ -69,20 +76,16 @@ impl Workspace {
         at: Option<usize>,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> anyhow::Result<()> {
         let settings = SettingsStore::get(cx);
-        let started = launch(shell, start, &cx.global::<ShellIntegration>().0)
-            .and_then(|launch| Ok((spawn(&launch, (80, 24), (8, 16), config(settings))?, launch)));
-        match started {
-            Ok(((pty, events), launch)) => {
-                self.add(pty, events, launch, window, cx);
-                let last = self.sessions.len() - 1;
-                if let Some(at) = at {
-                    self.move_session(last, at);
-                }
-                self.select(at.map_or(last, |at| at.min(last)), window, cx);
-            }
-            Err(error) => log::error!("app: no new session: {error:#}"),
+        let launch = launch(shell, start, &cx.global::<ShellIntegration>().0)?;
+        let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(settings))?;
+        self.add(pty, events, launch, window, cx);
+        let last = self.sessions.len() - 1;
+        if let Some(at) = at {
+            self.move_session(last, at);
         }
+        self.select(at.map_or(last, |at| at.min(last)), window, cx);
+        Ok(())
     }
 }

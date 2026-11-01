@@ -264,3 +264,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T136 Issues #42 and #50: a Homebrew tap, `ELY-Open-Source/homebrew-tap`, with a cask, and a winget manifest for the portable zip, each refreshed by a script at a release; the install guides tell SmartScreen's prompt from a Defender detection and say how to report a false positive.
 - [x] T137 The README, its Chinese twin and the guides say what 0.2.1 does; PRD, AGENTS.md and the acceptance table hold T130 to T136.
 - [x] T138 Release 0.2.1: the version raised, every build on the release, the notes in English and Chinese, the cask and the winget PR following, each issue answered.
+
+## 43. Files: choose a session folder
+
+- [ ] T139 A right press on the Files tab reveals a folder-choice action between the tabs and tree, pushing the tree down, behind Files menu; blank space opens no menu. Implemented with the system chooser, cancellation, validation and visible failures, the tabs Ely's `SegmentedControl` through its new `on_context`; Windows checks, a release build and its author's Windows trial pass against `c2752ee`, the pin, from ELY-Open-Source/Ely-GPUI-Components#10, until it merges; macOS and Linux not_run.

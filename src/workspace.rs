@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use ely_gpui_component::{
-    buttons::{ButtonVariant, IconButton, SegmentedControl},
+    buttons::{ButtonVariant, IconButton},
     i18n::text,
     lists::List,
     motion::Reorder,
@@ -27,13 +27,15 @@ use crate::{
 };
 
 mod events;
+mod folder;
+mod panel;
 mod rename;
 mod reorder;
 mod session;
 mod toggles;
 mod widths;
 
-use toggles::{column_toggle, show_tab};
+use toggles::column_toggle;
 use widths::{Dragged, Side};
 
 actions!(
@@ -102,6 +104,8 @@ pub struct Workspace {
     dragged: Dragged,
     /// Draws the window at each step of the status marks while one shown moves.
     ticking: Option<Task<()>>,
+    choosing_folder: bool,
+    folder_actions: bool,
     _settings: Subscription,
     _acted: Subscription,
     _here: Subscription,
@@ -128,7 +132,9 @@ impl Workspace {
             files
         });
         let here = cx.subscribe_in(&files, window, |this, _, Here(folder), window, cx| {
-            this.here(folder.clone(), window, cx)
+            if let Err(error) = this.here(folder.clone(), window, cx) {
+                folder::failed(error, window, cx);
+            }
         });
         let mut workspace = Self {
             focus: cx.focus_handle(),
@@ -139,8 +145,15 @@ impl Workspace {
             background: Blur::new(window, SettingsStore::get(cx)),
             dragged: Dragged::default(),
             ticking: None,
+            choosing_folder: false,
+            folder_actions: false,
             _settings: cx.observe_global_in::<SettingsStore>(window, |this, window, cx| {
                 this.background.follow(window, SettingsStore::get(cx));
+                let settings = SettingsStore::get(cx);
+                if !settings.files_menu || !settings.show_panel || settings.panel != PanelTab::Files
+                {
+                    this.folder_actions = false;
+                }
                 cx.notify();
             }),
             _acted: acted,
@@ -395,15 +408,7 @@ impl Render for Workspace {
         }
         if settings.show_panel {
             let tab = settings.panel;
-            let chosen = match tab {
-                PanelTab::Git => "git",
-                PanelTab::Files => "files",
-            };
-            let switch = SegmentedControl::new("panel-tab", chosen)
-                .segment("git", text(cx, "et.panel.git", &[]), None)
-                .segment("files", text(cx, "et.panel.files", &[]), None)
-                .size(ControlSize::Sm)
-                .on_change(|value, _, cx| show_tab(value, cx));
+            let switch = self.panel_tabs(cx);
             let quiet = self
                 .sessions
                 .get(self.active)
@@ -428,6 +433,7 @@ impl Render for Workspace {
                     .action(end)
                     // Below the title bar, clear of Windows' caption buttons.
                     .child(div().flex().justify_center().px_2().pt_2().child(switch))
+                    .child(div().flex_none().child(self.folder_actions(cx)))
                     .children(quiet.then(caption))
                     .child(body(tab == PanelTab::Git).child(self.git.clone().cached(fill())))
                     .child(body(tab == PanelTab::Files).child(self.files.clone())),
