@@ -70,8 +70,6 @@ pub struct TerminalView {
     pub(super) pointer: Pointer,
     /// The mouse mode, as the tap follows it.
     pub(super) mouse: MouseMode,
-    /// The background picture that last failed, logged once.
-    pub(super) backdrop_failed: Option<std::path::PathBuf>,
     /// Kitty graphics' textures.
     pictures: Pictures,
     /// Keys go as Windows' records, as ConPTY asks.
@@ -156,7 +154,6 @@ impl TerminalView {
             caret: Bounds::default(),
             pointer: Pointer::default(),
             mouse: MouseMode::default(),
-            backdrop_failed: None,
             pictures: Pictures::default(),
             #[cfg(windows)]
             win32: false,
@@ -405,11 +402,9 @@ impl Render for TerminalView {
                 root.text_color(ink.fg).child(format!("{error:#}"))
             }
         };
-        let backdrop = self.backdrop(&settings, window, cx);
         div()
             .relative()
             .size_full()
-            .children(backdrop)
             .child(root)
             .children(scrollbar::bar(span, window, cx))
             .children(

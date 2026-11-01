@@ -77,13 +77,19 @@ pub fn palette(theme: &TerminalTheme, opacity: f32) -> Palette {
 pub fn apply(cx: &mut App) {
     let settings = SettingsStore::get(cx);
     let theme = active(settings, cx.window_appearance(), cx);
-    let opacity = settings.background_opacity;
+    // A painted background lies under the columns, so their glass must not dim it.
+    let painted = !settings.background.is_empty();
+    let glass = if painted {
+        0.0
+    } else {
+        settings.background_opacity
+    };
     let mode = if theme.is_dark() {
         Mode::Dark
     } else {
         Mode::Light
     };
-    Theme::set_palette(mode, Some(palette(&theme, opacity)), cx);
+    Theme::set_palette(mode, Some(palette(&theme, glass)), cx);
     Theme::set_mode_now(mode, cx);
-    log::info!("theme: {} in {mode:?}, glass at {opacity}", theme.id);
+    log::info!("theme: {} in {mode:?}, glass at {glass}", theme.id);
 }

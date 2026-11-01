@@ -19,7 +19,7 @@
 - 标题栏两端各有一个按钮，隐藏或显示该侧栏；侧栏与终端之间的边框可拖动改宽度；窗口按离开时的大小和宽度打开，在 macOS、Windows 和 X11 上还回到离开时的显示器和位置。在 Windows 和 Linux 上，右侧按钮旁的齿轮打开设置。
 - 文件把会话的文件夹显示为带 Git 标记的树。在 herdr 里，文件夹是 herdr 当前窗格的。打开设置 › 终端 › 文件菜单后，右键点按名称可打开它、在其文件夹开新会话或复制其路径。 文件显示时，每秒重读展开的文件夹和 Git 标记，所以程序或 AI 代理新建的文件无需等提示符就会出现。
 - Git 显示分支，暂存、取消暂存、丢弃、提交，列出最近提交并打开差异，全部通过 `git` 命令行。
-- 主题：Ely Dark、Ely Light、Catppuccin Mocha、Macchiato、Frappé 和 Latte、Tokyo Night、Dracula、Nord、Gruvbox Dark、Rosé Pine、Solarized Light、One Light 和 Kanagawa Wave，然后是新建主题：从 Ely Dark 复制出你自己的主题，名称和颜色由你设定；内置主题不会改变。背景图片放在终端下方，按背景不透明度显示。系统为深色时可换第二套主题。在 Omarchy 4 上，Omarchy 主题跟着系统主题切换，并且是那里的默认。
+- 主题：Ely Dark、Ely Light、Catppuccin Mocha、Macchiato、Frappé 和 Latte、Tokyo Night、Dracula、Nord、Gruvbox Dark、Rosé Pine、Solarized Light、One Light 和 Kanagawa Wave，然后是新建主题：从 Ely Dark 复制出你自己的主题，名称和颜色由你设定；内置主题不会改变。背景按字段分别保存（图片、颜色、尺寸、位置、重复、范围、不透明度、带角度与起止色的渐变、以及带角度/色标/尺寸/位置的遮罩），设置 › 外观 中每项都有独立控件、分别保存；按范围画在终端后面或顶栏以下的整个窗口上，生效时侧栏的玻璃让位，主题作为底色，图片保住原有颜色；整层随窗口不透明度一起变淡，所以有背景图片时窗口照样透出桌面。顶栏不画背景，样式与其他地方一致。范围默认只作用于终端。系统为深色时可换第二套主题。在 Omarchy 4 上，Omarchy 主题跟着系统主题切换，并且是那里的默认。
 - 设置 › 外观 中的界面字体和字号：任一已安装字体，附示例行，12 到 16 px，作用于每个窗口的界面；终端保留自己的字体。
 - Windows 上，设置 › 终端 › 资源管理器菜单 可为当前用户在文件夹的右键菜单中加入或移除“在 ELYTerminal 中打开”；Windows 11 中它位于“显示更多选项”下。`elyterminal FOLDER` 在各系统上都让第一个会话从 FOLDER 开始；cmd 不接受网络共享作为当前目录，会自行提示并进入 Windows 目录。
 - 背景不透明度和模糊：macOS 上是 NSVisualEffectView，Windows 上是 acrylic，Windows 11 build 22621 起可按设置 › 外观 › 背景材质选云母或云母 Alt，Wayland 上是 `ext_background_effect_v1` 或 `org_kde_kwin_blur`，X11 上是 `_KDE_NET_WM_BLUR_BEHIND_REGION`，KWin 会读它。模糊只在不透明度低于 100% 时出现。Hyprland 只在自己的 `decoration:blur:enabled` 打开时模糊，而 Omarchy 4.0.4 把它关掉了；要在那里打开，把 `hl.config({ decoration = { blur = { enabled = true } } })` 加到 `~/.config/hypr/looknfeel.lua`。

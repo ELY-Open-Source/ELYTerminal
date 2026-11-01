@@ -102,16 +102,20 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
             theme,
             settings.custom_themes.clone(),
             settings.background_opacity,
+            !settings.background.is_empty(),
         )
     };
-    let mut image = SettingsStore::get(cx).background_image.clone();
+    let mut image = SettingsStore::get(cx).background.image.clone();
     cx.observe_global::<SettingsStore>(move |cx| {
-        let now = SettingsStore::get(cx).background_image.clone();
+        let now = SettingsStore::get(cx).background.image.clone();
         // A picture named anew reads its file, not gpui's cache.
-        if now != image && !now.is_empty() {
-            let path: Arc<Path> = Path::new(&now).into();
-            cx.remove_asset::<ImageAssetLoader>(&Resource::Path(path));
-            log::info!("app: the background image reads {now} afresh");
+        if now != image {
+            let paths = [image.clone(), now.clone()];
+            for path in paths.into_iter().filter(|path| !path.is_empty()) {
+                let path: Arc<Path> = Path::new(&path).into();
+                cx.remove_asset::<ImageAssetLoader>(&Resource::Path(path));
+            }
+            log::info!("app: the background reads its picture afresh");
         }
         image = now;
     })

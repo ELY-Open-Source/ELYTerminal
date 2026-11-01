@@ -7,7 +7,7 @@ use ely_gpui_component::{
     motion::Reorder,
     primitives::{FocusScope, IconName},
     shell::{ColumnShell, ResizeBorder, ShellColumn},
-    theme::ControlSize,
+    theme::{ActiveTheme, ControlSize},
     typography::Caption,
 };
 use gpui::{
@@ -31,9 +31,11 @@ mod rename;
 mod reorder;
 mod session;
 mod toggles;
+mod wallpaper;
 mod widths;
 
 use toggles::{column_toggle, show_tab};
+use wallpaper::{painted, ruler};
 use widths::{Dragged, Side};
 
 actions!(
@@ -295,7 +297,8 @@ impl Render for Workspace {
         self.background.fit(window);
         let now = Instant::now();
         self.tick(now, cx);
-        let settings = SettingsStore::get(cx);
+        let settings = SettingsStore::get(cx).clone();
+        let wallpaper = painted(&settings, cx.theme().colors.bg, window, cx);
         let workspace = cx.entity();
         // It leads the first column or ends the last.
         let left = column_toggle(
@@ -339,7 +342,7 @@ impl Render for Workspace {
             .map(|session| session.terminal.clone());
         let mut terminal = ShellColumn::new("terminal")
             .title(self.title().to_string())
-            .children(shown);
+            .child(div().relative().size_full().child(ruler()).children(shown));
         if settings.show_sessions {
             let home = dirs::home_dir();
             let rows: Vec<(String, AnyElement)> = self
@@ -437,6 +440,7 @@ impl Render for Workspace {
         }
         // The context sits above the focus root, so its keys work wherever focus is.
         crate::interface::dress(div(), cx)
+            .relative()
             .size_full()
             .key_context(CONTEXT)
             .map(menus::window_actions)
@@ -472,7 +476,13 @@ impl Render for Workspace {
             .child(
                 ResizeBorder::new()
                     .when(self.background.see_through(), ResizeBorder::glass)
-                    .child(FocusScope::new(&self.focus).root().size_full().child(shell)),
+                    .child(
+                        div()
+                            .relative()
+                            .size_full()
+                            .children(wallpaper)
+                            .child(FocusScope::new(&self.focus).root().size_full().child(shell)),
+                    ),
             )
     }
 }

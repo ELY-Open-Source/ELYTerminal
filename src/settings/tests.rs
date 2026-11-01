@@ -35,6 +35,16 @@ fn a_backdrop_is_acrylic_unless_named() {
 }
 
 #[test]
+fn a_background_paints_the_terminal_unless_the_window_is_named() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.background.scope, Scope::Terminal);
+    let settings: Settings =
+        serde_json::from_str(r#"{"background": {"scope": "window"}}"#).expect("a window scope");
+    assert_eq!(settings.background.scope, Scope::Window);
+    assert!(serde_json::from_str::<Settings>(r#"{"background": {"scope": "desktop"}}"#).is_err());
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,
@@ -298,26 +308,43 @@ fn a_custom_theme_is_chosen_by_its_id_and_held_once() {
 }
 
 #[test]
-fn a_background_image_is_a_file_at_a_full_path() {
-    let image = |path: &str| Settings {
-        background_image: path.into(),
+fn a_background_names_files_at_full_paths_and_checks_its_fields() {
+    use super::Background;
+    let styled = |background: Background| Settings {
+        background,
         ..Settings::default()
     };
-    assert_eq!(
-        image("a.png").validate().expect_err("relative").to_string(),
-        "background_image is \"a.png\", not a full path"
-    );
+    let image = |path: &str| Background {
+        image: path.into(),
+        ..Background::default()
+    };
+    assert!(styled(image("a.png")).validate().is_err(), "relative");
     let dir = std::env::temp_dir();
     let missing = dir.join("elyterminal-no-such-image.png");
     let missing = missing.to_str().expect("utf-8");
-    assert!(image(missing).validate().is_err(), "no file there");
+    assert!(styled(image(missing)).validate().is_err(), "no file there");
     let folder = dir.to_str().expect("utf-8");
-    assert!(image(folder).validate().is_err(), "a folder is no picture");
+    assert!(
+        styled(image(folder)).validate().is_err(),
+        "a folder is no picture"
+    );
     let file = dir.join("elyterminal-background.png");
     std::fs::write(&file, b"\x89PNG").expect("a file");
-    image(file.to_str().expect("utf-8"))
+    styled(image(file.to_str().expect("utf-8")))
         .validate()
         .expect("a file at a full path");
+    let gradient = Background {
+        gradient: Some(super::Gradient::default()),
+        ..Background::default()
+    };
+    styled(gradient)
+        .validate()
+        .expect("a gradient needs no file");
+    let bad = Background {
+        size: "cover cover cover".into(),
+        ..Background::default()
+    };
+    assert!(styled(bad).validate().is_err(), "too many sizes");
 }
 
 #[test]

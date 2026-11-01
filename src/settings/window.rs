@@ -17,7 +17,7 @@ use gpui::{
     actions, div, prelude::FluentBuilder, px, size,
 };
 
-use super::{Settings, SettingsStore};
+use super::{Background, Gradient, Mask, Settings, SettingsStore};
 use crate::{app::APP_ID, menus, term::BLINK, updates::Updates};
 
 mod appearance;
@@ -97,9 +97,9 @@ pub struct SettingsWindow {
     /// Why the typed shell and folder are not saved.
     refused: Option<SharedString>,
     refused_folder: Option<SharedString>,
-    /// The background picture, typed or browsed, and why it is not saved.
-    image: Entity<TextInput>,
-    refused_image: Option<SharedString>,
+    /// The background's fields, each edited and saved on its own.
+    background: Vec<BackgroundField>,
+    refused_background: Option<SharedString>,
     /// Why the last change did not save.
     failed: Option<SharedString>,
     /// Refusals so far; a field keyed by it drops its draft and shows the settings again.
@@ -117,11 +117,64 @@ pub struct SettingsWindow {
     theme_name: Entity<TextInput>,
     _named: Subscription,
     slot: usize,
-    _typed: [Subscription; 3],
+    _typed: [Subscription; 2],
+    _background: Vec<Subscription>,
     _settings: Subscription,
     _updates: Subscription,
     _language: Subscription,
     _blink: Task<()>,
+}
+
+/// One background field, and the input that edits it.
+pub(super) struct BackgroundField {
+    pub key: &'static str,
+    pub input: Entity<TextInput>,
+}
+
+/// Every background field the window edits, in the order it shows them.
+const BACKGROUND_KEYS: [&str; 9] = [
+    "color",
+    "image",
+    "size",
+    "position",
+    "gradient_from",
+    "gradient_to",
+    "mask_stops",
+    "mask_size",
+    "mask_position",
+];
+
+/// A background field as the settings hold it, or its default when it is off.
+fn background_value(background: &Background, key: &str) -> String {
+    let gradient = Gradient::default();
+    let mask = Mask::default();
+    match key {
+        "color" => background.color.clone(),
+        "image" => background.image.clone(),
+        "size" => background.size.clone(),
+        "position" => background.position.clone(),
+        "gradient_from" => background
+            .gradient
+            .as_ref()
+            .map_or_else(|| gradient.from.clone(), |held| held.from.clone()),
+        "gradient_to" => background
+            .gradient
+            .as_ref()
+            .map_or_else(|| gradient.to.clone(), |held| held.to.clone()),
+        "mask_stops" => background
+            .mask
+            .as_ref()
+            .map_or_else(|| mask.stops.join(", "), |held| held.stops.join(", ")),
+        "mask_size" => background
+            .mask
+            .as_ref()
+            .map_or_else(|| mask.size.clone(), |held| held.size.clone()),
+        "mask_position" => background
+            .mask
+            .as_ref()
+            .map_or_else(|| mask.position.clone(), |held| held.position.clone()),
+        other => unreachable!("settings: no background field {other}"),
+    }
 }
 
 impl SettingsWindow {
@@ -140,11 +193,27 @@ impl SettingsWindow {
         let font = cx.new(|cx| TextInput::new(window, cx));
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
-        let image = cx.new(|cx| {
-            let mut input = TextInput::new(window, cx);
-            input.set_text(SettingsStore::get(cx).background_image.clone(), cx);
-            input
-        });
+        let background_settings = SettingsStore::get(cx).background.clone();
+        let mut background = Vec::new();
+        let mut background_typed = Vec::new();
+        for key in BACKGROUND_KEYS {
+            let value = background_value(&background_settings, key);
+            let input = cx.new(|cx| {
+                let mut input = TextInput::new(window, cx);
+                input.set_text(value, cx);
+                input
+            });
+            background_typed.push(cx.subscribe(
+                &input,
+                move |this, input, event: &InputEvent, cx| {
+                    if let InputEvent::Changed = event {
+                        let value = input.read(cx).text().to_string();
+                        this.refused_background = this.save_background(key, value, cx);
+                    }
+                },
+            ));
+            background.push(BackgroundField { key, input });
+        }
         let search = cx.new(|cx| {
             let placeholder = text(cx, "et.settings.search_shortcuts", &[]);
             TextInput::new(window, cx).placeholder(placeholder)
@@ -164,13 +233,6 @@ impl SettingsWindow {
                     this.refused_folder = this.save_typed("start_folder", folder, put, cx);
                 }
             }),
-            cx.subscribe(&image, |this, input, event: &InputEvent, cx| {
-                if let InputEvent::Changed = event {
-                    let image = input.read(cx).text().to_string();
-                    let put = |settings: &mut Settings, image| settings.background_image = image;
-                    this.refused_image = this.save_typed("background_image", image, put, cx);
-                }
-            }),
         ];
         // Focus inside, so the window's keys find its context.
         let focus = cx.focus_handle();
@@ -183,8 +245,8 @@ impl SettingsWindow {
             search,
             refused: None,
             refused_folder: None,
-            image,
-            refused_image: None,
+            background,
+            refused_background: None,
             failed: None,
             drafts: 0,
             font,
@@ -197,6 +259,7 @@ impl SettingsWindow {
             _named: named,
             slot: 0,
             _typed: typed,
+            _background: background_typed,
             _settings: cx.observe_global::<SettingsStore>(|_, cx| cx.notify()),
             _updates: cx.observe_global::<Updates>(|_, cx| cx.notify()),
             _language: cx.observe_global_in::<I18n>(window, Self::speak),
@@ -236,11 +299,17 @@ impl SettingsWindow {
 
     /// Saves Browse's pick as typed; refuses one not in UTF-8.
     pub(super) fn chosen(&mut self, field: &'static str, path: PathBuf, cx: &mut Context<Self>) {
-        let (input, refused) = match field {
-            "shell" => (self.shell.clone(), &mut self.refused),
-            "start_folder" => (self.folder.clone(), &mut self.refused_folder),
-            "background_image" => (self.image.clone(), &mut self.refused_image),
+        let input = match field {
+            "shell" => self.shell.clone(),
+            "start_folder" => self.folder.clone(),
+            "background_image" => self.background_field("image"),
             other => unreachable!("settings: no path field {other}"),
+        };
+        let refused = match field {
+            "shell" => &mut self.refused,
+            "start_folder" => &mut self.refused_folder,
+            "background_image" => &mut self.refused_background,
+            _ => unreachable!("settings: no path field {field}"),
         };
         let Some(text) = path.to_str() else {
             let why = format!(
@@ -252,6 +321,72 @@ impl SettingsWindow {
             return cx.notify();
         };
         input.update(cx, |input, cx| input.set_text(text, cx));
+    }
+
+    /// One background field's input.
+    fn background_field(&self, key: &str) -> Entity<TextInput> {
+        self.background
+            .iter()
+            .find(|field| field.key == key)
+            .map(|field| field.input.clone())
+            .expect("every background field is built")
+    }
+
+    /// Saves one background field, or returns the store's reason.
+    fn save_background(
+        &mut self,
+        key: &'static str,
+        value: String,
+        cx: &mut Context<Self>,
+    ) -> Option<SharedString> {
+        let logged = value.clone();
+        let saved = SettingsStore::update(cx, |settings| {
+            let background = &mut settings.background;
+            match key {
+                "color" => background.color = value,
+                "image" => background.image = value,
+                "size" => background.size = value,
+                "position" => background.position = value,
+                "gradient_from" => {
+                    background
+                        .gradient
+                        .get_or_insert_with(Default::default)
+                        .from = value;
+                }
+                "gradient_to" => {
+                    background.gradient.get_or_insert_with(Default::default).to = value;
+                }
+                "mask_stops" => {
+                    background.mask.get_or_insert_with(Default::default).stops = value
+                        .split(',')
+                        .map(str::trim)
+                        .filter(|stop| !stop.is_empty())
+                        .map(str::to_string)
+                        .collect();
+                }
+                "mask_size" => {
+                    background.mask.get_or_insert_with(Default::default).size = value;
+                }
+                "mask_position" => {
+                    background
+                        .mask
+                        .get_or_insert_with(Default::default)
+                        .position = value;
+                }
+                other => unreachable!("settings: no background field {other}"),
+            }
+        });
+        cx.notify();
+        match saved {
+            Ok(()) => {
+                log::info!("settings: background.{key} is {logged:?}");
+                None
+            }
+            Err(error) => {
+                log::debug!("settings: background.{key} stays: {error:#}");
+                Some(format!("{error:#}").into())
+            }
+        }
     }
 
     /// Saves a field through `put`, or returns the store's reason.

@@ -1,4 +1,5 @@
 pub mod app;
+pub mod background;
 pub mod blur;
 #[cfg(windows)]
 pub mod explorer;
