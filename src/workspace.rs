@@ -35,7 +35,7 @@ mod wallpaper;
 mod widths;
 
 use toggles::{column_toggle, show_tab};
-use wallpaper::painted;
+use wallpaper::{painted, ruler};
 use widths::{Dragged, Side};
 
 actions!(
@@ -342,7 +342,7 @@ impl Render for Workspace {
             .map(|session| session.terminal.clone());
         let mut terminal = ShellColumn::new("terminal")
             .title(self.title().to_string())
-            .children(shown);
+            .child(div().relative().size_full().child(ruler()).children(shown));
         if settings.show_sessions {
             let home = dirs::home_dir();
             let rows: Vec<(String, AnyElement)> = self

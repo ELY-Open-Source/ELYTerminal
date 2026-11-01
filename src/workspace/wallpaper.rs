@@ -1,12 +1,49 @@
 //! The painted background's place: the terminal's box or the window's, below the title bar.
 
+use std::cell::Cell;
+
 use ely_gpui_component::theme::ActiveTheme;
-use gpui::{AnyElement, App, Hsla, IntoElement, ParentElement, Styled, Window, div, px};
+use gpui::{AnyElement, App, Hsla, IntoElement, ParentElement, Styled, Window, canvas, div, px};
 
 use crate::{
     background,
     settings::{Scope, Settings},
 };
+
+/// A box in the window's points: x, y, width and height.
+type Box4 = (f32, f32, f32, f32);
+
+thread_local! {
+    /// The terminal's body, as the last frame laid it out; a column's header may hold it wider than its setting.
+    static TERMINAL: Cell<Option<Box4>> = const { Cell::new(None) };
+}
+
+/// A transparent ruler over the terminal's body, recording the box a background takes there.
+pub(super) fn ruler() -> impl IntoElement {
+    canvas(
+        |bounds, window, _| {
+            let box_ = (
+                f32::from(bounds.origin.x),
+                f32::from(bounds.origin.y),
+                f32::from(bounds.size.width),
+                f32::from(bounds.size.height),
+            );
+            let moved = TERMINAL.with(|held| {
+                let moved = held.get() != Some(box_);
+                if moved {
+                    held.set(Some(box_));
+                }
+                moved
+            });
+            if moved {
+                window.request_animation_frame();
+            }
+        },
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .inset_0()
+}
 
 /// The box a background takes in the window's points: x, y, width and height.
 fn place(
@@ -28,6 +65,22 @@ fn place(
         }
     };
     (left, title, width, (down - title).max(0.0))
+}
+
+/// The box a background takes: the terminal's measured body, or the box the columns' settings leave.
+fn box_of(
+    scope: Scope,
+    measured: Option<Box4>,
+    across: f32,
+    down: f32,
+    title: f32,
+    sessions: Option<f32>,
+    panel: Option<f32>,
+) -> Box4 {
+    match (scope, measured) {
+        (Scope::Terminal, Some(measured)) => measured,
+        _ => place(scope, across, down, title, sessions, panel),
+    }
 }
 
 /// The background painted for `settings`, as see-through as the window, or none when it paints nothing.
@@ -52,8 +105,10 @@ pub(super) fn painted(
     let title = f32::from(cx.theme().titlebar_height().to_pixels(window.rem_size()));
     let sessions = settings.show_sessions.then_some(settings.sessions_width);
     let panel = settings.show_panel.then_some(settings.panel_width);
-    let (left, top, width, height) = place(
+    // The first frame has no ruler yet, so a setting's width stands in until `ruler` reads the body.
+    let (left, top, width, height) = box_of(
         settings.background.scope,
+        TERMINAL.with(Cell::get),
         across,
         down,
         title,
@@ -120,5 +175,30 @@ mod tests {
     fn a_title_bar_taller_than_the_window_leaves_the_picture_no_height() {
         let short = place(Scope::Window, 1000.0, 20.0, 40.0, None, None);
         assert_eq!((short.1, short.3), (20.0, 0.0));
+    }
+
+    #[test]
+    fn the_ruled_terminal_body_wins_over_the_settings() {
+        let measured = Some((165.0, 41.0, 600.0, 750.0));
+        let terminal = box_of(
+            Scope::Terminal,
+            measured,
+            1000.0,
+            800.0,
+            40.0,
+            Some(160.0),
+            Some(200.0),
+        );
+        assert_eq!(terminal, (165.0, 41.0, 600.0, 750.0));
+        let window = box_of(
+            Scope::Window,
+            measured,
+            1000.0,
+            800.0,
+            40.0,
+            Some(160.0),
+            Some(200.0),
+        );
+        assert_eq!(window, (0.0, 40.0, 1000.0, 760.0));
     }
 }
