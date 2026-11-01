@@ -31,9 +31,11 @@ mod rename;
 mod reorder;
 mod session;
 mod toggles;
+mod wallpaper;
 mod widths;
 
 use toggles::{column_toggle, show_tab};
+use wallpaper::painted;
 use widths::{Dragged, Side};
 
 actions!(
@@ -296,16 +298,7 @@ impl Render for Workspace {
         let now = Instant::now();
         self.tick(now, cx);
         let settings = SettingsStore::get(cx).clone();
-        let base = cx.theme().colors.bg;
-        let wallpaper = match settings.background.style() {
-            Ok(style) => {
-                crate::background::render(&style, settings.background_opacity, base, window, cx)
-            }
-            Err(error) => {
-                log::error!("background: {error:#}");
-                None
-            }
-        };
+        let wallpaper = painted(&settings, cx.theme().colors.bg, window, cx);
         let workspace = cx.entity();
         // It leads the first column or ends the last.
         let left = column_toggle(

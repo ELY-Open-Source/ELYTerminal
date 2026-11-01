@@ -35,6 +35,16 @@ fn a_backdrop_is_acrylic_unless_named() {
 }
 
 #[test]
+fn a_background_paints_the_terminal_unless_the_window_is_named() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.background.scope, Scope::Terminal);
+    let settings: Settings =
+        serde_json::from_str(r#"{"background": {"scope": "window"}}"#).expect("a window scope");
+    assert_eq!(settings.background.scope, Scope::Window);
+    assert!(serde_json::from_str::<Settings>(r#"{"background": {"scope": "desktop"}}"#).is_err());
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,

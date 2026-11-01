@@ -13,7 +13,7 @@ use gpui::{Context, Div, ParentElement, Styled, div};
 use super::super::SettingsWindow;
 use super::super::terminal::chosen;
 use super::{choice, switch};
-use crate::settings::{Gradient, Mask, Repeat, SettingsStore};
+use crate::settings::{Gradient, Mask, Repeat, Scope, SettingsStore};
 
 /// The repeat choices, their values and their names' keys.
 const REPEATS: [(Repeat, &str, &str); 4] = [
@@ -21,6 +21,12 @@ const REPEATS: [(Repeat, &str, &str); 4] = [
     (Repeat::Repeat, "repeat", "et.background.repeat_all"),
     (Repeat::RepeatX, "repeat_x", "et.background.repeat_x"),
     (Repeat::RepeatY, "repeat_y", "et.background.repeat_y"),
+];
+
+/// Where a background paints, its value and its name's key.
+const SCOPES: [(Scope, &str, &str); 2] = [
+    (Scope::Terminal, "terminal", "et.background.scope_terminal"),
+    (Scope::Window, "window", "et.background.scope_window"),
 ];
 
 /// The background's rows.
@@ -53,6 +59,14 @@ pub(super) fn section(this: &SettingsWindow, cx: &Context<SettingsWindow>) -> Se
         &REPEATS,
         settings.background.repeat,
         |settings, repeat| settings.background.repeat = repeat,
+        cx,
+    );
+    let scope = choice(
+        &owner,
+        "background.scope",
+        &SCOPES,
+        settings.background.scope,
+        |settings, scope| settings.background.scope = scope,
         cx,
     );
     let opacity = this.number(
@@ -121,6 +135,7 @@ pub(super) fn section(this: &SettingsWindow, cx: &Context<SettingsWindow>) -> Se
                 .description(word("et.background.image_hint"))
                 .control(image),
         )
+        .row(SettingsRow::new(word("et.background.scope")).control(scope))
         .row(SettingsRow::new(word("et.background.color")).control(input("color")))
         .row(SettingsRow::new(word("et.background.size")).control(input("size")))
         .row(SettingsRow::new(word("et.background.position")).control(input("position")))

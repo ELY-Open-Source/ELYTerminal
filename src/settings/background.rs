@@ -29,6 +29,15 @@ impl Repeat {
     }
 }
 
+/// Where a background paints: behind the terminal alone, or behind every column below the title bar.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Scope {
+    #[default]
+    Terminal,
+    Window,
+}
+
 /// A gradient over the picture, from one color to another.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -87,6 +96,8 @@ pub struct Background {
     /// `center`, `top left`, `100% 100%`, or pixels.
     pub position: String,
     pub repeat: Repeat,
+    /// Where it paints: behind the terminal, or below the title bar across the window.
+    pub scope: Scope,
     /// Over the picture, under the window's content.
     pub gradient: Option<Gradient>,
     /// `0` to `1`, times the window's background opacity.
@@ -103,6 +114,7 @@ impl Default for Background {
             size: "cover".into(),
             position: "center".into(),
             repeat: Repeat::NoRepeat,
+            scope: Scope::Terminal,
             gradient: None,
             opacity: 1.0,
             mask: None,

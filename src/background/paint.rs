@@ -3,7 +3,7 @@
 use std::{cell::RefCell, collections::HashSet, path::Path, sync::Arc};
 
 use gpui::{
-    AnyElement, App, Hsla, ImageAssetLoader, IntoElement, ObjectFit, ParentElement, RenderImage,
+    AnyElement, App, ImageAssetLoader, IntoElement, ObjectFit, ParentElement, RenderImage,
     Resource, Styled, StyledImage, Window, div, img, linear_color_stop, linear_gradient, px,
 };
 
@@ -17,11 +17,10 @@ thread_local! {
     static LOGGED: RefCell<HashSet<String>> = RefCell::new(HashSet::new());
 }
 
-/// The background's layers across the window, as see-through as the window, or none when it paints nothing.
+/// The background's layers across `container`, or none when it paints nothing; the caller grounds and places it.
 pub fn render(
     background: &super::Background,
-    opacity: f32,
-    base: Hsla,
+    container: (f32, f32),
     window: &mut Window,
     cx: &mut App,
 ) -> Option<AnyElement> {
@@ -30,11 +29,7 @@ pub fn render(
     }
     // The picture's own opacity rides inside the stack, so the window's opacity still lets the desktop through.
     let alpha = background.opacity.unwrap_or(1.0);
-    let viewport = window.viewport_size();
-    let container = (f32::from(viewport.width), f32::from(viewport.height));
     let mut layers: Vec<AnyElement> = Vec::new();
-    // The columns' glass leaves a painted background's ground to it, so the theme grounds it here.
-    layers.push(div().absolute().inset_0().bg(base).into_any_element());
     if let Some(color) = background.color {
         layers.push(
             div()
@@ -64,7 +59,6 @@ pub fn render(
             .absolute()
             .inset_0()
             .overflow_hidden()
-            .opacity(opacity)
             .children(layers)
             .into_any_element(),
     )

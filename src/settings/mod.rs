@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
-pub use background::{Background, Gradient, Mask, Repeat};
+pub use background::{Background, Gradient, Mask, Repeat, Scope};
 pub use store::{SettingsStore, load, save};
 
 /// Where new sessions start: home, the shown folder, `start_folder`.
