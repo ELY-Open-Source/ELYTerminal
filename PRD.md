@@ -128,7 +128,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Separate dark theme: a switch; when on, a second grid for dark mode.
   - Font family: a list of installed fonts. Fallbacks: installed families tried in order for a character the family lacks, each added, changed or removed in a list of pickers. Font size. Line height. Ligatures.
   - Cursor: style (block, bar, underline, hollow), blink, with a live preview.
-  - Background opacity: a slider. Background image: a picture under the terminal, at that opacity, chosen as a file. Background blur: a switch. Backdrop, on Windows 11 from build 22621: Acrylic, Mica or Mica Alt.
+  - Background opacity: a slider, which lets the desktop through whether or not a background paints. Background: its own fields in `settings.json` — picture, color, size, position, repeat, gradient with angle, from and to, opacity, and mask with angle, stops, size and position — each with a control in the settings window and each saved on its own, painted across the whole window at that opacity; while it paints, the columns' glass gives way, so the theme grounds it and the picture keeps its colors, and the whole stack fades with the window's opacity, so a picture never makes the window opaque. Background blur: a switch. Backdrop, on Windows 11 from build 22621: Acrylic, Mica or Mica Alt.
   - Padding: horizontal and vertical.
 - Terminal
   - Shell: a path; empty runs the login shell, on Windows `pwsh`, else `powershell`, else `cmd`. On Windows a session takes the registry's environment as it starts.

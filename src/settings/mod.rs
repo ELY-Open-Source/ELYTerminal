@@ -1,3 +1,4 @@
+mod background;
 mod store;
 pub mod window;
 
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
+pub use background::{Background, Gradient, Mask, Repeat};
 pub use store::{SettingsStore, load, save};
 
 /// Where new sessions start: home, the shown folder, `start_folder`.
@@ -103,8 +105,8 @@ pub struct Settings {
     pub dark_theme: Option<String>,
     /// Themes the user made, each from Ely Dark.
     pub custom_themes: Vec<themes::CustomTheme>,
-    /// A picture under the terminal; empty for none.
-    pub background_image: String,
+    /// The background's fields; empty paints nothing.
+    pub background: Background,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -170,7 +172,7 @@ impl Default for Settings {
             theme: themes::default_id().into(),
             dark_theme: None,
             custom_themes: Vec::new(),
-            background_image: String::new(),
+            background: Background::default(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             font_size: 13.0,
@@ -258,9 +260,7 @@ impl Settings {
                 theme.id
             );
         }
-        if !self.background_image.is_empty() {
-            background_image(&self.background_image)?;
-        }
+        self.background.validate()?;
         anyhow::ensure!(!self.font_family.is_empty(), "font_family is empty");
         anyhow::ensure!(
             !self.font_fallbacks.iter().any(String::is_empty),
@@ -278,20 +278,6 @@ impl Settings {
         );
         Ok(())
     }
-}
-
-/// The background picture: a full path to a file.
-pub fn background_image(image: &str) -> anyhow::Result<PathBuf> {
-    let path = Path::new(image);
-    anyhow::ensure!(
-        path.is_absolute(),
-        "background_image is {image:?}, not a full path"
-    );
-    anyhow::ensure!(
-        path.is_file(),
-        "background_image is {image:?}, which names no file"
-    );
-    Ok(path.to_path_buf())
 }
 
 /// `folder` to start sessions in: a full path that exists.

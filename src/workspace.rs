@@ -7,7 +7,7 @@ use ely_gpui_component::{
     motion::Reorder,
     primitives::{FocusScope, IconName},
     shell::{ColumnShell, ResizeBorder, ShellColumn},
-    theme::ControlSize,
+    theme::{ActiveTheme, ControlSize},
     typography::Caption,
 };
 use gpui::{
@@ -295,7 +295,17 @@ impl Render for Workspace {
         self.background.fit(window);
         let now = Instant::now();
         self.tick(now, cx);
-        let settings = SettingsStore::get(cx);
+        let settings = SettingsStore::get(cx).clone();
+        let base = cx.theme().colors.bg;
+        let wallpaper = match settings.background.style() {
+            Ok(style) => {
+                crate::background::render(&style, settings.background_opacity, base, window, cx)
+            }
+            Err(error) => {
+                log::error!("background: {error:#}");
+                None
+            }
+        };
         let workspace = cx.entity();
         // It leads the first column or ends the last.
         let left = column_toggle(
@@ -437,6 +447,7 @@ impl Render for Workspace {
         }
         // The context sits above the focus root, so its keys work wherever focus is.
         crate::interface::dress(div(), cx)
+            .relative()
             .size_full()
             .key_context(CONTEXT)
             .map(menus::window_actions)
@@ -472,7 +483,13 @@ impl Render for Workspace {
             .child(
                 ResizeBorder::new()
                     .when(self.background.see_through(), ResizeBorder::glass)
-                    .child(FocusScope::new(&self.focus).root().size_full().child(shell)),
+                    .child(
+                        div()
+                            .relative()
+                            .size_full()
+                            .children(wallpaper)
+                            .child(FocusScope::new(&self.focus).root().size_full().child(shell)),
+                    ),
             )
     }
 }

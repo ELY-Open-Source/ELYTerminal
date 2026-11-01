@@ -83,8 +83,10 @@ pub fn load(path: &Path) -> anyhow::Result<Settings> {
             return Err(error).with_context(|| format!("settings: cannot read {}", path.display()));
         }
     };
-    let mut reader = serde_json::Deserializer::from_str(&text);
-    let settings: Settings = serde_path_to_error::deserialize(&mut reader).map_err(|error| {
+    let value: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|error| anyhow::anyhow!("settings: {} does not parse: {error}", path.display()))?;
+    let value = migrate_background(value, path)?;
+    let settings: Settings = serde_path_to_error::deserialize(value).map_err(|error| {
         anyhow::anyhow!(
             "settings: {} does not parse at `{}`: {}",
             path.display(),
@@ -92,9 +94,6 @@ pub fn load(path: &Path) -> anyhow::Result<Settings> {
             error.inner()
         )
     })?;
-    reader
-        .end()
-        .with_context(|| format!("settings: {} does not parse", path.display()))?;
     settings
         .validate()
         .with_context(|| format!("settings: {} holds a bad value", path.display()))?;
@@ -102,7 +101,58 @@ pub fn load(path: &Path) -> anyhow::Result<Settings> {
     Ok(settings)
 }
 
-/// Writes a temp file beside `path`, then renames it over `path`.
+/// A file from before the background's own fields moves its picture and style there.
+fn migrate_background(
+    mut value: serde_json::Value,
+    path: &Path,
+) -> anyhow::Result<serde_json::Value> {
+    let Some(object) = value.as_object_mut() else {
+        return Ok(value);
+    };
+    let style = object
+        .remove("background_style")
+        .and_then(|style| style.as_str().map(str::to_string))
+        .filter(|style| !style.trim().is_empty());
+    let image = object
+        .remove("background_image")
+        .and_then(|image| image.as_str().map(str::to_string))
+        .filter(|image| !image.trim().is_empty());
+    if object.contains_key("background") {
+        if style.is_some() || image.is_some() {
+            log::warn!(
+                "settings: {} keeps its background fields; the old style passes by",
+                path.display()
+            );
+        }
+        return Ok(value);
+    }
+    let text = match (style, image) {
+        (Some(style), image) => {
+            if image.is_some() {
+                log::warn!(
+                    "settings: {} keeps background_style; background_image passes by",
+                    path.display()
+                );
+            }
+            style
+        }
+        (None, Some(image)) => format!("background-image: url(\"{image}\");"),
+        (None, None) => return Ok(value),
+    };
+    let parsed = crate::background::parse(&text)
+        .with_context(|| format!("settings: {} holds a bad background", path.display()))?;
+    object.insert(
+        "background".into(),
+        serde_json::to_value(super::Background::from_style(&parsed))
+            .context("settings: cannot encode the background")?,
+    );
+    log::info!(
+        "settings: {} moves the background onto its own fields",
+        path.display()
+    );
+    Ok(value)
+}
+
 pub fn save(path: &Path, settings: &Settings) -> anyhow::Result<()> {
     let folder = path
         .parent()
@@ -257,6 +307,45 @@ mod tests {
         named(r#"{ "font_size": "large" }"#, "`font_size`");
         named(r#"{ "font_sise": 12 }"#, "font_sise");
         named(r#"{ "font_size": 12 } x"#, "trailing characters");
+        fs::remove_dir_all(folder).expect("cleanup");
+    }
+
+    #[test]
+    fn an_old_background_moves_onto_its_fields() {
+        let folder = folder("migrate");
+        let path = folder.join("settings.json");
+        fs::create_dir_all(&folder).expect("folder");
+        let image = folder.join("ely.png");
+        fs::write(&image, b"\x89PNG").expect("a picture");
+        let old = serde_json::json!({ "background_image": image.to_str().expect("utf-8") });
+        fs::write(&path, old.to_string()).expect("write");
+        let settings = load(&path).expect("loads");
+        assert_eq!(settings.background.image, image.display().to_string());
+        assert_eq!(settings.background.size, "cover");
+        // A whole style moves field by field.
+        let style = format!(
+            "background-color: #102030; background-image: url(\"{}\"); \
+             background-size: contain; background-position: 100% 100%; \
+             background-repeat: no-repeat; opacity: 0.5; \
+             mask-image: linear-gradient(90deg, transparent, black, black); \
+             mask-size: 40% 100%; mask-position: right top;",
+            image.display()
+        );
+        let old = serde_json::json!({ "background_style": style });
+        fs::write(&path, old.to_string()).expect("write");
+        let background = load(&path).expect("loads").background;
+        assert_eq!(background.color, "#102030ff");
+        assert_eq!(background.size, "contain");
+        assert_eq!(background.position, "100% 100%");
+        assert_eq!(background.repeat, crate::settings::Repeat::NoRepeat);
+        assert_eq!(background.opacity, 0.5);
+        let mask = background.mask.expect("a mask");
+        assert_eq!(mask.size, "40% 100%");
+        assert_eq!(mask.position, "right top");
+        assert_eq!(mask.stops.len(), 3);
+        // An empty picture leaves nothing behind.
+        fs::write(&path, r#"{ "background_image": "" }"#).expect("write");
+        assert!(load(&path).expect("loads").background.is_empty());
         fs::remove_dir_all(folder).expect("cleanup");
     }
 
