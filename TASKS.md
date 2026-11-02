@@ -267,7 +267,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 
 ## 43. 0.2.2
 
-- [ ] T139 Issue #52: closing a window on a Mac with a Touch Bar does not abort. The macOS fork's AccessKit `SubclassingAdapter` restores the content view's class at close and drops the KVO AppKit's Touch Bar finder set on it; the fork hosts AccessKit's plain `Adapter` on GPUIView, as zed#65186 does. Reproduced first under a TouchBarServer.
+- [x] T139 Issue #52: closing a window on a Mac with a Touch Bar does not abort. The macOS fork's AccessKit `SubclassingAdapter` restores the content view's class at close and drops the KVO AppKit's Touch Bar finder set on it; the fork hosts AccessKit's plain `Adapter` on GPUIView, as zed#65186 does. Reproduced first under a TouchBarServer.
 - [ ] T140 Issue #60: a font weight for normal text, 100 to 900, in Settings › Appearance; bold text stays bolder.
 - [ ] T141 Issue #60: a CJK font, tried for CJK characters before the fallbacks; empty keeps today's behaviour.
 - [ ] T142 Issue #60: on Windows, CJK text as clear as in Windows Terminal; gpui's DirectWrite path compared with Windows Terminal's on the owner's PC, fixed in the Windows fork where a cause shows.
