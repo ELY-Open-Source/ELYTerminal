@@ -55,3 +55,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, the comment before posting: FAIL. It said 33 files; the PR changes 28, +2,739 and -153. Fixed.
 - Round 2: PASS. Posted; the PR stays open.
+
+## T150
+
+- Round 1, 5309400: FAIL. PRD said closing any window leaves the app running, where the last terminal window quits it; the guides left out bold's 900 cap, WSL's Docker Desktop exclusion and the Touch Bar fix. Each mended.
