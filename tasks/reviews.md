@@ -23,3 +23,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 ## T142
 
 - Round 1, 81df238 and 2c05590: PASS. A probe built on the real store and interface switched three cached windows and a new one; without the refresh the cached view stayed grayscale.
+
+## T143
+
+- Round 1, 65dbc86 and 2e9bfed: PASS. Thirteen probes on the glide functions under a driven clock; restoring the old target start, the early inversion or the second clock read each failed them.
