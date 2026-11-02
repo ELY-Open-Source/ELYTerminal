@@ -12,3 +12,4 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, be0264d: FAIL. The cursor preview kept the normal weight, and AGENTS named the bundled JetBrains Mono Regular and Bold alone, where Ely bundles Medium too. Fixed in the next commit.
 - Round 2, 900d408: FAIL. AGENTS gave Medium to 401 through 500, where font-kit draws 450 and 499 Regular. AGENTS names the faces at 400, 401, 450, 499 and 500 as measured.
+- Round 3, 3283b88: PASS.
