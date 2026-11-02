@@ -60,3 +60,9 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, 5309400: FAIL. PRD said closing any window leaves the app running, where the last terminal window quits it; the guides left out bold's 900 cap, WSL's Docker Desktop exclusion and the Touch Bar fix. Each mended.
 - Round 2, f04466a: PASS.
+
+## T151
+
+- Round 1, the notes: FAIL. WSL lacked Docker Desktop's exclusion, the 1/255 measure read as general, and New session here's failure dialog was left out. Each mended.
+- Round 2, the notes: PASS. v0.2.2 published at a0550a6, twelve assets: CI passed on macOS, Windows and Linux; the Windows zip from `scripts/windows-zip.ps1` on the owner's PC after its 415 tests (sha256 d4267f60…); the four Linux packages from run 41524992041, checked against its SHA-256 file; the disk image from Release run 41526766309, stapled and accepted by Gatekeeper as notarized Developer ID, its app 0.2.2. The version-less links resolve to it. The tap holds 0.2.2, installed into a temp folder, team 9PDD8M2SMS, and removed; winget: `winget validate` passed, microsoft/winget-pkgs#469024 beside #466704.
+- Round 3, the replies to #52, #55 and #60: FAIL. #60 promised the nearest face where font-kit matches its own way; #55 promised folder-following to any program alone. Both mended to the code, round 3 the last; posted, the three closed as completed.
