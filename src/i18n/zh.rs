@@ -142,7 +142,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.terminal.files_menu", "文件菜单"),
     (
         "et.terminal.files_menu_hint",
-        "右键点按可打开、复制路径或在此新建会话",
+        "右键名称可打开或复制；右键“文件”标签可展开新建会话选项",
     ),
     ("et.terminal.ely", "Ely"),
     ("et.terminal.ely_hint", "她从窗口上方探出头，表情随会话变化"),
@@ -211,6 +211,9 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.panel.files", "文件"),
     ("et.files.open", "打开"),
     ("et.files.new_session", "在此新建会话"),
+    ("et.files.choose_folder", "选择文件夹新建会话…"),
+    ("et.files.folder_failed", "无法在所选文件夹新建会话"),
+    ("et.files.dismiss", "关闭"),
     ("et.files.copy_path", "复制路径"),
     ("et.panel.no_folder", "此 shell 不报告文件夹。"),
     ("et.status.line", "{state}：{said}"),

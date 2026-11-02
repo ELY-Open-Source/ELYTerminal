@@ -148,7 +148,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.terminal.files_menu", "Files menu"),
     (
         "et.terminal.files_menu_hint",
-        "A right press opens, copies, or starts a session",
+        "Right-click a name for actions, or the Files tab for a new session",
     ),
     ("et.terminal.ely", "Ely"),
     (
@@ -226,6 +226,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.panel.files", "Files"),
     ("et.files.open", "Open"),
     ("et.files.new_session", "New session here"),
+    ("et.files.choose_folder", "Choose folder for a new session…"),
+    (
+        "et.files.folder_failed",
+        "Cannot start a session in the selected folder",
+    ),
+    ("et.files.dismiss", "Close"),
     ("et.files.copy_path", "Copy path"),
     ("et.panel.no_folder", "This shell reports no folder."),
     ("et.status.line", "{state}: {said}"),

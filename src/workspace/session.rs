@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context as _;
 use gpui::{Context, EntityId, Window};
 
 use super::Workspace;
@@ -19,7 +20,9 @@ impl Workspace {
             return;
         };
         let shell = SettingsStore::get(cx).shell.clone();
-        self.open(&shell, Vec::new(), start, None, window, cx);
+        if let Err(error) = self.open(&shell, Vec::new(), start, None, window, cx) {
+            log::error!("app: no new session: {error:#}");
+        }
     }
 
     /// A profile's session: `shell` with `args`, in `folder` or where Start in says.
@@ -38,7 +41,9 @@ impl Workspace {
             },
         };
         log::info!("app: a profile opens {shell} with {} arguments", args.len());
-        self.open(&shell, args, start, None, window, cx);
+        if let Err(error) = self.open(&shell, args, start, None, window, cx) {
+            log::error!("app: no profile session: {error:#}");
+        }
     }
 
     /// Where Start in puts a new session; none when its folder is gone.
@@ -77,28 +82,27 @@ impl Workspace {
             return;
         };
         log::info!("app: session {id:?} duplicates into {}", folder.display());
-        self.open(&shell, args, Start::In(folder), Some(index + 1), window, cx);
+        if let Err(error) = self.open(&shell, args, Start::In(folder), Some(index + 1), window, cx)
+        {
+            log::error!("app: no duplicate session: {error:#}");
+        }
     }
 
     /// The shown shell in `folder`, right after the shown row.
-    pub fn here(&mut self, folder: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        let Some((shell, args)) = self
+    pub fn here(
+        &mut self,
+        folder: PathBuf,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        let (shell, args) = self
             .sessions
             .get(self.active)
             .map(|session| (session.shell.clone(), session.args.clone()))
-        else {
-            log::error!("app: no session to open {}", folder.display());
-            return;
-        };
+            .context("app: no active session for the chosen folder")?;
         log::info!("app: session here {}", folder.display());
-        self.open(
-            &shell,
-            args,
-            Start::In(folder),
-            Some(self.active + 1),
-            window,
-            cx,
-        );
+        let at = Some(self.active + 1);
+        self.open(&shell, args, Start::In(folder), at, window, cx)
     }
 
     /// Shows a `shell` session with `args` from `start`, at `at` or last.
@@ -110,20 +114,16 @@ impl Workspace {
         at: Option<usize>,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> anyhow::Result<()> {
         let settings = SettingsStore::get(cx);
-        let started = launch(shell, &args, start, &cx.global::<ShellIntegration>().0)
-            .and_then(|launch| Ok((spawn(&launch, (80, 24), (8, 16), config(settings))?, launch)));
-        match started {
-            Ok(((pty, events), launch)) => {
-                self.add(pty, events, launch, args, window, cx);
-                let last = self.sessions.len() - 1;
-                if let Some(at) = at {
-                    self.move_session(last, at);
-                }
-                self.select(at.map_or(last, |at| at.min(last)), window, cx);
-            }
-            Err(error) => log::error!("app: no new session: {error:#}"),
+        let launch = launch(shell, &args, start, &cx.global::<ShellIntegration>().0)?;
+        let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(settings))?;
+        self.add(pty, events, launch, args, window, cx);
+        let last = self.sessions.len() - 1;
+        if let Some(at) = at {
+            self.move_session(last, at);
         }
+        self.select(at.map_or(last, |at| at.min(last)), window, cx);
+        Ok(())
     }
 }

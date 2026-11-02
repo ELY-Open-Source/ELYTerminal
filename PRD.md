@@ -106,7 +106,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - A switch at the top, centered below the title bar: Git, Files.
 - Files shows the active session's working directory as a tree, folders first, Git status colors on names.
 - Double press: a folder opens, a file opens in the system's default app.
-- A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. Off by default; off, a right press opens nothing.
+- A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. A right press on the Files tab reveals a row between the tabs and the tree, pushing the tree down, to choose one folder through the system dialog and start a session there. A second right press, choosing the action, switching to Git, hiding the panel or disabling Files menu closes the row. Blank space opens no menu; cancellation changes nothing and a failure is shown. Off by default; off, a right press opens nothing.
 - It reloads when the session reports a new directory and at each prompt, and reads its open folders again each second while it shows, so a file another program makes, renames or deletes shows within a second, Git's marks with it.
 
 ## 9. Right panel: Git
