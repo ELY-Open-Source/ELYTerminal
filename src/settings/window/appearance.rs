@@ -13,8 +13,8 @@ use ely_gpui_component::{
     theme::{ActiveTheme, ControlSize, Radius, TextSize},
 };
 use gpui::{
-    App, Context, Div, Entity, ParentElement, SharedString, Styled, Window, div, prelude::*, px,
-    relative,
+    App, Context, Div, Entity, FontWeight, ParentElement, SharedString, Styled, Window, div,
+    prelude::*, px, relative,
 };
 
 use self::cards::grid;
@@ -466,6 +466,7 @@ fn prompt(settings: &Settings, theme: &TerminalTheme, lit: bool, cx: &App) -> Di
         .bg(theme.background)
         .text_color(theme.foreground)
         .font_family(settings.font_family.clone())
+        .font_weight(FontWeight(settings.font_weight))
         .text_size(px(settings.font_size))
         .line_height(relative(settings.line_height))
         .child(div().text_color(theme.ansi[2]).child("$"))
