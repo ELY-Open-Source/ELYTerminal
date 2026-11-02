@@ -59,3 +59,4 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 ## T150
 
 - Round 1, 5309400: FAIL. PRD said closing any window leaves the app running, where the last terminal window quits it; the guides left out bold's 900 cap, WSL's Docker Desktop exclusion and the Touch Bar fix. Each mended.
+- Round 2, f04466a: PASS.
