@@ -3,9 +3,10 @@
 use std::path::PathBuf;
 
 use anyhow::Context as _;
+use ely_gpui_component::lists::TreeDrag;
 use gpui::{Context, ExternalPaths};
 
-use super::view::TerminalView;
+use super::view::{TerminalEvent, TerminalView};
 
 /// What a POSIX shell reads specially in a path: Ghostty's list, and zsh's `extendedglob` marks.
 const SPECIAL: &str = "\\ ()[]{}<>\"'`!#$&;|*?^~";
@@ -72,7 +73,17 @@ pub fn typed(paths: &[PathBuf], quote: Quote) -> anyhow::Result<String> {
 impl TerminalView {
     /// Types the dropped paths at the cursor as a paste; a path it cannot type stops the drop.
     pub(super) fn drop_paths(&mut self, dropped: &ExternalPaths, cx: &mut Context<Self>) {
-        let (paths, quote) = (dropped.paths(), self.pty.quote);
+        self.type_paths(dropped.paths(), cx);
+    }
+
+    /// A Files node's drag landed here; its owner resolves the key to a path.
+    pub(super) fn dragged(&mut self, drag: &TreeDrag, cx: &mut Context<Self>) {
+        cx.emit(TerminalEvent::Dragged(drag.key().clone()));
+    }
+
+    /// Types `paths` at the cursor as a paste; a path the session's shell cannot take typed stops it.
+    pub fn type_paths(&mut self, paths: &[PathBuf], cx: &mut Context<Self>) {
+        let quote = self.pty.quote;
         match typed(paths, quote) {
             Ok(text) => {
                 log::info!(
@@ -83,7 +94,7 @@ impl TerminalView {
                 self.paste_text(&text, cx);
             }
             Err(error) => log::error!(
-                "terminal {}: the drop types nothing: {error:#}",
+                "terminal {}: the paths type nothing: {error:#}",
                 self.pty.pid
             ),
         }

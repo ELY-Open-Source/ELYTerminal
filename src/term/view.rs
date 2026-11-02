@@ -14,12 +14,14 @@ use alacritty_terminal::{
 };
 use ely_gpui_component::{
     forms::{Copy, Paste, SelectAll},
+    lists::TreeDrag,
     theme::ActiveTheme,
 };
 use futures::StreamExt;
 use gpui::{
     Bounds, Context, EventEmitter, ExternalPaths, FocusHandle, Focusable, IntoElement, MouseButton,
-    ParentElement, Pixels, Render, Styled, Subscription, Task, Window, div, prelude::*, px,
+    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Task, Window, div,
+    prelude::*, px,
 };
 
 use super::{
@@ -60,6 +62,8 @@ pub enum TerminalEvent {
     /// Its last command's status changed, to this one.
     Ended(Option<i32>),
     Exited(ExitStatus),
+    /// A Files node's drag landed on it: the node's tree key.
+    Dragged(SharedString),
 }
 
 /// A program on a pseudo-terminal, drawn cell by cell in the theme and font the settings choose.
@@ -403,6 +407,7 @@ impl Render for TerminalView {
             .on_mouse_move(cx.listener(Self::mouse_move))
             .on_scroll_wheel(cx.listener(Self::wheel))
             .on_drop(cx.listener(|view, paths: &ExternalPaths, _, cx| view.drop_paths(paths, cx)))
+            .on_drop(cx.listener(|view, drag: &TreeDrag, _, cx| view.dragged(drag, cx)))
             .size_full()
             .px(px(settings.padding_x))
             .py(px(settings.padding_y))

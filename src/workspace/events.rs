@@ -46,6 +46,20 @@ impl Workspace {
                 session.waiting = true;
             }
             TerminalEvent::Shows(_) | TerminalEvent::Ended(_) => {}
+            TerminalEvent::Dragged(key) => {
+                if index != self.active {
+                    return;
+                }
+                match self.files.read(cx).path(key) {
+                    Some(path) => {
+                        log::info!("app: {} dragged onto the terminal", path.display());
+                        session
+                            .terminal
+                            .update(cx, |view, cx| view.type_paths(&[path], cx));
+                    }
+                    None => log::warn!("app: a tree drag of {key} types nothing"),
+                }
+            }
             TerminalEvent::Exited(status) => {
                 let pid = session.terminal.read(cx).pid();
                 log::info!("app: session {pid}'s program ended, {status}");
