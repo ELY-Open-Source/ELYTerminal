@@ -36,3 +36,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 ## T145
 
 - Round 1, 573710c: PASS. 32 real launches, each flag, bad input refused with the usage; xdg-terminal-exec at 80d6ea7 passed the folder as `--working-directory DIR`. Three zsh resize tests failed once under load and passed on the final gate, as in T141.
+
+## T146
+
+- Round 1, the reply to #59 before posting: PASS. Each claim and label matched the code and both catalogs. Posted and closed as not planned.
