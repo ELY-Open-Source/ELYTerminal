@@ -56,6 +56,15 @@ pub enum Backdrop {
     MicaAlt,
 }
 
+/// How glyphs antialias: grayscale, as Windows Terminal draws, or by subpixel.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Antialias {
+    #[default]
+    Grayscale,
+    Subpixel,
+}
+
 /// The interface's language, by the tag Ely's `I18n` names it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
@@ -114,6 +123,8 @@ pub struct Settings {
     /// Normal text's weight; bold sits 300 above it.
     pub font_weight: f32,
     pub line_height: f32,
+    /// Subpixel draws only on an opaque window, and never on macOS.
+    pub text_antialias: Antialias,
     pub ligatures: bool,
     pub cursor_style: CursorStyle,
     pub cursor_blink: bool,
@@ -181,6 +192,7 @@ impl Default for Settings {
             font_size: 13.0,
             font_weight: 400.0,
             line_height: 1.2,
+            text_antialias: Antialias::Grayscale,
             ligatures: true,
             cursor_style: CursorStyle::Block,
             cursor_blink: true,

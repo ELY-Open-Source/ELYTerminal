@@ -1,6 +1,6 @@
 mod cards;
-mod cjk;
 mod custom;
+mod glyphs;
 mod interface;
 
 use std::ops::RangeInclusive;
@@ -165,7 +165,8 @@ impl SettingsWindow {
                     settings.ligatures,
                     |settings, on| settings.ligatures = on,
                 )),
-            );
+            )
+            .when_some(self.antialias_row(cx), |font, row| font.row(row));
         let style = choice(
             &this,
             "cursor_style",

@@ -49,6 +49,13 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Draws Chinese, Japanese and Korean characters",
     ),
     ("et.appearance.cjk_clear", "Clear"),
+    ("et.appearance.antialias", "Antialiasing"),
+    (
+        "et.appearance.antialias_hint",
+        "Subpixel draws only while the window is opaque",
+    ),
+    ("et.antialias.grayscale", "Grayscale"),
+    ("et.antialias.subpixel", "Subpixel"),
     ("et.appearance.remove", "Remove"),
     ("et.appearance.cancel", "Cancel"),
     ("et.appearance.add_fallback", "Add fallback"),

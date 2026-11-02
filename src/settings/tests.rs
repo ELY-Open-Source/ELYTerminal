@@ -35,6 +35,15 @@ fn a_backdrop_is_acrylic_unless_named() {
 }
 
 #[test]
+fn antialias_is_grayscale_unless_subpixel_is_named() {
+    assert_eq!(Settings::default().text_antialias, Antialias::Grayscale);
+    let settings: Settings = serde_json::from_str(r#"{"text_antialias": "subpixel"}"#)
+        .expect("subpixel is an antialiasing");
+    assert_eq!(settings.text_antialias, Antialias::Subpixel);
+    assert!(serde_json::from_str::<Settings>(r#"{"text_antialias": "cleartype"}"#).is_err());
+}
+
+#[test]
 fn a_value_out_of_range_names_its_field() {
     let settings = Settings {
         line_height: 2.5,

@@ -7,8 +7,14 @@ use ely_gpui_component::{
 };
 use gpui::{Context, ParentElement, Styled, div, prelude::FluentBuilder};
 
-use super::super::{SettingsWindow, set};
-use crate::settings::SettingsStore;
+use super::super::{SettingsWindow, choice, set};
+use crate::settings::{Antialias, SettingsStore};
+
+/// Each antialiasing, its key and its name's key.
+const ANTIALIAS: [(Antialias, &str, &str); 2] = [
+    (Antialias::Grayscale, "grayscale", "et.antialias.grayscale"),
+    (Antialias::Subpixel, "subpixel", "et.antialias.subpixel"),
+];
 
 impl SettingsWindow {
     /// The family CJK characters draw in; empty leaves them to Family.
@@ -55,5 +61,27 @@ impl SettingsWindow {
         SettingsRow::new(word("et.appearance.cjk_font"))
             .description(word("et.appearance.cjk_font_hint"))
             .control(font)
+    }
+
+    /// Grayscale or subpixel glyphs; none on macOS, where gpui draws no subpixel.
+    pub(super) fn antialias_row(&self, cx: &Context<Self>) -> Option<SettingsRow> {
+        if cfg!(target_os = "macos") {
+            return None;
+        }
+        let now = SettingsStore::get(cx).text_antialias;
+        let control = choice(
+            &cx.entity(),
+            "text_antialias",
+            &ANTIALIAS,
+            now,
+            |settings, antialias| settings.text_antialias = antialias,
+            cx,
+        );
+        let row = SettingsRow::new(text(cx, "et.appearance.antialias", &[])).description(text(
+            cx,
+            "et.appearance.antialias_hint",
+            &[],
+        ));
+        Some(row.control(control))
     }
 }
