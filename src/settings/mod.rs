@@ -108,6 +108,8 @@ pub struct Settings {
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
+    /// Draws CJK characters; empty leaves them to the family.
+    pub cjk_font: String,
     pub font_size: f32,
     /// Normal text's weight; bold sits 300 above it.
     pub font_weight: f32,
@@ -175,6 +177,7 @@ impl Default for Settings {
             background_image: String::new(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
+            cjk_font: String::new(),
             font_size: 13.0,
             font_weight: 400.0,
             line_height: 1.2,

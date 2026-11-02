@@ -43,6 +43,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.appearance.fallbacks_hint",
         "Tried in order for characters the family lacks",
     ),
+    ("et.appearance.cjk_font", "CJK font"),
+    (
+        "et.appearance.cjk_font_hint",
+        "Draws Chinese, Japanese and Korean characters",
+    ),
+    ("et.appearance.cjk_clear", "Clear"),
     ("et.appearance.remove", "Remove"),
     ("et.appearance.cancel", "Cancel"),
     ("et.appearance.add_fallback", "Add fallback"),

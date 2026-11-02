@@ -105,6 +105,7 @@ pub struct SettingsWindow {
     /// Refusals so far; a field keyed by it drops its draft and shows the settings again.
     drafts: usize,
     font: Entity<TextInput>,
+    cjk_font: Entity<TextInput>,
     interface_font: Entity<TextInput>,
     /// A picker's input for each fallback family, and one for the family being added.
     fallbacks: Vec<Entity<TextInput>>,
@@ -138,6 +139,7 @@ impl SettingsWindow {
             input
         });
         let font = cx.new(|cx| TextInput::new(window, cx));
+        let cjk_font = cx.new(|cx| TextInput::new(window, cx));
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
@@ -188,6 +190,7 @@ impl SettingsWindow {
             failed: None,
             drafts: 0,
             font,
+            cjk_font,
             interface_font,
             fallbacks: Vec::new(),
             adding: false,

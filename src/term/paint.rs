@@ -25,6 +25,8 @@ pub struct Look {
     pub font_id: FontId,
     /// Draws icons the font lacks.
     pub icons: Font,
+    /// Draws CJK characters; none leaves them to `font`.
+    pub cjk: Option<Font>,
     pub size: Pixels,
     pub cell: Size<Pixels>,
     /// From a cell's top to the text's baseline.
@@ -257,11 +259,16 @@ fn paint_text(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: 
 /// Text runs for `text` in `style` and `color`: icons the font lacks take the icon font.
 fn runs(text: &str, style: &Style, color: Hsla, look: &Look, window: &Window) -> Vec<TextRun> {
     let base = face(style, &look.font);
+    let cjk = look.cjk.as_ref().map(|cjk| face(style, cjk));
     let system = window.text_system();
     let mut runs: Vec<TextRun> = Vec::new();
     for ch in text.chars() {
         let missing = private(ch) && system.advance(look.font_id, look.size, ch).is_err();
-        let font = if missing { &look.icons } else { &base };
+        let font = match &cjk {
+            _ if missing => &look.icons,
+            Some(cjk) if super::fonts::cjk(ch) => cjk,
+            _ => &base,
+        };
         match runs.last_mut() {
             Some(last) if last.font == *font => last.len += ch.len_utf8(),
             _ => runs.push(TextRun {

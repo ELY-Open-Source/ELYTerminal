@@ -1,4 +1,5 @@
 mod cards;
+mod cjk;
 mod custom;
 mod interface;
 
@@ -126,6 +127,7 @@ impl SettingsWindow {
         let font = SettingsSection::new(word("et.appearance.font"))
             .row(SettingsRow::new(word("et.appearance.family")).control(family))
             .row(fallbacks)
+            .row(self.cjk_row(cx))
             .row(
                 SettingsRow::new(word("et.appearance.size")).control(self.number(
                     "font_size",

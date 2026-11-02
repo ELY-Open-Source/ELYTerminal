@@ -43,6 +43,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.appearance.fallbacks_hint",
         "字体缺少的字符依次在这些字体中查找",
     ),
+    ("et.appearance.cjk_font", "中日韩字体"),
+    (
+        "et.appearance.cjk_font_hint",
+        "用于绘制中文、日文和韩文字符",
+    ),
+    ("et.appearance.cjk_clear", "清除"),
     ("et.appearance.remove", "移除"),
     ("et.appearance.cancel", "取消"),
     ("et.appearance.add_fallback", "添加后备字体"),
