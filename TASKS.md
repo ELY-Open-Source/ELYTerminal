@@ -270,7 +270,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T139 Issue #52: closing a window on a Mac with a Touch Bar does not abort. The macOS fork's AccessKit `SubclassingAdapter` restores the content view's class at close and drops the KVO AppKit's Touch Bar finder set on it; the fork hosts AccessKit's plain `Adapter` on GPUIView, as zed#65186 does. Reproduced first under a TouchBarServer.
 - [x] T140 Issue #60: a font weight for normal text, 100 to 900, in Settings › Appearance; bold text stays bolder.
 - [x] T141 Issue #60: a CJK font, tried for CJK characters before the fallbacks; empty keeps today's behaviour.
-- [ ] T142 Issue #60: on Windows, CJK text as clear as in Windows Terminal; gpui's DirectWrite path compared with Windows Terminal's on the owner's PC, fixed in the Windows fork where a cause shows.
+- [x] T142 Issue #60: on Windows, CJK text as clear as in Windows Terminal; gpui's DirectWrite path compared with Windows Terminal's on the owner's PC, fixed in the Windows fork where a cause shows.
 - [ ] T143 PR #54: the cursor glides to its new cell; the PR checked, fixed where needed, merged with its author.
 - [ ] T144 PR #56: a Files row dragged onto the terminal types its path; Ely's `TreeDrag` made public in Ely first; the PR checked, merged with its author.
 - [ ] T145 PR #53: the first session starts in a folder named by `--working-directory`, `--startingDirectory` or `-d`, and under Windows Terminal's Open in Terminal; the PR checked against T135's folder argument, merged with its author.
