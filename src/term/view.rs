@@ -70,9 +70,9 @@ pub struct TerminalView {
     pub(super) marked: Option<String>,
     /// The cursor's cell in the window, from the last layout.
     pub(super) caret: Bounds<Pixels>,
-    /// The cursor's glide: from cell, to cell and when it started, while it slides.
-    glide: Option<((usize, usize), (usize, usize), Instant)>,
-    /// The cell the cursor last settled on, against which a move starts a glide.
+    /// The cursor's glide to `target`: where it was drawn and when it set off.
+    glide: Option<((f32, f32), Instant)>,
+    /// The cell the cursor heads for; a new one starts a glide.
     target: Option<(usize, usize)>,
     pub(super) pointer: Pointer,
     /// The mouse mode, as the tap follows it.
@@ -211,44 +211,33 @@ impl TerminalView {
         self.pty.pid
     }
 
-    /// Where the cursor is drawn on its way to `to`, as a fractional cell.
+    /// Where the cursor is drawn on its way to `to`, in cells.
     pub(super) fn glide_position(&self, to: (usize, usize)) -> (f32, f32) {
-        let now = Instant::now();
+        let end = (to.0 as f32, to.1 as f32);
         match self.glide {
-            Some((from, end, start)) if end == to && from != end => {
-                let t = (now.duration_since(start).as_secs_f32() / GLIDE.as_secs_f32()).min(1.);
+            Some((from, start)) if self.target == Some(to) => {
+                let t = start.elapsed().as_secs_f32() / GLIDE.as_secs_f32();
+                if t >= 1. {
+                    return end;
+                }
                 let e = t * t * (3. - 2. * t);
-                (
-                    from.0 as f32 + (to.0 as f32 - from.0 as f32) * e,
-                    from.1 as f32 + (to.1 as f32 - from.1 as f32) * e,
-                )
+                (from.0 + (end.0 - from.0) * e, from.1 + (end.1 - from.1) * e)
             }
-            _ => (to.0 as f32, to.1 as f32),
+            _ => end,
         }
     }
 
-    /// Whether the cursor still glides, so the next frame redraws it.
-    pub(super) fn gliding(&self) -> bool {
-        self.glide.is_some_and(|(from, end, start)| from != end && Instant::now() - start < GLIDE)
-    }
-
-    /// Starts a glide when the cursor's target cell moves away from where it settled.
+    /// Starts a glide from where the cursor is drawn when its cell changes.
     fn follow(&mut self, target: Option<(usize, usize)>, smooth: bool) {
-        let Some(to) = target else {
-            self.glide = None;
-            self.target = None;
-            return;
-        };
-        if !smooth {
-            self.glide = None;
-            self.target = Some(to);
-            return;
+        match (self.target, target) {
+            (_, None) => self.glide = None,
+            (Some(from), Some(to)) if smooth && from != to => {
+                self.glide = Some((self.glide_position(from), Instant::now()));
+            }
+            (_, Some(_)) if !smooth => self.glide = None,
+            _ => {}
         }
-        if self.target != Some(to) {
-            let from = self.target.unwrap_or(to);
-            self.glide = Some((from, to, Instant::now()));
-            self.target = Some(to);
-        }
+        self.target = target;
     }
 
     /// What programs in this terminal say they are doing.
@@ -268,6 +257,8 @@ impl TerminalView {
             self.pty.graphics().resume();
         } else if !front {
             paint::drop_pictures(self.pictures.release(), window);
+            // Shown again, the cursor starts where it stands.
+            (self.glide, self.target) = (None, None);
         }
         self.front = front;
     }

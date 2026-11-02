@@ -100,13 +100,13 @@ pub fn grid(
                 (Some(text), Some(at), _) => paint_preedit(text, at, origin, &look, window),
                 (None, _, Some((cursor, shape))) => {
                     let at = input.read(cx).glide_position((cursor.row, cursor.column));
+                    // Until it lands, the cursor draws again.
+                    if at != (cursor.row as f32, cursor.column as f32) {
+                        window.request_animation_frame();
+                    }
                     paint_cursor(cursor, *shape, at, origin, &look, window)
                 }
                 _ => {}
-            }
-            // The cursor glides, so it draws again next frame until it settles.
-            if input.read(cx).gliding() {
-                window.request_animation_frame();
             }
         },
     )
@@ -455,17 +455,17 @@ fn paint_cursor(
     match shape {
         CursorShape::Block => {
             window.paint_quad(fill(whole, look.cursor));
-            // The character inverts on its own cell, never on half of two.
-            let cell_corner = origin
-                + point(cell.width * cursor.column as f32, cell.height * cursor.row as f32);
-            paint_alone(
-                &cursor.text,
-                look.cursor_text,
-                &cursor.style,
-                cell_corner,
-                look,
-                window,
-            );
+            // The character inverts once the block lands on it.
+            if at == (cursor.row as f32, cursor.column as f32) {
+                paint_alone(
+                    &cursor.text,
+                    look.cursor_text,
+                    &cursor.style,
+                    corner,
+                    look,
+                    window,
+                );
+            }
         }
         CursorShape::HollowBlock => {
             window.paint_quad(outline(whole, look.cursor, gpui::BorderStyle::Solid));

@@ -128,7 +128,7 @@ pub struct Settings {
     pub ligatures: bool,
     pub cursor_style: CursorStyle,
     pub cursor_blink: bool,
-    /// Glides the cursor to its new cell instead of jumping, as a line editor moves it.
+    /// The cursor glides to its new cell.
     pub cursor_smooth: bool,
     pub background_opacity: f32,
     pub background_blur: bool,
