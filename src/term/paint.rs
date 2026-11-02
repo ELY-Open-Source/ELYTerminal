@@ -2,6 +2,8 @@ mod glyphs;
 
 use std::{rc::Rc, sync::Arc};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use glyphs::draw;
 
 use alacritty_terminal::vte::ansi::CursorShape;
@@ -256,13 +258,14 @@ fn paint_text(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: 
     }
 }
 
-/// Text runs for `text` in `style` and `color`: icons the font lacks take the icon font.
+/// Text runs for `text` in `style` and `color`, each cluster in its first character's font.
 fn runs(text: &str, style: &Style, color: Hsla, look: &Look, window: &Window) -> Vec<TextRun> {
     let base = face(style, &look.font);
     let cjk = look.cjk.as_ref().map(|cjk| face(style, cjk));
     let system = window.text_system();
     let mut runs: Vec<TextRun> = Vec::new();
-    for ch in text.chars() {
+    for cluster in text.graphemes(true) {
+        let ch = cluster.chars().next().expect("a cluster holds a character");
         let missing = private(ch) && system.advance(look.font_id, look.size, ch).is_err();
         let font = match &cjk {
             _ if missing => &look.icons,
@@ -270,9 +273,9 @@ fn runs(text: &str, style: &Style, color: Hsla, look: &Look, window: &Window) ->
             _ => &base,
         };
         match runs.last_mut() {
-            Some(last) if last.font == *font => last.len += ch.len_utf8(),
+            Some(last) if last.font == *font => last.len += cluster.len(),
             _ => runs.push(TextRun {
-                len: ch.len_utf8(),
+                len: cluster.len(),
                 font: font.clone(),
                 color,
                 background_color: None,

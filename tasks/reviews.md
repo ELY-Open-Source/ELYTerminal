@@ -13,3 +13,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 - Round 1, be0264d: FAIL. The cursor preview kept the normal weight, and AGENTS named the bundled JetBrains Mono Regular and Bold alone, where Ely bundles Medium too. Fixed in the next commit.
 - Round 2, 900d408: FAIL. AGENTS gave Medium to 401 through 500, where font-kit draws 450 and 499 Regular. AGENTS names the faces at 400, 401, 450, 499 and 500 as measured.
 - Round 3, 3283b88: PASS.
+
+## T141
+
+- Round 1, ad79521: FAIL. Fonts went per character, so a variation selector or a mark left its Han base and lost the variant; vertical and small forms and the kana supplements fell outside the ranges. Runs now choose a font per grapheme cluster; the ranges hold U+FE10 to FE1F, FE50 to FE6F, 16FE0 to 16FFF and 1AFF0 to 1B16F.
