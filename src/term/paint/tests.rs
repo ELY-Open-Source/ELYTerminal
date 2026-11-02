@@ -32,3 +32,35 @@ fn icons_live_in_the_private_use_areas() {
     assert!(!private('a'));
     assert!(!private('中'));
 }
+
+#[test]
+fn bold_sits_300_above_the_text_up_to_900() {
+    let style = Style {
+        fg: gpui::black(),
+        bg: None,
+        bold: false,
+        italic: false,
+        underline: Underline::None,
+        underline_color: gpui::black(),
+        strike: false,
+    };
+    let bold = Style {
+        bold: true,
+        ..style
+    };
+    let weight = |text: f32, style: &Style| {
+        face(
+            style,
+            &gpui::Font {
+                weight: FontWeight(text),
+                ..gpui::font("JetBrains Mono")
+            },
+        )
+        .weight
+        .0
+    };
+    assert_eq!(weight(400., &style), 400.);
+    assert_eq!(weight(400., &bold), 700.);
+    assert_eq!(weight(300., &bold), 600.);
+    assert_eq!(weight(700., &bold), 900.);
+}

@@ -47,6 +47,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.cancel", "取消"),
     ("et.appearance.add_fallback", "添加后备字体"),
     ("et.appearance.size", "大小"),
+    ("et.appearance.weight", "字重"),
     ("et.appearance.line_height", "行高"),
     ("et.appearance.ligatures", "连字"),
     ("et.appearance.cursor", "光标"),

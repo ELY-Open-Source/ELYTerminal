@@ -42,7 +42,7 @@ pub(super) fn look(
         },
         fallbacks: (!settings.font_fallbacks.is_empty())
             .then(|| FontFallbacks::from_fonts(settings.font_fallbacks.clone())),
-        weight: FontWeight::NORMAL,
+        weight: FontWeight(settings.font_weight),
         style: FontStyle::Normal,
     };
     let text = px(points);
