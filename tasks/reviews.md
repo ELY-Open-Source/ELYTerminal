@@ -50,3 +50,8 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, abbdf17: FAIL. The acceptance row still named the pin `c2752ee` as unmerged and macOS as not run. It names `294a832` and the macOS checks.
 - Round 2, 41f7cd7: PASS.
+
+## T149
+
+- Round 1, the comment before posting: FAIL. It said 33 files; the PR changes 28, +2,739 and -153. Fixed.
+- Round 2: PASS. Posted; the PR stays open.
