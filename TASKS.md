@@ -273,7 +273,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T142 Issue #60: on Windows, CJK text as clear as in Windows Terminal; gpui's DirectWrite path compared with Windows Terminal's on the owner's PC, fixed in the Windows fork where a cause shows.
 - [x] T143 PR #54: the cursor glides to its new cell; the PR checked, fixed where needed, merged with its author.
 - [x] T144 PR #56: a Files row dragged onto the terminal types its path; Ely's `TreeDrag` made public in Ely first; the PR checked, merged with its author.
-- [ ] T145 PR #53: the first session starts in a folder named by `--working-directory`, `--startingDirectory` or `-d`, and under Windows Terminal's Open in Terminal; the PR checked against T135's folder argument, merged with its author.
+- [x] T145 PR #53: the first session starts in a folder named by `--working-directory`, `--startingDirectory` or `-d`, and under Windows Terminal's Open in Terminal; the PR checked against T135's folder argument, merged with its author.
 - [ ] T146 Issue #59: answered; Ely cannot be replaced.
 - [ ] T147 Issue #55: profiles, Windows Terminal's way: profiles of the user's own, each a name, a command line and a start folder, and detected ones, WSL distributions, Git Bash, PowerShell and cmd on Windows, the system's shells elsewhere; the + button's menu opens one.
 - [ ] T148 PR #57: a right press on the Files tab opens a folder picker that starts a session there; Ely's `SegmentedControl::on_context` in Ely first; the PR checked, merged with its author.

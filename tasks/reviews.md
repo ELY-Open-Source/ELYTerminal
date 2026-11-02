@@ -32,3 +32,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, 55552a0: FAIL. AGENTS said a drag from another tree types nothing; a probe tree whose key equals a listed path, and a drag that outlived a rebuild, typed it. A Files key is its path, one to one, so the path typed is the path the key names; the window holds no other `Tree`. AGENTS now says so.
 - Round 2, 482b16a: PASS. The reviewer withdrew the runtime finding; a drag that outlived a rebuild typed its own node's path, a gone key typed nothing.
+
+## T145
+
+- Round 1, 573710c: PASS. 32 real launches, each flag, bad input refused with the usage; xdg-terminal-exec at 80d6ea7 passed the folder as `--working-directory DIR`. Three zsh resize tests failed once under load and passed on the final gate, as in T141.
