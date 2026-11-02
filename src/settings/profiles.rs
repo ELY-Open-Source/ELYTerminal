@@ -30,6 +30,20 @@ impl Profile {
     }
 }
 
+/// `program` as a command line of one word, which `words` gives back.
+#[cfg(unix)]
+pub fn command_line(program: &str) -> anyhow::Result<String> {
+    let quoted = shlex::try_quote(program).with_context(|| format!("{program:?} quotes no way"))?;
+    Ok(quoted.into_owned())
+}
+
+/// `program` as a command line of one word; Windows reads no quote inside a path.
+#[cfg(windows)]
+pub fn command_line(program: &str) -> anyhow::Result<String> {
+    anyhow::ensure!(!program.contains('"'), "{program:?} holds a quote");
+    Ok(format!("\"{program}\""))
+}
+
 /// `command`'s program and arguments, as a POSIX shell splits it.
 #[cfg(unix)]
 pub fn words(command: &str) -> anyhow::Result<Vec<String>> {
@@ -88,6 +102,22 @@ mod tests {
         } else {
             assert_eq!(split("sh -c 'echo \"a b\"'"), ["sh", "-c", "echo \"a b\""]);
             assert!(words("ssh 'me@host").is_err());
+        }
+    }
+
+    #[test]
+    fn a_program_s_command_line_splits_back_into_it() {
+        let paths = if cfg!(windows) {
+            [
+                r"C:\Program Files\PowerShell\7\pwsh.exe",
+                r"C:\Windows\System32\cmd.exe",
+            ]
+        } else {
+            ["/tmp/shell with space/sh", "/bin/it's"]
+        };
+        for path in paths {
+            let line = command_line(path).expect(path);
+            assert_eq!(words(&line).expect(&line), [path]);
         }
     }
 

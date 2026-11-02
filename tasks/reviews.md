@@ -40,3 +40,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 ## T146
 
 - Round 1, the reply to #59 before posting: PASS. Each claim and label matched the code and both catalogs. Posted and closed as not planned.
+
+## T147
+
+- Round 1, 23a5ee0: FAIL. Add profile wrote the login shell's bare path, so `C:\Program Files\…` split at its space and was refused; an edit to one field saved it beside the other fields as saved, so a valid name cleared the refusal of a command still shown open. Add quotes the path through `command_line`; each edit saves the profile its three fields show.

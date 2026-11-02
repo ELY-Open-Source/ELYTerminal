@@ -18,7 +18,7 @@ use gpui::{
 
 use super::super::{SettingsWindow, set};
 use crate::{
-    settings::{Profile, SettingsStore},
+    settings::{Profile, SettingsStore, command_line},
     term::shell,
 };
 
@@ -47,23 +47,7 @@ pub fn fields(window: &mut Window, cx: &mut Context<SettingsWindow>) -> Vec<Fiel
         let name = input(profile.name, "et.profile.name", cx);
         let command = input(profile.command, "et.profile.command", cx);
         let folder = input(profile.folder, "et.profile.folder", cx);
-        let _typed = [
-            watch(&name, at, "name", |profile, name| profile.name = name, cx),
-            watch(
-                &command,
-                at,
-                "command",
-                |profile, line| profile.command = line,
-                cx,
-            ),
-            watch(
-                &folder,
-                at,
-                "folder",
-                |profile, folder| profile.folder = folder,
-                cx,
-            ),
-        ];
+        let _typed = [&name, &command, &folder].map(|input| watch(input, at, cx));
         let refused = None;
         made.push(Fields {
             name,
@@ -76,29 +60,28 @@ pub fn fields(window: &mut Window, cx: &mut Context<SettingsWindow>) -> Vec<Fiel
     made
 }
 
-/// Saves profile `at`'s `field` as `input` changes, or keeps why not.
-fn watch(
-    input: &Entity<TextInput>,
-    at: usize,
-    field: &'static str,
-    put: fn(&mut Profile, String),
-    cx: &mut Context<SettingsWindow>,
-) -> Subscription {
-    cx.subscribe(input, move |this, input, event: &InputEvent, cx| {
+/// Saves profile `at` as its three fields show it when `input` changes, or keeps why not.
+fn watch(input: &Entity<TextInput>, at: usize, cx: &mut Context<SettingsWindow>) -> Subscription {
+    cx.subscribe(input, move |this, _, event: &InputEvent, cx| {
         if !matches!(event, InputEvent::Changed) {
             return;
         }
-        let value = input.read(cx).text().to_string();
-        let saved = SettingsStore::update(cx, |settings| {
-            put(&mut settings.profiles[at], value.clone())
-        });
+        let fields = &this.profiles[at];
+        let read = |input: &Entity<TextInput>| input.read(cx).text().to_string();
+        let profile = Profile {
+            name: read(&fields.name),
+            command: read(&fields.command),
+            folder: read(&fields.folder),
+        };
+        let shown = format!("{profile:?}");
+        let saved = SettingsStore::update(cx, |settings| settings.profiles[at] = profile);
         this.profiles[at].refused = match saved {
             Ok(()) => {
-                log::info!("settings: profile {at}'s {field} is {value:?}");
+                log::info!("settings: profile {at} is {shown}");
                 None
             }
             Err(error) => {
-                log::debug!("settings: profile {at}'s {field} stays: {error:#}");
+                log::debug!("settings: profile {at} stays: {error:#}");
                 Some(format!("{error:#}").into())
             }
         };
@@ -157,7 +140,7 @@ fn chosen(input: Entity<TextInput>) -> impl Fn(PathBuf, &mut Window, &mut App) +
 
 /// A profile of the login shell, named after the first number free.
 fn add(this: &Entity<SettingsWindow>, window: &mut Window, cx: &mut App) {
-    let command = match shell::default_shell() {
+    let command = match shell::default_shell().and_then(|program| command_line(&program)) {
         Ok(command) => command,
         Err(error) => return log::error!("settings: no profile added: {error:#}"),
     };

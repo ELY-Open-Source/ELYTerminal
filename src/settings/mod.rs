@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
-pub use profiles::{Profile, words};
+pub use profiles::{Profile, command_line, words};
 pub use store::{SettingsStore, load, save};
 
 /// Where new sessions start: home, the shown folder, `start_folder`.
