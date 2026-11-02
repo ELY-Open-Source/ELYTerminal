@@ -4,12 +4,21 @@ use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::Context as _;
 
-const USAGE: &str = "usage: elyterminal [FOLDER]";
+const USAGE: &str = "usage: elyterminal [FOLDER | --working-directory FOLDER | --startingDirectory FOLDER | -d FOLDER]";
 
-/// The one folder `args` names; anything else is an error.
+/// xdg-terminal-exec's, Windows Terminal's and the short form.
+const FOLDER_OPTIONS: [&str; 3] = ["--working-directory", "--startingDirectory", "-d"];
+
+/// The folder `args` names, bare or after an option.
 pub fn folder(mut args: impl Iterator<Item = OsString>) -> anyhow::Result<Option<PathBuf>> {
     let Some(arg) = args.next() else {
         return Ok(None);
+    };
+    let arg = if FOLDER_OPTIONS.iter().any(|option| arg == *option) {
+        args.next()
+            .with_context(|| format!("app: the folder option has no value; {USAGE}"))?
+    } else {
+        arg
     };
     anyhow::ensure!(
         args.next().is_none(),
@@ -62,6 +71,20 @@ mod tests {
     }
 
     #[test]
+    fn linux_and_windows_directory_options_name_the_folder() {
+        let here = std::env::temp_dir();
+        let here = here.to_str().expect("text");
+        for option in FOLDER_OPTIONS {
+            let named = folder(args(&[option, here])).expect(option);
+            assert_eq!(
+                named,
+                Some(std::path::absolute(here).expect("a full path")),
+                "{option}"
+            );
+        }
+    }
+
+    #[test]
     fn two_arguments_or_a_file_are_refused() {
         let here = std::env::temp_dir();
         let here = here.to_str().expect("text");
@@ -73,6 +96,14 @@ mod tests {
         let file = std::env::current_exe().expect("this test");
         let error = folder(args(&[file.to_str().expect("text")])).expect_err("a file");
         assert!(error.to_string().contains("names no folder"), "{error}");
+
+        let error = folder(args(&["-d"])).expect_err("no value");
+        assert!(error.to_string().contains("has no value"), "{error}");
+        let error = folder(args(&["-d", here, here])).expect_err("two folders");
+        assert!(
+            error.to_string().contains("more than one argument"),
+            "{error}"
+        );
     }
 
     #[test]
