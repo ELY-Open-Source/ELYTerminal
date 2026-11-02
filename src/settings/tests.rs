@@ -43,6 +43,12 @@ fn a_value_out_of_range_names_its_field() {
     let error = settings.validate().expect_err("2.5 is too tall");
     assert_eq!(error.to_string(), "line_height is 2.5, outside 1 to 2");
     let settings = Settings {
+        font_weight: 950.0,
+        ..Settings::default()
+    };
+    let error = settings.validate().expect_err("950 is past black");
+    assert_eq!(error.to_string(), "font_weight is 950, outside 100 to 900");
+    let settings = Settings {
         scrollback: 100_001,
         ..Settings::default()
     };

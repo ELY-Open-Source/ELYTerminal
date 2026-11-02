@@ -47,6 +47,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.cancel", "Cancel"),
     ("et.appearance.add_fallback", "Add fallback"),
     ("et.appearance.size", "Size"),
+    ("et.appearance.weight", "Weight"),
     ("et.appearance.line_height", "Line height"),
     ("et.appearance.ligatures", "Ligatures"),
     ("et.appearance.cursor", "Cursor"),

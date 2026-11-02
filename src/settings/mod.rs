@@ -109,6 +109,8 @@ pub struct Settings {
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
     pub font_size: f32,
+    /// Normal text's weight; bold sits 300 above it.
+    pub font_weight: f32,
     pub line_height: f32,
     pub ligatures: bool,
     pub cursor_style: CursorStyle,
@@ -174,6 +176,7 @@ impl Default for Settings {
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             font_size: 13.0,
+            font_weight: 400.0,
             line_height: 1.2,
             ligatures: true,
             cursor_style: CursorStyle::Block,
@@ -207,6 +210,7 @@ impl Default for Settings {
 
 pub const INTERFACE_SIZE: RangeInclusive<u8> = 12..=16;
 pub const FONT_SIZE: RangeInclusive<f32> = 6.0..=72.0;
+pub const FONT_WEIGHT: RangeInclusive<f32> = 100.0..=900.0;
 pub const LINE_HEIGHT: RangeInclusive<f32> = 1.0..=2.0;
 pub const OPACITY: RangeInclusive<f32> = 0.3..=1.0;
 pub const PADDING: RangeInclusive<f32> = 0.0..=64.0;
@@ -221,6 +225,7 @@ impl Settings {
     pub fn validate(&self) -> anyhow::Result<()> {
         within("interface_size", self.interface_size, &INTERFACE_SIZE)?;
         within("font_size", self.font_size, &FONT_SIZE)?;
+        within("font_weight", self.font_weight, &FONT_WEIGHT)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;
         within("background_opacity", self.background_opacity, &OPACITY)?;
         within("padding_x", self.padding_x, &PADDING)?;

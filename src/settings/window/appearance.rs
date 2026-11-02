@@ -13,8 +13,8 @@ use ely_gpui_component::{
     theme::{ActiveTheme, ControlSize, Radius, TextSize},
 };
 use gpui::{
-    App, Context, Div, Entity, ParentElement, SharedString, Styled, Window, div, prelude::*, px,
-    relative,
+    App, Context, Div, Entity, FontWeight, ParentElement, SharedString, Styled, Window, div,
+    prelude::*, px, relative,
 };
 
 use self::cards::grid;
@@ -25,8 +25,8 @@ use super::{
 use crate::{
     blur,
     settings::{
-        Backdrop, CursorStyle, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings,
-        SettingsStore,
+        Backdrop, CursorStyle, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING,
+        Settings, SettingsStore,
     },
     themes::{self, TerminalTheme},
 };
@@ -133,6 +133,16 @@ impl SettingsWindow {
                     &FONT_SIZE,
                     (1.0, 1),
                     |settings, size| settings.font_size = size,
+                    cx,
+                )),
+            )
+            .row(
+                SettingsRow::new(word("et.appearance.weight")).control(self.number(
+                    "font_weight",
+                    settings.font_weight,
+                    &FONT_WEIGHT,
+                    (100.0, 0),
+                    |settings, weight| settings.font_weight = weight,
                     cx,
                 )),
             )
@@ -456,6 +466,7 @@ fn prompt(settings: &Settings, theme: &TerminalTheme, lit: bool, cx: &App) -> Di
         .bg(theme.background)
         .text_color(theme.foreground)
         .font_family(settings.font_family.clone())
+        .font_weight(FontWeight(settings.font_weight))
         .text_size(px(settings.font_size))
         .line_height(relative(settings.line_height))
         .child(div().text_color(theme.ansi[2]).child("$"))

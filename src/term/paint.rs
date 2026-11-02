@@ -146,9 +146,9 @@ fn paint_preedit(
 fn face(style: &Style, base: &Font) -> Font {
     Font {
         weight: if style.bold {
-            FontWeight::BOLD
+            FontWeight((base.weight.0 + 300.).min(900.))
         } else {
-            FontWeight::NORMAL
+            base.weight
         },
         style: if style.italic {
             FontStyle::Italic

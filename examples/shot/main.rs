@@ -74,6 +74,12 @@ fn main() {
                             aim = settings.expect("a settings window");
                             capture::front(number(aim, cx)).expect("the window on screen");
                         }
+                        "close" => {
+                            aim.update(cx, |_, window, _| window.remove_window())
+                                .expect("the window lives");
+                            log::info!("shot: closed the window");
+                            aim = main;
+                        }
                         spec if spec.starts_with("drop@") => {
                             let paths =
                                 std::env::var("SHOT_DROP").expect("SHOT_DROP names the paths");
