@@ -45,3 +45,7 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 
 - Round 1, 23a5ee0: FAIL. Add profile wrote the login shell's bare path, so `C:\Program Files\…` split at its space and was refused; an edit to one field saved it beside the other fields as saved, so a valid name cleared the refusal of a command still shown open. Add quotes the path through `command_line`; each edit saves the profile its three fields show.
 - Round 2, de03bbd: PASS. Both repros fixed; a duplicate name, a missing program and folder each refused until mended; Duplicate kept the arguments.
+
+## T148
+
+- Round 1, abbdf17: FAIL. The acceptance row still named the pin `c2752ee` as unmerged and macOS as not run. It names `294a832` and the macOS checks.
