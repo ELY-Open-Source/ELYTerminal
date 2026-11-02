@@ -120,7 +120,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 
 ## 10. Settings window
 
-Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in the title bar. Categories on the left, rows on the right, each side scrolling on its own, Ely's components. Changes apply at once to every session and save.
+Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in the title bar. Categories on the left, rows on the right, each side scrolling on its own, Ely's components. Changes apply at once to every session and save. Closing it, or any window, leaves the app running, on a Mac with a Touch Bar too.
 
 - Appearance
   - Language: English or 简体中文, for every window and the menu bar, applied at once; what programs, git and the system say stays as it comes.
