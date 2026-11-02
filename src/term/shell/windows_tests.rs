@@ -23,20 +23,57 @@ fn the_scripts_wsl_runs_end_lines_as_unix_shells_read_them() {
 #[test]
 fn wsl_starts_in_its_own_home_or_in_the_windows_folder_given() {
     let dir = std::env::temp_dir().join("elyterminal-wsl-launch");
-    let home = launch("wsl", Start::Home, &dir).expect("a launch");
+    let home = launch("wsl", &[], Start::Home, &dir).expect("a launch");
     let (_, args) = home.program.expect("wsl");
     assert_eq!(args[..3], ["--cd", "~", "-e"]);
     let folder = std::path::PathBuf::from(r"C:\Windows");
-    let there = launch("wsl", Start::In(folder.clone()), &dir).expect("a launch");
+    let there = launch("wsl", &[], Start::In(folder.clone()), &dir).expect("a launch");
     assert_eq!(there.cwd, folder);
     assert_eq!(there.program.expect("wsl").1[0], "-e");
     // Another distribution's folder starts that distribution there.
     let share = std::path::PathBuf::from(r"\\wsl.localhost\Debian\home\me\my repo");
-    let other = launch("wsl", Start::In(share), &dir).expect("a launch");
+    let other = launch("wsl", &[], Start::In(share), &dir).expect("a launch");
     let (_, args) = other.program.expect("wsl");
     assert_eq!(
         args[..5],
         ["-d", "Debian", "--cd", "/home/me/my repo", "-e"]
+    );
+}
+
+#[test]
+fn a_wsl_profile_starts_its_distribution_where_it_can() {
+    let dir = std::env::temp_dir().join("elyterminal-wsl-profile");
+    let ubuntu = ["-d".to_string(), "Ubuntu".to_string()];
+    let start = |start: Start| {
+        let launch = launch("wsl", &ubuntu, start, &dir).expect("a launch");
+        assert!(launch.reports, "wsl -d keeps its integration");
+        launch.program.expect("wsl").1
+    };
+    assert_eq!(start(Start::Home)[..5], ["-d", "Ubuntu", "--cd", "~", "-e"]);
+    let folder = std::path::PathBuf::from(r"C:\Windows");
+    assert_eq!(start(Start::In(folder))[..3], ["-d", "Ubuntu", "-e"]);
+    let own = std::path::PathBuf::from(r"\\wsl.localhost\Ubuntu\home\me");
+    assert_eq!(
+        start(Start::In(own))[..5],
+        ["-d", "Ubuntu", "--cd", "/home/me", "-e"]
+    );
+    let other = std::path::PathBuf::from(r"\\wsl.localhost\Debian\home\me");
+    assert_eq!(
+        start(Start::In(other))[..5],
+        ["-d", "Ubuntu", "--cd", "~", "-e"]
+    );
+    let typed = [
+        "-d".to_string(),
+        "Ubuntu".to_string(),
+        "-u".to_string(),
+        "root".to_string(),
+    ];
+    let root = launch("wsl", &typed, Start::Home, &dir).expect("a launch");
+    assert!(!root.reports);
+    assert_eq!(
+        root.program.expect("wsl").1,
+        typed,
+        "other arguments run as written"
     );
 }
 
@@ -187,7 +224,7 @@ fn git_bash_s_sh_reports_its_folder_as_windows_names_it() {
     std::fs::create_dir_all(start.join("in ner")).expect("the folders");
     install(&dir).expect("the scripts");
     let sh = git.join("bin").join("sh.exe");
-    let launch = launch(sh.to_str().expect("text"), start.clone(), &dir).expect("a launch");
+    let launch = launch(sh.to_str().expect("text"), &[], start.clone(), &dir).expect("a launch");
     let args = launch.program.as_ref().map(|(_, args)| args.clone());
     assert_eq!(args.expect("arguments")[0], "--rcfile");
     let (pty, mut events) =
@@ -253,7 +290,7 @@ fn cmd_marks_its_prompts_and_reports_its_folder() {
     let (dir, start) = (root.join("integration"), root.join("start"));
     std::fs::create_dir_all(&start).expect("the folders");
     install(&dir).expect("the scripts");
-    let launch = launch("cmd", start.clone(), &dir).expect("a launch");
+    let launch = launch("cmd", &[], start.clone(), &dir).expect("a launch");
     assert!(launch.reports);
     let (pty, mut events) =
         spawn(&launch, (80, 24), (8, 16), config(&Settings::default())).expect("cmd starts");
@@ -277,7 +314,7 @@ fn a_bare_cmd_typed_in_powershell_marks_its_prompts() {
     let (dir, start) = (root.join("integration"), root.join("start"));
     std::fs::create_dir_all(&start).expect("the folders");
     install(&dir).expect("the scripts");
-    let mut launch = launch("powershell", start.clone(), &dir).expect("a launch");
+    let mut launch = launch("powershell", &[], start.clone(), &dir).expect("a launch");
     let given = |launch: &crate::term::Launch, name: &str| {
         let found = launch.env.iter().find(|(key, _)| key == name);
         found.expect("the prompt").1.clone()
@@ -286,7 +323,7 @@ fn a_bare_cmd_typed_in_powershell_marks_its_prompts() {
         !given(&launch, "ELY_CMD_PROMPT").contains("aid="),
         "a nested cmd's is a program's"
     );
-    let own = super::launch("cmd", start.clone(), &dir).expect("a cmd launch");
+    let own = super::launch("cmd", &[], start.clone(), &dir).expect("a cmd launch");
     assert!(
         given(&own, "PROMPT").contains("aid=elyterminal"),
         "a cmd session's is the shell's"

@@ -41,6 +41,8 @@ pub struct Session {
     pub folder: PathBuf,
     /// The program it runs, as its path; empty for the login shell.
     pub shell: String,
+    /// The arguments its profile gave the program.
+    pub args: Vec<String>,
     /// Its shell has integration, or it reported a folder anyway.
     pub reports: bool,
     /// A bell rang while it was hidden.

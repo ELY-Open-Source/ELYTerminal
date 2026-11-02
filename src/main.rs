@@ -30,7 +30,12 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
         (None, StartIn::Folder) => Start::In(settings::start_folder(&settings.start_folder)?),
         (None, StartIn::Home | StartIn::Session) => Start::Home,
     };
-    let launch = launch(&settings.shell, start, &cx.global::<ShellIntegration>().0)?;
+    let launch = launch(
+        &settings.shell,
+        &[],
+        start,
+        &cx.global::<ShellIntegration>().0,
+    )?;
     app::open(launch, cx)?;
     cx.activate(true);
     Ok(())

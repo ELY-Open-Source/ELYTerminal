@@ -106,8 +106,17 @@ fn unc(folder: &Path) -> bool {
     matches!(first, Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::UNC(..)))
 }
 
-/// How to start `shell`, or the login shell, at `start`.
-pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Result<Launch> {
+/// How to start `shell` with `args`, or the login shell, at `start`; arguments other than wsl's `-d` run as written.
+pub fn launch(
+    shell: &str,
+    args: &[String],
+    start: impl Into<Start>,
+    dir: &Path,
+) -> anyhow::Result<Launch> {
+    anyhow::ensure!(
+        !shell.is_empty() || args.is_empty(),
+        "shell integration: arguments without a program"
+    );
     let start = start.into();
     let cwd = match &start {
         Start::Home => dirs::home_dir().context("shell integration: no home folder")?,
@@ -127,8 +136,14 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
     } else {
         name
     };
+    let distro = match args {
+        [flag, distro] if name == "wsl" && (flag == "-d" || flag == "--distribution") => {
+            Some(distro.clone())
+        }
+        _ => None,
+    };
     let mut launch = Launch {
-        program: (!shell.is_empty()).then(|| (path.clone(), Vec::new())),
+        program: (!shell.is_empty()).then(|| (path.clone(), args.to_vec())),
         cwd,
         env: Vec::new(),
         reports: true,
@@ -138,6 +153,11 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
             _ => Quote::Posix,
         },
     };
+    if !args.is_empty() && (distro.is_none() || !cfg!(windows)) {
+        launch.reports = false;
+        log::info!("shell integration: none for {path} with its arguments, which run as written");
+        return Ok(launch);
+    }
     let script = |name: &str| dir.join(name).display().to_string();
     match name.as_str() {
         "zsh" => {
@@ -191,20 +211,39 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
         "wsl" => {
             let launcher = r#"exec /bin/sh "$ELY_WSL/wsl/elyterminal.sh""#;
             let mut args: Vec<String> = ["-e", "/bin/sh", "-c", launcher].map(String::from).into();
-            match &start {
+            let shared = match &start {
+                Start::In(folder) => crate::git::wsl::split(folder),
+                Start::Home => None,
+            };
+            let shared = shared.map(|(share, inside)| (crate::git::wsl::distro(share), inside));
+            // The profile's distribution, else a share's own.
+            let own = distro
+                .as_deref()
+                .or(shared.as_ref().map(|(share, _)| *share));
+            let cd = match (&start, shared) {
                 // Home is the distribution's own, which WSL resolves, not Windows'.
-                Start::Home => {
-                    args.splice(0..0, ["--cd".to_string(), "~".to_string()]);
-                    log::info!("shell integration: wsl starts in its distribution's home");
+                (Start::Home, _) => Some("~".to_string()),
+                (Start::In(_), Some((share, inside))) if Some(share) == own => Some(inside),
+                (Start::In(folder), Some(_)) => {
+                    log::warn!(
+                        "shell integration: {} lies in another distribution",
+                        folder.display()
+                    );
+                    Some("~".to_string())
                 }
-                // A share's folder lies in its own distribution.
-                Start::In(folder) => {
-                    if let Some((share, inside)) = crate::git::wsl::split(folder) {
-                        let distro = crate::git::wsl::distro(share).to_string();
-                        log::info!("shell integration: wsl starts {distro} in {inside}");
-                        args.splice(0..0, ["-d".into(), distro, "--cd".into(), inside]);
-                    }
-                }
+                // A Windows folder, which WSL maps under /mnt.
+                (Start::In(_), None) => None,
+            };
+            log::info!(
+                "shell integration: wsl starts {} in {}",
+                own.unwrap_or("its default"),
+                cd.as_deref().unwrap_or("the Windows folder")
+            );
+            if let Some(cd) = cd {
+                args.splice(0..0, ["--cd".to_string(), cd]);
+            }
+            if let Some(own) = own {
+                args.splice(0..0, ["-d".to_string(), own.to_string()]);
             }
             launch.program = Some((path.clone(), args));
             let shared = super::env::fresh()?.get("WSLENV").map(str::to_string);
@@ -245,13 +284,13 @@ pub fn launch(shell: &str, start: impl Into<Start>, dir: &Path) -> anyhow::Resul
 }
 
 #[cfg(unix)]
-fn default_shell() -> anyhow::Result<String> {
+pub fn default_shell() -> anyhow::Result<String> {
     Ok(super::unix::login_shell_path()?)
 }
 
 /// `pwsh`, as Windows Terminal takes it, else the Windows PowerShell the system ships, else `cmd`.
 #[cfg(windows)]
-fn default_shell() -> anyhow::Result<String> {
+pub fn default_shell() -> anyhow::Result<String> {
     // The registry's PATH, so a shell in a folder added since this process opened is found.
     first_shell(&super::env::path()?)
 }
@@ -259,24 +298,31 @@ fn default_shell() -> anyhow::Result<String> {
 /// The first of `pwsh`, `powershell` and `cmd` that `folders` hold outside `WindowsApps`.
 #[cfg(windows)]
 fn first_shell(folders: &str) -> anyhow::Result<String> {
-    for name in ["pwsh", "powershell", "cmd"] {
-        for folder in env::split_paths(folders) {
-            // One folder as a PATH of its own, so a `;` inside its name stays.
-            let Ok(one) = env::join_paths([&folder]) else {
-                continue;
-            };
-            match crate::settings::program_path_in(name, &one) {
-                // An App Execution Alias is a stub that starts only while its package is installed.
-                Ok(found) if alias(&found) => {
-                    log::info!("shell integration: {found} is an alias, so passed by")
-                }
-                Ok(found) => return Ok(found),
-                Err(_) => {}
+    ["pwsh", "powershell", "cmd"]
+        .into_iter()
+        .find_map(|name| found(name, folders))
+        .context("shell integration: neither pwsh, powershell nor cmd lies on PATH")
+}
+
+/// Program `name` in the first of `folders` that holds it outside `WindowsApps`.
+#[cfg(windows)]
+pub fn found(name: &str, folders: &str) -> Option<String> {
+    for folder in env::split_paths(folders) {
+        // One folder as a PATH of its own, so a `;` inside its name stays.
+        let Ok(one) = env::join_paths([&folder]) else {
+            continue;
+        };
+        match crate::settings::program_path_in(name, &one) {
+            // An App Execution Alias is a stub that starts only while its package is installed.
+            Ok(found) if alias(&found) => {
+                log::info!("shell integration: {found} is an alias, so passed by")
             }
+            Ok(found) => return Some(found),
+            Err(_) => {}
         }
-        log::info!("shell integration: no {name} on PATH");
     }
-    anyhow::bail!("shell integration: neither pwsh, powershell nor cmd lies on PATH")
+    log::info!("shell integration: no {name} on PATH");
+    None
 }
 
 /// Whether `sh` is Git for Windows' `bin\sh.exe`, a bash launcher.

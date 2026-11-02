@@ -8,7 +8,7 @@ use windows_sys::Win32::{
     Globalization::{CSTR_EQUAL, CompareStringOrdinal},
     System::Registry::{
         HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, REG_EXPAND_SZ, REG_SZ, RegCloseKey,
-        RegEnumValueW, RegOpenKeyExW, RegQueryInfoKeyW,
+        RegEnumKeyExW, RegEnumValueW, RegOpenKeyExW, RegQueryInfoKeyW,
     },
 };
 
@@ -184,7 +184,7 @@ fn same(a: &str, b: &str) -> bool {
 }
 
 /// Each text value `root\key` holds, with its kind, as written.
-fn read(root: HKEY, key: &str) -> anyhow::Result<Vec<(String, u32, String)>> {
+pub(crate) fn read(root: HKEY, key: &str) -> anyhow::Result<Vec<(String, u32, String)>> {
     let mut handle: HKEY = std::ptr::null_mut();
     let wide: Vec<u16> = key.encode_utf16().chain([0]).collect();
     // SAFETY: `wide` outlives the call.
@@ -199,6 +199,53 @@ fn read(root: HKEY, key: &str) -> anyhow::Result<Vec<(String, u32, String)>> {
     // SAFETY: `handle` came from RegOpenKeyExW and is closed once.
     unsafe { RegCloseKey(handle) };
     values
+}
+
+/// The names of `root\key`'s subkeys; none when it is not there.
+pub(crate) fn subkeys(root: HKEY, key: &str) -> anyhow::Result<Vec<String>> {
+    let mut handle: HKEY = std::ptr::null_mut();
+    let wide: Vec<u16> = key.encode_utf16().chain([0]).collect();
+    // SAFETY: `wide` outlives the call.
+    let status = unsafe { RegOpenKeyExW(root, wide.as_ptr(), 0, KEY_READ, &mut handle) };
+    if status == ERROR_FILE_NOT_FOUND {
+        return Ok(Vec::new());
+    }
+    if status != ERROR_SUCCESS {
+        bail!("profiles: cannot open the registry's {key}: error {status}");
+    }
+    // A key's name holds 255 characters at most.
+    let (mut name, mut names) = ([0u16; 256], Vec::new());
+    let mut failed = None;
+    for index in 0.. {
+        let mut len = name.len() as u32;
+        // SAFETY: `name` holds `len` units; the rest is not asked for.
+        let status = unsafe {
+            RegEnumKeyExW(
+                handle,
+                index,
+                name.as_mut_ptr(),
+                &mut len,
+                std::ptr::null(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        };
+        if status == ERROR_NO_MORE_ITEMS {
+            break;
+        }
+        if status != ERROR_SUCCESS {
+            failed = Some(status);
+            break;
+        }
+        names.push(String::from_utf16_lossy(&name[..len as usize]));
+    }
+    // SAFETY: `handle` came from RegOpenKeyExW and is closed once.
+    unsafe { RegCloseKey(handle) };
+    if let Some(status) = failed {
+        bail!("profiles: cannot list the registry's {key}: error {status}");
+    }
+    Ok(names)
 }
 
 /// The text values of the open key `handle`, sized as the key says its largest are.

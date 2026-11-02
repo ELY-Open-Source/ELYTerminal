@@ -102,6 +102,8 @@ pub struct Workspace {
     dragged: Dragged,
     /// Draws the window at each step of the status marks while one shown moves.
     ticking: Option<Task<()>>,
+    /// The shells this system holds, found as the window opened.
+    found: Vec<crate::profiles::Found>,
     _settings: Subscription,
     _acted: Subscription,
     _here: Subscription,
@@ -139,6 +141,7 @@ impl Workspace {
             background: Blur::new(window, SettingsStore::get(cx)),
             dragged: Dragged::default(),
             ticking: None,
+            found: crate::profiles::detected(),
             _settings: cx.observe_global_in::<SettingsStore>(window, |this, window, cx| {
                 this.background.follow(window, SettingsStore::get(cx));
                 cx.notify();
@@ -146,7 +149,7 @@ impl Workspace {
             _acted: acted,
             _here: here,
         };
-        workspace.add(pty, events, launch, window, cx);
+        workspace.add(pty, events, launch, Vec::new(), window, cx);
         workspace.select(0, window, cx);
         workspace
     }
@@ -156,6 +159,7 @@ impl Workspace {
         pty: Pty,
         events: Events,
         launch: Launch,
+        args: Vec<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -177,6 +181,7 @@ impl Workspace {
             editing: None,
             folder: launch.cwd,
             shell,
+            args,
             reports: launch.reports,
             bell: false,
             waiting: false,
@@ -377,18 +382,22 @@ impl Render for Workspace {
                 .on_click(move |_, window, cx| {
                     workspace.update(cx, |this, cx| this.new_session(window, cx))
                 });
+            let mut column = self
+                .side_column(Side::Sessions, cx)
+                .leading(left)
+                .action(new);
+            if let Some(profiles) = crate::profiles::button(&cx.entity(), &self.found, cx) {
+                column = column.action(profiles);
+            }
             shell = shell.column(
-                self.side_column(Side::Sessions, cx)
-                    .leading(left)
-                    .action(new)
-                    .child(
-                        div()
-                            .id("sessions")
-                            .size_full()
-                            .overflow_y_scroll()
-                            .p_2()
-                            .child(list),
-                    ),
+                column.child(
+                    div()
+                        .id("sessions")
+                        .size_full()
+                        .overflow_y_scroll()
+                        .p_2()
+                        .child(list),
+                ),
             );
         } else {
             terminal = terminal.leading(left);

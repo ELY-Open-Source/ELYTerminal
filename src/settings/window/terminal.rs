@@ -25,6 +25,8 @@ use crate::{
     },
 };
 
+pub(super) mod profiles;
+
 /// Each way Option types Alt, its key and name's key.
 const OPTIONS: [(OptionAsAlt, &str, &str); 4] = [
     (OptionAsAlt::Off, "off", "et.option.off"),
@@ -162,7 +164,14 @@ impl SettingsWindow {
         let section = section.row(super::explorer::row(&cx.entity(), cx));
         let keys = SettingsSection::new(word("et.terminal.shortcuts"))
             .row(KeyboardShortcutsList::new(shortcuts(cx), &self.search));
-        div().flex().flex_col().gap_6().child(section).child(keys)
+        let profiles = self.profiles_section(cx);
+        div()
+            .flex()
+            .flex_col()
+            .gap_6()
+            .child(section)
+            .child(profiles)
+            .child(keys)
     }
 }
 

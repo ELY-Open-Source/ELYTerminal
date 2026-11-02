@@ -111,6 +111,7 @@ pub struct SettingsWindow {
     fallbacks: Vec<Entity<TextInput>>,
     /// The empty picker that adds a fallback shows.
     adding: bool,
+    profiles: Vec<terminal::profiles::Fields>,
     /// Whether the cursor preview shows, as it blinks.
     lit: bool,
     /// The worn custom theme the editor shows, its name and its chosen color.
@@ -174,6 +175,7 @@ impl SettingsWindow {
                 }
             }),
         ];
+        let profiles = terminal::profiles::fields(window, cx);
         // Focus inside, so the window's keys find its context.
         let focus = cx.focus_handle();
         window.focus(&focus, cx);
@@ -194,6 +196,7 @@ impl SettingsWindow {
             interface_font,
             fallbacks: Vec::new(),
             adding: false,
+            profiles,
             lit: true,
             editing: None,
             theme_name,
@@ -217,6 +220,7 @@ impl SettingsWindow {
         search.update(cx, |input, cx| {
             input.set_placeholder(text(cx, "et.settings.search_shortcuts", &[]), cx)
         });
+        self.profiles = terminal::profiles::fields(window, cx);
     }
 
     /// Blinks the cursor preview as a terminal blinks its cursor, while it shows.

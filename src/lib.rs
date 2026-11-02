@@ -8,6 +8,7 @@ pub mod i18n;
 pub mod interface;
 pub mod menus;
 pub mod pet;
+pub mod profiles;
 pub mod sessions;
 pub mod settings;
 pub mod term;

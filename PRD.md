@@ -91,6 +91,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 
 - A list of sessions. Each row: title, then the working directory, home as `~`.
 - New session (+ and Cmd-T), close (row's ×, Cmd-W), select (press, Cmd-1…9, Ctrl-Tab and Ctrl-Shift-Tab).
+- Profiles, as Windows Terminal's: the arrow beside + opens a menu of the user's profiles, each a name, a command line and a folder, kept in Settings › Terminal › Profiles, then the shells this system holds: on Windows pwsh, powershell, cmd, Git Bash and each WSL distribution, elsewhere each shell `/etc/shells` lists. A command line that names a program alone, or wsl with `-d` alone, runs with the shell's integration; any other arguments run as written, and the session reports no folder.
 - A right press on a row opens a menu at the pointer, while Session menu in Settings › Terminal is on: Duplicate session opens a session of the shell that row runs, in the folder it last reported, right after it and shown; Close session closes the row. A shell that reports no folder, as cmd does, duplicates into the folder it started in.
 - A drag on a row moves it to another place in the list, and the session shown stays shown; Drag sessions to reorder in Settings › Terminal turns the drag off.
 - Rename: a double press on a row's title opens a field in its place; Enter keeps the name, Escape drops it. The name shows in the row, the terminal's header and the window's title over the program's own until renamed again; an empty name gives the title back to the program.

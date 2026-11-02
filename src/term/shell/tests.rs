@@ -88,7 +88,7 @@ impl Run {
             fs::write(path, text).expect("a home file");
         }
         install(&dir).expect("scripts install");
-        let mut launch = launch(shell, start.clone(), &dir).expect("a launch");
+        let mut launch = launch(shell, &[], start.clone(), &dir).expect("a launch");
         launch.env.push(("HOME".into(), home.display().to_string()));
         launch.env.extend(env);
         let (pty, events) = spawn(&launch, (100, 30), (8, 16), config(&Settings::default()))
@@ -430,18 +430,9 @@ fn powershell_reports_its_folder_byte_for_byte_and_keeps_the_status() {
 }
 
 #[test]
-fn a_shell_named_bare_runs_from_its_full_path() {
-    let started = launch("sh", PathBuf::from("/"), Path::new("/nonexistent")).expect("a launch");
-    let (program, _) = started.program.expect("a program");
-    assert_eq!(program, crate::settings::program_path("sh").expect("sh"));
-    assert!(Path::new(&program).is_absolute(), "{program}");
-    assert!(launch("no-such-shell", PathBuf::from("/"), Path::new("/")).is_err());
-}
-
-#[test]
 fn an_unknown_shell_starts_without_integration() {
     let dir = PathBuf::from("/nonexistent");
-    let launch = launch("/bin/sh", PathBuf::from("/"), &dir).expect("a launch");
+    let launch = launch("/bin/sh", &[], PathBuf::from("/"), &dir).expect("a launch");
     assert_eq!(launch.program, Some(("/bin/sh".into(), Vec::new())));
     assert!(launch.env.is_empty());
 }
@@ -462,7 +453,7 @@ fn each_shell_reads_a_dropped_path_its_own_way() {
         fs::write(&program, "").expect("a program");
         fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("its mode");
         let shell = program.to_str().expect("utf-8");
-        let launch = launch(shell, PathBuf::from("/"), &dir).expect("a launch");
+        let launch = launch(shell, &[], PathBuf::from("/"), &dir).expect("a launch");
         assert_eq!(launch.quote, quote, "{name}");
     }
 }

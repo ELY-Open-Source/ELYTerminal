@@ -1,3 +1,4 @@
+mod profiles;
 mod store;
 pub mod window;
 
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
+pub use profiles::{Profile, words};
 pub use store::{SettingsStore, load, save};
 
 /// Where new sessions start: home, the shown folder, `start_folder`.
@@ -107,6 +109,8 @@ pub struct Settings {
     pub start_in: StartIn,
     /// Start in's Folder; empty until one is chosen.
     pub start_folder: String,
+    /// What the new-session menu offers before the detected shells.
+    pub profiles: Vec<Profile>,
     pub theme: String,
     /// The theme while the system is dark; none keeps `theme`.
     pub dark_theme: Option<String>,
@@ -184,6 +188,7 @@ impl Default for Settings {
             shell: String::new(),
             start_in: StartIn::Home,
             start_folder: String::new(),
+            profiles: Vec::new(),
             theme: themes::default_id().into(),
             dark_theme: None,
             custom_themes: Vec::new(),
@@ -294,6 +299,16 @@ impl Settings {
         }
         if !self.start_folder.is_empty() {
             start_folder(&self.start_folder)?;
+        }
+        for (at, profile) in self.profiles.iter().enumerate() {
+            profile.check()?;
+            anyhow::ensure!(
+                !self.profiles[..at]
+                    .iter()
+                    .any(|other| other.name == profile.name),
+                "profiles holds {} twice",
+                profile.name
+            );
         }
         anyhow::ensure!(
             self.start_in != StartIn::Folder || !self.start_folder.is_empty(),
