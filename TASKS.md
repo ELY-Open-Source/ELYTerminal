@@ -279,3 +279,4 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [ ] T148 PR #57: a right press on the Files tab opens a folder picker that starts a session there; Ely's `SegmentedControl::on_context` in Ely first; the PR checked, merged with its author.
 - [ ] T149 PR #58: its author asked to cut the change smaller and drop the old keys' shim; left open.
 - [ ] T150 The README, its Chinese twin and the guides say what 0.2.2 does; PRD, AGENTS.md and the acceptance table hold T139 to T149; each issue answered.
+- [ ] T151 Release 0.2.2, which the owner asked for once the fixes are in: the version raised, every build on the release, the notes in English and Chinese, the cask and winget following, each issue answered.

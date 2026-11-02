@@ -258,33 +258,44 @@ fn paint_text(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: 
     }
 }
 
-/// Text runs for `text` in `style` and `color`, each cluster in its first character's font.
+/// Text runs for `text` in `style` and `color`: a CJK cluster takes the CJK font, an icon the font lacks the icon font.
 fn runs(text: &str, style: &Style, color: Hsla, look: &Look, window: &Window) -> Vec<TextRun> {
     let base = face(style, &look.font);
     let cjk = look.cjk.as_ref().map(|cjk| face(style, cjk));
     let system = window.text_system();
     let mut runs: Vec<TextRun> = Vec::new();
     for cluster in text.graphemes(true) {
-        let ch = cluster.chars().next().expect("a cluster holds a character");
-        let missing = private(ch) && system.advance(look.font_id, look.size, ch).is_err();
-        let font = match &cjk {
-            _ if missing => &look.icons,
-            Some(cjk) if super::fonts::cjk(ch) => cjk,
-            _ => &base,
-        };
-        match runs.last_mut() {
-            Some(last) if last.font == *font => last.len += cluster.len(),
-            _ => runs.push(TextRun {
-                len: cluster.len(),
-                font: font.clone(),
+        let first = cluster.chars().next().expect("a cluster holds a character");
+        if let Some(cjk) = cjk.as_ref().filter(|_| super::fonts::cjk(first)) {
+            extend(&mut runs, cluster.len(), cjk, color);
+            continue;
+        }
+        for ch in cluster.chars() {
+            let missing = private(ch) && system.advance(look.font_id, look.size, ch).is_err();
+            extend(
+                &mut runs,
+                ch.len_utf8(),
+                if missing { &look.icons } else { &base },
                 color,
-                background_color: None,
-                underline: None,
-                strikethrough: None,
-            }),
+            );
         }
     }
     runs
+}
+
+/// Adds `len` bytes in `font` to the last run, or starts one.
+fn extend(runs: &mut Vec<TextRun>, len: usize, font: &Font, color: Hsla) {
+    match runs.last_mut() {
+        Some(last) if last.font == *font => last.len += len,
+        _ => runs.push(TextRun {
+            len,
+            font: font.clone(),
+            color,
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+        }),
+    }
 }
 
 /// Unicode's private use areas, where Nerd Font icons live.

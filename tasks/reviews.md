@@ -17,3 +17,4 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 ## T141
 
 - Round 1, ad79521: FAIL. Fonts went per character, so a variation selector or a mark left its Han base and lost the variant; vertical and small forms and the kana supplements fell outside the ranges. Runs now choose a font per grapheme cluster; the ranges hold U+FE10 to FE1F, FE50 to FE6F, 16FE0 to 16FFF and 1AFF0 to 1B16F.
+- Round 2, 66df88e: FAIL. A Nerd Font icon with a combining mark went whole to the icon font, which drew the icon as a missing glyph. Only a cluster that starts CJK goes whole; any other picks per character as before.
