@@ -1,4 +1,5 @@
 mod color;
+mod mask;
 mod picture;
 mod profiles;
 mod store;
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::themes;
 
 pub use color::color;
+pub use mask::Mask;
 pub use picture::{PictureAxis, PictureLength, PicturePosition, PictureRepeat, PictureSize};
 pub use profiles::{Profile, command_line, words};
 pub use store::{SettingsStore, load, save};
@@ -147,6 +149,14 @@ pub struct Settings {
     pub background_gradient_from: String,
     /// The gradient's last color.
     pub background_gradient_to: String,
+    /// How opaque the picture is, 0 to 1.
+    pub background_image_opacity: f32,
+    /// Whether a mask fades the picture, as CSS's `mask-image` does.
+    pub background_mask: bool,
+    /// The mask's angle in degrees, 0 up and turning clockwise.
+    pub background_mask_angle: f32,
+    /// The mask's stops: two to sixteen colors, comma separated.
+    pub background_mask_stops: String,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -232,6 +242,10 @@ impl Default for Settings {
             background_gradient_angle: 180.0,
             background_gradient_from: "#00000000".into(),
             background_gradient_to: "#00000000".into(),
+            background_image_opacity: 1.0,
+            background_mask: false,
+            background_mask_angle: 90.0,
+            background_mask_stops: "transparent, black".into(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             cjk_font: String::new(),
@@ -283,6 +297,8 @@ pub const WINDOW: RangeInclusive<f32> = 100.0..=16384.0;
 pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
 pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 pub const GRADIENT_ANGLE: RangeInclusive<f32> = 0.0..=360.0;
+/// The picture's own opacity, 0 to 1.
+pub const PICTURE_OPACITY: RangeInclusive<f32> = 0.0..=1.0;
 
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
@@ -299,6 +315,18 @@ impl Settings {
         )?;
         color(&self.background_gradient_from).context("background_gradient_from")?;
         color(&self.background_gradient_to).context("background_gradient_to")?;
+        within(
+            "background_image_opacity",
+            self.background_image_opacity,
+            &PICTURE_OPACITY,
+        )?;
+        within(
+            "background_mask_angle",
+            self.background_mask_angle,
+            &GRADIENT_ANGLE,
+        )?;
+        Mask::new(self.background_mask_angle, &self.background_mask_stops)
+            .context("background_mask_stops")?;
         within("padding_x", self.padding_x, &PADDING)?;
         within("padding_y", self.padding_y, &PADDING)?;
         within("scrollback", self.scrollback, &SCROLLBACK)?;

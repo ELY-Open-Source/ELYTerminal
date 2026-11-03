@@ -127,6 +127,22 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.appearance.gradient_color_hint",
         "A color: #rgb, #rrggbb, #rrggbbaa, rgb(...), rgba(...), or a name",
     ),
+    ("et.appearance.picture_opacity", "Picture opacity"),
+    (
+        "et.appearance.picture_opacity_hint",
+        "0 hides the picture; 1 shows it as it is",
+    ),
+    ("et.appearance.mask", "Mask"),
+    ("et.appearance.mask_angle", "Mask angle"),
+    (
+        "et.appearance.mask_angle_hint",
+        "Degrees: 0 draws upward, increasing clockwise",
+    ),
+    ("et.appearance.mask_stops", "Mask stops"),
+    (
+        "et.appearance.mask_stops_hint",
+        "Two to sixteen colors, comma separated; their alpha is the mask",
+    ),
     ("et.custom.new", "New theme"),
     ("et.custom.name_of", "Custom {number}"),
     ("et.custom.name", "Name"),

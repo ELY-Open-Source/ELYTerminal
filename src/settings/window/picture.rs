@@ -1,10 +1,10 @@
-//! The picture's rows: its file, scope, size, position, repeat and gradient.
+//! The picture's rows: its file, scope, size, position, repeat, gradient, opacity and mask.
 
 use std::str::FromStr;
 
 use ely_gpui_component::{
     feedback::InlineMessage,
-    forms::{Input, InputEvent, NumberInput, PathInput, TextInput},
+    forms::{Input, InputEvent, NumberInput, PathInput, Slider, TextInput},
     i18n::text,
     primitives::Severity,
     settings::SettingsRow,
@@ -19,7 +19,9 @@ use super::{
     SettingsWindow, choice, set, switch,
     terminal::{chosen, path_field},
 };
-use crate::settings::{BackgroundScope, GRADIENT_ANGLE, PictureRepeat, Settings, SettingsStore};
+use crate::settings::{
+    BackgroundScope, GRADIENT_ANGLE, PICTURE_OPACITY, PictureRepeat, Settings, SettingsStore,
+};
 
 /// Each picture scope, its key and its name's key.
 const SCOPES: [(BackgroundScope, &str, &str); 2] = [
@@ -66,11 +68,13 @@ pub(super) struct Fields {
     position: Entity<TextInput>,
     from: Entity<TextInput>,
     to: Entity<TextInput>,
+    stops: Entity<TextInput>,
     pub(super) refused_image: Option<SharedString>,
     refused_size: Option<SharedString>,
     refused_position: Option<SharedString>,
     refused_from: Option<SharedString>,
     refused_to: Option<SharedString>,
+    refused_stops: Option<SharedString>,
     _typed: Vec<Subscription>,
 }
 
@@ -103,17 +107,24 @@ impl Fields {
             input.set_text(settings.background_gradient_to.clone(), cx);
             input
         });
+        let stops = cx.new(|cx| {
+            let mut input = TextInput::new(window, cx);
+            input.set_text(settings.background_mask_stops.clone(), cx);
+            input
+        });
         let mut fields = Self {
             image,
             size,
             position,
             from,
             to,
+            stops,
             refused_image: None,
             refused_size: None,
             refused_position: None,
             refused_from: None,
             refused_to: None,
+            refused_stops: None,
             _typed: Vec::new(),
         };
         fields.watch(cx);
@@ -185,6 +196,18 @@ impl Fields {
                 }
             }),
         );
+        self._typed.push(
+            cx.subscribe(&self.stops, |this, input, event: &InputEvent, cx| {
+                if let InputEvent::Changed = event {
+                    let text = input.read(cx).text().to_string();
+                    let put = |settings: &mut Settings, text| {
+                        settings.background_mask_stops = text;
+                    };
+                    this.picture.refused_stops =
+                        this.save_typed("background_mask_stops", text, put, cx);
+                }
+            }),
+        );
     }
 
     /// The rows the picture fills: its file, scope, size, position and repeat.
@@ -228,6 +251,48 @@ impl Fields {
         });
         let from = field(Input::new(&self.from), self.refused_from.clone(), cx);
         let to = field(Input::new(&self.to), self.refused_to.clone(), cx);
+        let opacity = percent(settings.background_image_opacity);
+        let slider = Slider::new("background_image_opacity", opacity)
+            .range(
+                percent(*PICTURE_OPACITY.start()),
+                percent(*PICTURE_OPACITY.end()),
+            )
+            .on_change({
+                let this = this.clone();
+                move |percent, _, cx| {
+                    let value = fraction(percent);
+                    set(
+                        &this,
+                        format!("background_image_opacity is {value}"),
+                        cx,
+                        |settings| settings.background_image_opacity = value,
+                    );
+                }
+            });
+        let opacity = div().w(cx.theme().label_width()).child(slider);
+        let mask_angle = NumberInput::new(
+            "background-mask-angle",
+            f64::from(settings.background_mask_angle),
+        )
+        .range(
+            f64::from(*GRADIENT_ANGLE.start()),
+            f64::from(*GRADIENT_ANGLE.end()),
+        )
+        .step(15.0)
+        .size(ControlSize::Sm)
+        .on_commit({
+            let this = this.clone();
+            move |angle, _, cx| {
+                let angle = angle as f32;
+                set(
+                    &this,
+                    format!("background_mask_angle is {angle}"),
+                    cx,
+                    |settings| settings.background_mask_angle = angle,
+                );
+            }
+        });
+        let stops = field(Input::new(&self.stops), self.refused_stops.clone(), cx);
         vec![
             SettingsRow::new(word("et.appearance.image"))
                 .description(word("et.appearance.image_hint"))
@@ -267,8 +332,32 @@ impl Fields {
                 .description(word("et.appearance.gradient_color_hint"))
                 .control(from),
             SettingsRow::new(word("et.appearance.gradient_to")).control(to),
+            SettingsRow::new(word("et.appearance.picture_opacity"))
+                .description(word("et.appearance.picture_opacity_hint"))
+                .control(opacity),
+            SettingsRow::new(word("et.appearance.mask")).control(switch(
+                this,
+                "background_mask",
+                settings.background_mask,
+                |settings, on| settings.background_mask = on,
+            )),
+            SettingsRow::new(word("et.appearance.mask_angle"))
+                .description(word("et.appearance.mask_angle_hint"))
+                .control(mask_angle),
+            SettingsRow::new(word("et.appearance.mask_stops"))
+                .description(word("et.appearance.mask_stops_hint"))
+                .control(stops),
         ]
     }
+}
+
+/// `fraction` in whole percents; the slider moves by them, so a saved fraction carries no float noise.
+fn percent(fraction: f32) -> f64 {
+    (f64::from(fraction) * 100.).round()
+}
+
+fn fraction(percent: f64) -> f32 {
+    (percent / 100.) as f32
 }
 
 /// A field the picture's text fills, with why it is not saved.
