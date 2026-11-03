@@ -3,6 +3,7 @@ mod cursor;
 mod custom;
 mod glyphs;
 mod interface;
+pub(crate) mod weight;
 
 use std::ops::RangeInclusive;
 
@@ -18,7 +19,7 @@ use gpui::{
     App, Context, Div, Entity, ParentElement, SharedString, Styled, Window, div, prelude::*,
 };
 
-use self::cards::grid;
+use self::{cards::grid, weight::weight};
 use super::{
     SettingsWindow, choice, set, switch,
     terminal::{chosen, path_field},
@@ -26,8 +27,7 @@ use super::{
 use crate::{
     blur,
     settings::{
-        Backdrop, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING, Settings,
-        SettingsStore,
+        Backdrop, FONT_SIZE, LINE_HEIGHT, Language, OPACITY, PADDING, Settings, SettingsStore,
     },
 };
 
@@ -50,6 +50,8 @@ impl SettingsWindow {
         let settings = SettingsStore::get(cx);
         let theme = cx.theme();
         let this = cx.entity();
+        let weight_state = self.weight.clone();
+        let weights = SettingsStore::get(cx).weights(cx);
         let word = |key: &str| text(cx, key, &[]);
         let language = choice(
             &this,
@@ -92,6 +94,7 @@ impl SettingsWindow {
         }
         let family = FontPicker::new("font_family", &self.font)
             .selected(settings.font_family.clone())
+            .monospace(settings.monospace_only)
             .on_change({
                 let this = this.clone();
                 move |family, window, cx| {
@@ -115,8 +118,19 @@ impl SettingsWindow {
             .description(word("et.appearance.fallbacks_hint"))
             .control(self.fallback_list(cx));
         let family = div().w(theme.prose_width()).child(family);
+        let monospace = switch(
+            &this,
+            "monospace_only",
+            settings.monospace_only,
+            |settings, only| settings.monospace_only = only,
+        );
         let font = SettingsSection::new(word("et.appearance.font"))
             .row(SettingsRow::new(word("et.appearance.family")).control(family))
+            .row(
+                SettingsRow::new(word("et.appearance.monospace_only"))
+                    .description(word("et.appearance.monospace_hint"))
+                    .control(monospace),
+            )
             .row(fallbacks)
             .row(self.cjk_row(cx))
             .row(
@@ -130,12 +144,11 @@ impl SettingsWindow {
                 )),
             )
             .row(
-                SettingsRow::new(word("et.appearance.weight")).control(self.number(
-                    "font_weight",
+                SettingsRow::new(word("et.appearance.weight")).control(weight(
+                    &this,
+                    &weight_state,
+                    &weights,
                     settings.font_weight,
-                    &FONT_WEIGHT,
-                    (100.0, 0),
-                    |settings, weight| settings.font_weight = weight,
                     cx,
                 )),
             )

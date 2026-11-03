@@ -121,11 +121,14 @@ pub struct Settings {
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
+    /// Offers only monospaced families in the pickers.
+    pub monospace_only: bool,
     /// Draws CJK characters; empty leaves them to the family.
     pub cjk_font: String,
     pub font_size: f32,
-    /// Normal text's weight; bold sits 300 above it.
-    pub font_weight: f32,
+    /// Normal text's weight, as Windows Terminal's `fontWeight`.
+    #[serde(deserialize_with = "whole")]
+    pub font_weight: u16,
     pub line_height: f32,
     /// Subpixel draws only on an opaque window, and never on macOS.
     pub text_antialias: Antialias,
@@ -195,9 +198,10 @@ impl Default for Settings {
             background_image: String::new(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
+            monospace_only: true,
             cjk_font: String::new(),
             font_size: 13.0,
-            font_weight: 400.0,
+            font_weight: 400,
             line_height: 1.2,
             text_antialias: Antialias::Grayscale,
             ligatures: true,
@@ -233,7 +237,9 @@ impl Default for Settings {
 
 pub const INTERFACE_SIZE: RangeInclusive<u8> = 12..=16;
 pub const FONT_SIZE: RangeInclusive<f32> = 6.0..=72.0;
-pub const FONT_WEIGHT: RangeInclusive<f32> = 100.0..=900.0;
+/// The weights the list offers and the settings accept, as Windows Terminal
+/// clamps `fontWeight`: every named weight falls inside, so a name picked saves.
+pub const FONT_WEIGHT: RangeInclusive<u16> = 100..=990;
 pub const LINE_HEIGHT: RangeInclusive<f32> = 1.0..=2.0;
 pub const OPACITY: RangeInclusive<f32> = 0.3..=1.0;
 pub const PADDING: RangeInclusive<f32> = 0.0..=64.0;
@@ -244,6 +250,17 @@ pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
 pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 
 impl Settings {
+    /// The weights this copy of the font draws: the family's own faces where the
+    /// platform names them, else the two every family ships.
+    pub fn weights(&self, cx: &gpui::App) -> Vec<u16> {
+        let mut weights = cx.text_system().weights_for_family(&self.font_family);
+        if weights.is_empty() {
+            weights = vec![400, 700];
+        }
+        log::info!("fonts: {} draws {weights:?}", self.font_family);
+        weights
+    }
+
     /// Every value inside its range, every theme built in; the error names the field.
     pub fn validate(&self) -> anyhow::Result<()> {
         within("interface_size", self.interface_size, &INTERFACE_SIZE)?;
@@ -398,6 +415,14 @@ fn program(path: &Path) -> bool {
 #[cfg(not(unix))]
 fn program(path: &Path) -> bool {
     path.is_file()
+}
+
+/// Reads a whole number a file may hold as `400` or as `400.0`, which 0.2.2 wrote.
+fn whole<'de, D: serde::Deserializer<'de>>(json: D) -> Result<u16, D::Error> {
+    use serde::de::Error as _;
+    let number = f64::deserialize(json)?;
+    u16::try_from(number.round() as i64)
+        .map_err(|_| D::Error::custom(format!("a weight is {number}, past 990")))
 }
 
 fn within<T: PartialOrd + std::fmt::Display>(

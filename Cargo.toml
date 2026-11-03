@@ -14,7 +14,7 @@ anyhow = "1"
 base64 = "0.22"
 base64-simd = "0.8"
 dirs = "7"
-ely-gpui-component = { git = "https://github.com/ELY-Open-Source/Ely-GPUI-Components.git", rev = "294a8323c08a06bd8e7782d16acee43b6bb0c5eb" }
+ely-gpui-component = { path = "vendor/ely" }
 env_logger = "0.11"
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 futures = "0.3"
@@ -23,6 +23,7 @@ getrandom = "0.3"
 gpui = { package = "gpui-pre", version = "=0.3.8", default-features = false }
 gpui_platform = { package = "gpui-pre-platform", version = "=0.3.8", features = ["font-kit", "wayland", "x11"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+lzma-rs = "0.3"
 log = "0.4"
 memchr = "2.8"
 polling = "3"
@@ -77,7 +78,8 @@ windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO
 alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "d2781caf4908e58404a31efa0bbac03c562380bc" }
 vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "8fa83a9b51cadcad3269e1ef3ab059672d875983" }
 xim-ctext = { path = "vendor/xim-ctext" }
-gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "8b9ce598956472934fcd54a060a9153575877475" }
+gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-windows = { path = "vendor/gpui-pre-windows" }
 gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "b3e25d5c00b0e97c5c8f2e3fe0c22da16aa293bb" }
 gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "db0ff3c44e3fb1a3ee6ba6a06a44d94bf5d1ff32" }
 

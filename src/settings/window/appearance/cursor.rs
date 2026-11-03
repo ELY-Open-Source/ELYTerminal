@@ -84,7 +84,7 @@ fn prompt(settings: &Settings, theme: &TerminalTheme, lit: bool, cx: &App) -> Di
         .bg(theme.background)
         .text_color(theme.foreground)
         .font_family(settings.font_family.clone())
-        .font_weight(FontWeight(settings.font_weight))
+        .font_weight(FontWeight(f32::from(settings.font_weight)))
         .text_size(px(settings.font_size))
         .line_height(relative(settings.line_height))
         .child(div().text_color(theme.ansi[2]).child("$"))

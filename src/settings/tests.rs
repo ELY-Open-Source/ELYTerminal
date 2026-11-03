@@ -25,6 +25,18 @@ fn a_file_without_files_menu_leaves_it_off() {
 }
 
 #[test]
+fn a_file_without_the_monospace_switch_keeps_it_on() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert!(
+        settings.monospace_only,
+        "a terminal's font picker offers monospaced families by default"
+    );
+    let all: Settings =
+        serde_json::from_str(r#"{"monospace_only":false}"#).expect("the switch is a bool");
+    assert!(!all.monospace_only, "off offers every family");
+}
+
+#[test]
 fn a_backdrop_is_acrylic_unless_named() {
     let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
     assert_eq!(settings.backdrop, Backdrop::Acrylic);
@@ -52,11 +64,11 @@ fn a_value_out_of_range_names_its_field() {
     let error = settings.validate().expect_err("2.5 is too tall");
     assert_eq!(error.to_string(), "line_height is 2.5, outside 1 to 2");
     let settings = Settings {
-        font_weight: 950.0,
+        font_weight: 1000,
         ..Settings::default()
     };
-    let error = settings.validate().expect_err("950 is past black");
-    assert_eq!(error.to_string(), "font_weight is 950, outside 100 to 900");
+    let error = settings.validate().expect_err("1000 is past the clamp");
+    assert_eq!(error.to_string(), "font_weight is 1000, outside 100 to 990");
     let settings = Settings {
         scrollback: 100_001,
         ..Settings::default()
@@ -360,4 +372,21 @@ fn the_interface_wears_the_system_font_at_13_px_unless_named() {
             format!("interface_size is {size}, outside 12 to 16")
         );
     }
+}
+
+/// A file 0.2.2 wrote names the weight as a float; it reads back as the whole number, and a round saves whole.
+#[test]
+fn a_weight_0_2_2_wrote_as_a_float_reads_back_whole() {
+    for (text, weight) in [
+        (r#"{"font_weight":400}"#, 400),
+        (r#"{"font_weight":400.0}"#, 400),
+        (r#"{"font_weight":450.0}"#, 450),
+        (r#"{"font_weight":950.0}"#, 950),
+    ] {
+        let settings: Settings =
+            serde_json::from_str(text).unwrap_or_else(|error| panic!("{text}: {error}"));
+        assert_eq!(settings.font_weight, weight, "{text}");
+    }
+    let saved = serde_json::to_string(&Settings::default()).expect("the settings write");
+    assert!(saved.contains("\"font_weight\":400"), "{saved}");
 }

@@ -1,5 +1,7 @@
 //! The terminal's font, cell and metrics.
 
+mod archive;
+
 use gpui::{
     Font, FontFallbacks, FontFeatures, FontId, FontStyle, FontWeight, Pixels, TextSystem, Window,
     px, size,
@@ -13,6 +15,9 @@ pub const ICONS: &str = "JetBrainsMono Nerd Font Mono";
 
 /// The bundled code font, the default.
 pub const MONO: &str = "JetBrains Mono";
+
+/// The bundled Nerd Font's faces, unpacked from the release archive on first call.
+pub use archive::registered;
 
 /// `font` as gpui loads it; gpui falls back to another font without a word, and loads none without an `m`.
 pub fn load_font(font: &Font, system: &TextSystem) -> anyhow::Result<FontId> {
@@ -42,12 +47,20 @@ pub(super) fn look(
         },
         fallbacks: (!settings.font_fallbacks.is_empty())
             .then(|| FontFallbacks::from_fonts(settings.font_fallbacks.clone())),
-        weight: FontWeight(settings.font_weight),
+        weight: FontWeight(f32::from(settings.font_weight)),
         style: FontStyle::Normal,
     };
     let text = px(points);
     let system = window.text_system();
     let id = load_font(&font, system)?;
+    // A family that lacks the chosen weight falls back to the nearest face it
+    // has; the log names both, so a setting that looks ignored is explained.
+    log::info!(
+        "terminal: {} at weight {} loads as {:?}",
+        settings.font_family,
+        settings.font_weight,
+        system.get_font_for_id(id).map(|face| face.weight)
+    );
     let advance = system
         .advance(id, text, 'M')
         .map_err(|error| anyhow::anyhow!("{} cannot measure M: {error}", settings.font_family))?;

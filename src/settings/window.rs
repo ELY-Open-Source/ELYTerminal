@@ -36,6 +36,29 @@ const SECTIONS: [(&str, &str, IconName); 2] = [
     ("terminal", "et.settings.terminal", IconName::Terminal),
 ];
 
+/// Every weight WinRT's `FontWeight` names, its key and its name's key.
+pub(super) const WEIGHTS: [(u16, &str, &str); 11] = [
+    (100, "thin", "et.weight.thin"),
+    (200, "extralight", "et.weight.extralight"),
+    (300, "light", "et.weight.light"),
+    (350, "semilight", "et.weight.semilight"),
+    (400, "normal", "et.weight.normal"),
+    (500, "medium", "et.weight.medium"),
+    (600, "semibold", "et.weight.semibold"),
+    (700, "bold", "et.weight.bold"),
+    (800, "extrabold", "et.weight.extrabold"),
+    (900, "black", "et.weight.black"),
+    (950, "extrablack", "et.weight.extrablack"),
+];
+
+/// The i18n key that names `weight`, and none where no name holds it.
+pub(super) fn named(weight: u16) -> Option<&'static str> {
+    WEIGHTS
+        .iter()
+        .find(|(value, ..)| *value == weight)
+        .map(|(_, _, name)| *name)
+}
+
 /// Cmd-, opens the settings, Cmd-W closes them; off macOS Ctrl-, and Ctrl-Shift-W, as Ghostty's.
 pub fn bind_keys(cx: &mut App) {
     let (open, close) = if cfg!(target_os = "macos") {
@@ -106,6 +129,8 @@ pub struct SettingsWindow {
     drafts: usize,
     font: Entity<TextInput>,
     cjk_font: Entity<TextInput>,
+    /// The weight's combobox, which keeps its picked row.
+    weight: Entity<TextInput>,
     interface_font: Entity<TextInput>,
     /// A picker's input for each fallback family, and one for the family being added.
     fallbacks: Vec<Entity<TextInput>>,
@@ -141,6 +166,11 @@ impl SettingsWindow {
         });
         let font = cx.new(|cx| TextInput::new(window, cx));
         let cjk_font = cx.new(|cx| TextInput::new(window, cx));
+        let weight = cx.new(|cx| {
+            let weights = SettingsStore::get(cx).weights(cx);
+            let now = SettingsStore::get(cx).font_weight;
+            appearance::weight::field(&weights, now, window, cx)
+        });
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
@@ -193,6 +223,7 @@ impl SettingsWindow {
             drafts: 0,
             font,
             cjk_font,
+            weight,
             interface_font,
             fallbacks: Vec::new(),
             adding: false,

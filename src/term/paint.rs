@@ -152,6 +152,7 @@ fn paint_preedit(
     decorate(corner, width, &style, look, window);
 }
 
+/// ANSI bold is three steps above the chosen weight, and never past black.
 fn face(style: &Style, base: &Font) -> Font {
     Font {
         weight: if style.bold {

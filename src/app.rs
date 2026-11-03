@@ -13,7 +13,7 @@ use crate::term::mac;
 use crate::{
     blur, i18n, menus,
     settings::{self, Place, SettingsStore},
-    term::{ICONS, Launch, MONO, config, input, shell::ShellIntegration, spawn},
+    term::{ICONS, Launch, MONO, config, input, registered, shell::ShellIntegration, spawn},
     themes, updates,
     workspace::{self, TITLE, Workspace},
 };
@@ -29,16 +29,17 @@ pub const APP_ID: &str = "com.zacharyzhang.elyterminal";
 /// Fonts, settings, language and scripts, checked before any window.
 pub fn start(cx: &mut App) -> anyhow::Result<()> {
     cx.text_system()
-        .add_fonts(vec![
-            Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Bold.ttf")),
-            Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Italic.ttf")),
-            Cow::Borrowed(include_bytes!(
-                "../assets/fonts/JetBrainsMono-BoldItalic.ttf"
-            )),
-            Cow::Borrowed(include_bytes!(
-                "../assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf"
-            )),
-        ])
+        .add_fonts({
+            let mut fonts: Vec<Cow<'static, [u8]>> = vec![
+                Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Bold.ttf")),
+                Cow::Borrowed(include_bytes!("../assets/fonts/JetBrainsMono-Italic.ttf")),
+                Cow::Borrowed(include_bytes!(
+                    "../assets/fonts/JetBrainsMono-BoldItalic.ttf"
+                )),
+            ];
+            fonts.extend(registered()?);
+            fonts
+        })
         .context("app: the bundled fonts failed to register")?;
     let names = cx.text_system().all_font_names();
     for family in [MONO, ICONS] {
