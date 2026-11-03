@@ -1,4 +1,4 @@
-//! The background picture, where the settings put it.
+//! The background picture and its gradient, where the settings put them.
 
 use std::{
     cell::{Cell, RefCell},
@@ -9,10 +9,11 @@ use std::{
 
 use gpui::{
     AnyElement, App, Bounds, Hsla, ImageAssetLoader, IntoElement, ObjectFit, ParentElement, Pixels,
-    RenderImage, Resource, Styled, StyledImage, Window, canvas, div, img, point, px, size,
+    RenderImage, Resource, Styled, StyledImage, Window, canvas, div, img, linear_color_stop,
+    linear_gradient, point, px, size,
 };
 
-use crate::settings::{BackgroundScope, PictureRepeat, Settings};
+use crate::settings::{BackgroundScope, PictureRepeat, Settings, color};
 
 /// The most tiles one picture draws; past it the picture draws once.
 const MAX_TILES: usize = 400;
@@ -24,6 +25,8 @@ thread_local! {
     static GROUND: Cell<Option<Bounds<Pixels>>> = const { Cell::new(None) };
     /// The picture whose failure was logged last, so each frame does not log it again.
     static FAILED: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+    /// The gradient whose colors failed to read last, so each frame does not log it again.
+    static BAD_GRADIENT: RefCell<Option<(String, String)>> = const { RefCell::new(None) };
 }
 
 /// The picture's bounds inside `ground`: the terminal body, or all of it below the title bar.
@@ -58,14 +61,14 @@ fn measure(slot: &'static LocalKey<Cell<Option<Bounds<Pixels>>>>) -> impl IntoEl
     .inset_0()
 }
 
-/// The window's ground and the picture over it, at the background's opacity; nothing without one.
+/// The window's ground, the picture over it and the gradient over both, at the background's opacity; nothing without either.
 pub(super) fn paint(
     settings: &Settings,
     base: Hsla,
     window: &mut Window,
     cx: &mut App,
 ) -> Option<AnyElement> {
-    if settings.background_image.is_empty() {
+    if settings.background_image.is_empty() && !settings.background_gradient {
         return None;
     }
     let ground = || {
@@ -80,32 +83,6 @@ pub(super) fn paint(
         return Some(ground().into_any_element());
     };
     let bounds = box_of(settings.background_scope, body, within);
-    let path: Arc<Path> = Path::new(&settings.background_image).into();
-    let source = Resource::Path(path.clone());
-    let Some(loaded) = window.use_asset::<ImageAssetLoader>(&source, cx) else {
-        return Some(ground().into_any_element());
-    };
-    let image = match loaded {
-        Ok(image) => image,
-        Err(error) => {
-            log_failure(&path, error);
-            return Some(ground().into_any_element());
-        }
-    };
-    let scale = window.scale_factor();
-    let pixels = image.size(0);
-    let intrinsic = (
-        pixels.width.0 as f32 / scale,
-        pixels.height.0 as f32 / scale,
-    );
-    if intrinsic.0 <= 0.0 || intrinsic.1 <= 0.0 {
-        log::debug!("background: {} has no pixels", path.display());
-        return Some(ground().into_any_element());
-    }
-    let container = (f32::from(bounds.size.width), f32::from(bounds.size.height));
-    let drawn = settings.background_size.points(intrinsic, container);
-    let free = (container.0 - drawn.0, container.1 - drawn.1);
-    let place = settings.background_position.points(free);
     let mut boxed = div()
         .absolute()
         .overflow_hidden()
@@ -113,10 +90,73 @@ pub(super) fn paint(
         .top(bounds.origin.y)
         .w(bounds.size.width)
         .h(bounds.size.height);
-    for (x, y) in tiles(settings.background_repeat, place, drawn, container) {
-        boxed = boxed.child(tile(&image, x, y, drawn));
+    if !settings.background_image.is_empty() {
+        let path: Arc<Path> = Path::new(&settings.background_image).into();
+        let source = Resource::Path(path.clone());
+        match window.use_asset::<ImageAssetLoader>(&source, cx) {
+            None => {}
+            Some(Err(error)) => log_failure(&path, error),
+            Some(Ok(image)) => {
+                let scale = window.scale_factor();
+                let pixels = image.size(0);
+                let intrinsic = (
+                    pixels.width.0 as f32 / scale,
+                    pixels.height.0 as f32 / scale,
+                );
+                if intrinsic.0 <= 0.0 || intrinsic.1 <= 0.0 {
+                    log::debug!("background: {} has no pixels", path.display());
+                } else {
+                    let container = (f32::from(bounds.size.width), f32::from(bounds.size.height));
+                    let drawn = settings.background_size.points(intrinsic, container);
+                    let free = (container.0 - drawn.0, container.1 - drawn.1);
+                    let place = settings.background_position.points(free);
+                    for (x, y) in tiles(settings.background_repeat, place, drawn, container) {
+                        boxed = boxed.child(tile(&image, x, y, drawn));
+                    }
+                }
+            }
+        }
+    }
+    if settings.background_gradient {
+        boxed = boxed.children(gradient(settings));
     }
     Some(ground().child(boxed).into_any_element())
+}
+
+/// The gradient over the picture, from its first color to its last at its angle.
+fn gradient(settings: &Settings) -> Option<AnyElement> {
+    let (from, to) = (
+        &settings.background_gradient_from,
+        &settings.background_gradient_to,
+    );
+    let (Ok(first), Ok(last)) = (color(from), color(to)) else {
+        log_bad_gradient(from, to);
+        return None;
+    };
+    let stops = (linear_color_stop(first, 0.0), linear_color_stop(last, 1.0));
+    Some(
+        div()
+            .absolute()
+            .inset_0()
+            .bg(linear_gradient(
+                settings.background_gradient_angle,
+                stops.0,
+                stops.1,
+            ))
+            .into_any_element(),
+    )
+}
+
+/// Logs the gradient's colors once, not once a frame.
+fn log_bad_gradient(from: &str, to: &str) {
+    BAD_GRADIENT.with(|bad| {
+        let mut bad = bad.borrow_mut();
+        let pair = (from.to_string(), to.to_string());
+        if bad.as_ref() != Some(&pair) {
+            log::error!("wallpaper: the gradient's colors {from:?} and {to:?} do not read");
+            *bad = Some(pair);
+        }
+    });
 }
 
 /// One tile of the picture, at `x` and `y` in its box.

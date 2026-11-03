@@ -1,3 +1,4 @@
+mod color;
 mod picture;
 mod profiles;
 mod store;
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
+pub use color::color;
 pub use picture::{PictureAxis, PictureLength, PicturePosition, PictureRepeat, PictureSize};
 pub use profiles::{Profile, command_line, words};
 pub use store::{SettingsStore, load, save};
@@ -137,6 +139,14 @@ pub struct Settings {
     pub background_position: PicturePosition,
     /// Whether the picture tiles to fill its box.
     pub background_repeat: PictureRepeat,
+    /// Whether a gradient paints over the picture.
+    pub background_gradient: bool,
+    /// The gradient's angle in degrees, 0 up and turning clockwise.
+    pub background_gradient_angle: f32,
+    /// The gradient's first color.
+    pub background_gradient_from: String,
+    /// The gradient's last color.
+    pub background_gradient_to: String,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -218,6 +228,10 @@ impl Default for Settings {
             background_size: PictureSize::Cover,
             background_position: PicturePosition::default(),
             background_repeat: PictureRepeat::NoRepeat,
+            background_gradient: false,
+            background_gradient_angle: 180.0,
+            background_gradient_from: "#00000000".into(),
+            background_gradient_to: "#00000000".into(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             cjk_font: String::new(),
@@ -268,6 +282,7 @@ pub const COLUMN: RangeInclusive<f32> = 160.0..=960.0;
 pub const WINDOW: RangeInclusive<f32> = 100.0..=16384.0;
 pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
 pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
+pub const GRADIENT_ANGLE: RangeInclusive<f32> = 0.0..=360.0;
 
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
@@ -277,6 +292,13 @@ impl Settings {
         within("font_weight", self.font_weight, &FONT_WEIGHT)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;
         within("background_opacity", self.background_opacity, &OPACITY)?;
+        within(
+            "background_gradient_angle",
+            self.background_gradient_angle,
+            &GRADIENT_ANGLE,
+        )?;
+        color(&self.background_gradient_from).context("background_gradient_from")?;
+        color(&self.background_gradient_to).context("background_gradient_to")?;
         within("padding_x", self.padding_x, &PADDING)?;
         within("padding_y", self.padding_y, &PADDING)?;
         within("scrollback", self.scrollback, &SCROLLBACK)?;
