@@ -131,6 +131,9 @@ pub struct SettingsWindow {
     cjk_font: Entity<TextInput>,
     /// The weight's combobox, which keeps its picked row.
     weight: Entity<TextInput>,
+    /// The chosen family's weights, with the family they were read for: the
+    /// cursor preview redraws the page, and the family is asked only when it moves.
+    weights: std::cell::RefCell<(String, Vec<u16>)>,
     interface_font: Entity<TextInput>,
     /// A picker's input for each fallback family, and one for the family being added.
     fallbacks: Vec<Entity<TextInput>>,
@@ -152,6 +155,19 @@ pub struct SettingsWindow {
 }
 
 impl SettingsWindow {
+    /// The chosen family's weights, read again only when the family moves.
+    ///
+    /// The cursor preview blinks and redraws the page, so the family is not asked
+    /// each time: DirectWrite walks a family's faces to answer.
+    fn weights(&self, cx: &Context<Self>) -> Vec<u16> {
+        let family = SettingsStore::get(cx).font_family.clone();
+        let mut held = self.weights.borrow_mut();
+        if held.0 != family {
+            *held = (family, SettingsStore::get(cx).weights(cx));
+        }
+        held.1.clone()
+    }
+
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let shell = cx.new(|cx| {
             let placeholder = text(cx, "et.settings.login_shell", &[]);
@@ -171,6 +187,8 @@ impl SettingsWindow {
             let now = SettingsStore::get(cx).font_weight;
             appearance::weight::field(&weights, now, window, cx)
         });
+        let weights = SettingsStore::get(cx);
+        let weights = (weights.font_family.clone(), weights.weights(cx));
         let interface_font = cx.new(|cx| TextInput::new(window, cx));
         let (theme_name, named) = Self::name_field(None, String::new(), window, cx);
         let image = cx.new(|cx| {
@@ -224,6 +242,7 @@ impl SettingsWindow {
             font,
             cjk_font,
             weight,
+            weights: weights.into(),
             interface_font,
             fallbacks: Vec::new(),
             adding: false,

@@ -251,13 +251,16 @@ pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 
 impl Settings {
     /// The weights this copy of the font draws: the family's own faces where the
-    /// platform names them, else the two every family ships.
+    /// platform names them, else the one nearly every family ships.
+    ///
+    /// No invented 700: a family the platform cannot tell about is offered only
+    /// what it almost surely holds, so no pick falls back to a synthesised face.
     pub fn weights(&self, cx: &gpui::App) -> Vec<u16> {
         let mut weights = cx.text_system().weights_for_family(&self.font_family);
         if weights.is_empty() {
-            weights = vec![400, 700];
+            weights = vec![400];
         }
-        log::info!("fonts: {} draws {weights:?}", self.font_family);
+        log::debug!("fonts: {} draws {weights:?}", self.font_family);
         weights
     }
 

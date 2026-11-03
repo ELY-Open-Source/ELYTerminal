@@ -51,7 +51,7 @@ impl SettingsWindow {
         let theme = cx.theme();
         let this = cx.entity();
         let weight_state = self.weight.clone();
-        let weights = SettingsStore::get(cx).weights(cx);
+        let weights = self.weights(cx);
         let word = |key: &str| text(cx, key, &[]);
         let language = choice(
             &this,
