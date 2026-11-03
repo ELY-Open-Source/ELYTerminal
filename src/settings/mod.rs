@@ -1,3 +1,4 @@
+mod picture;
 mod profiles;
 mod store;
 pub mod window;
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::themes;
 
+pub use picture::{PictureAxis, PictureLength, PicturePosition, PictureRepeat, PictureSize};
 pub use profiles::{Profile, command_line, words};
 pub use store::{SettingsStore, load, save};
 
@@ -129,6 +131,12 @@ pub struct Settings {
     pub background_image: String,
     /// Where the picture paints: the terminal's column or the window below the title bar.
     pub background_scope: BackgroundScope,
+    /// How the picture fills its box, as CSS's `background-size`.
+    pub background_size: PictureSize,
+    /// Where the picture sits in its box, as CSS's `background-position`.
+    pub background_position: PicturePosition,
+    /// Whether the picture tiles to fill its box.
+    pub background_repeat: PictureRepeat,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -207,6 +215,9 @@ impl Default for Settings {
             custom_themes: Vec::new(),
             background_image: String::new(),
             background_scope: BackgroundScope::Terminal,
+            background_size: PictureSize::Cover,
+            background_position: PicturePosition::default(),
+            background_repeat: PictureRepeat::NoRepeat,
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             cjk_font: String::new(),

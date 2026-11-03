@@ -372,3 +372,25 @@ fn a_picture_lies_under_the_terminal_unless_the_window_is_chosen() {
     let json = serde_json::to_string(&window).expect("the settings write");
     assert!(json.contains(r#""background_scope":"window""#), "{json}");
 }
+
+#[test]
+fn a_picture_covers_its_box_unless_the_settings_say_more() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.background_size, PictureSize::Cover);
+    assert_eq!(settings.background_position, PicturePosition::default());
+    assert_eq!(settings.background_repeat, PictureRepeat::NoRepeat);
+    let sized: Settings = serde_json::from_str(
+        r#"{"background_size":"51% auto","background_position":"125% 100%","background_repeat":"repeat_x"}"#,
+    )
+    .expect("a size, a position and a repeat");
+    assert_eq!(sized.background_size.to_string(), "51% auto");
+    assert_eq!(sized.background_position.to_string(), "125% 100%");
+    assert_eq!(sized.background_repeat, PictureRepeat::RepeatX);
+    let json = serde_json::to_string(&sized).expect("the settings write");
+    assert!(json.contains(r#""background_size":"51% auto""#), "{json}");
+    assert!(
+        json.contains(r#""background_position":"125% 100%""#),
+        "{json}"
+    );
+    assert!(json.contains(r#""background_repeat":"repeat_x""#), "{json}");
+}

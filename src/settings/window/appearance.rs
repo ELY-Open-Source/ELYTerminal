@@ -8,7 +8,7 @@ use std::ops::RangeInclusive;
 
 use ely_gpui_component::{
     buttons::{Button, ButtonVariant, IconButton},
-    forms::{FontPicker, NumberInput, PathInput, Slider, Switch, TextInput},
+    forms::{FontPicker, NumberInput, Slider, Switch, TextInput},
     i18n::text,
     primitives::IconName,
     settings::{SettingsRow, SettingsSection},
@@ -19,15 +19,12 @@ use gpui::{
 };
 
 use self::cards::grid;
-use super::{
-    SettingsWindow, choice, set, switch,
-    terminal::{chosen, path_field},
-};
+use super::{SettingsWindow, choice, set, switch};
 use crate::{
     blur,
     settings::{
-        Backdrop, BackgroundScope, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING,
-        Settings, SettingsStore,
+        Backdrop, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING, Settings,
+        SettingsStore,
     },
 };
 
@@ -42,20 +39,6 @@ const BACKDROPS: [(Backdrop, &str, &str); 3] = [
 const LANGUAGES: [(Language, &str, &str); 2] = [
     (Language::English, "en-US", "et.language.english"),
     (Language::SimplifiedChinese, "zh-CN", "et.language.chinese"),
-];
-
-/// Each picture scope, its key and its name's key.
-const SCOPES: [(BackgroundScope, &str, &str); 2] = [
-    (
-        BackgroundScope::Terminal,
-        "terminal",
-        "et.appearance.scope_terminal",
-    ),
-    (
-        BackgroundScope::Window,
-        "window",
-        "et.appearance.scope_window",
-    ),
 ];
 
 impl SettingsWindow {
@@ -198,27 +181,13 @@ impl SettingsWindow {
                     .text_size(theme.text_size(TextSize::Sm))
                     .child(format!("{opacity}%")),
             );
-        let image = PathInput::new("settings-background-image", &self.image)
-            .on_choose(chosen(&this, "background_image"));
-        let image = path_field(image, self.refused_image.clone(), cx);
         let mut background = SettingsSection::new(word("et.appearance.window"))
-            .row(SettingsRow::new(word("et.appearance.opacity")).control(opacity))
-            .row(
-                SettingsRow::new(word("et.appearance.image"))
-                    .description(word("et.appearance.image_hint"))
-                    .control(image),
-            )
-            .row(
-                SettingsRow::new(word("et.appearance.scope")).control(choice(
-                    &this,
-                    "background_scope",
-                    &SCOPES,
-                    settings.background_scope,
-                    |settings, scope| settings.background_scope = scope,
-                    cx,
-                )),
-            )
-            .row(SettingsRow::new(word("et.appearance.blur")).control(switch(
+            .row(SettingsRow::new(word("et.appearance.opacity")).control(opacity));
+        for row in self.picture.rows(&this, settings, cx) {
+            background = background.row(row);
+        }
+        let mut background =
+            background.row(SettingsRow::new(word("et.appearance.blur")).control(switch(
                 &this,
                 "background_blur",
                 settings.background_blur,
