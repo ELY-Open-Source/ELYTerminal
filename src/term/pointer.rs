@@ -394,11 +394,20 @@ impl TerminalView {
         if self.pty.term.lock().mode().contains(TermMode::PASTE_EVENTS) {
             return self.paste_event(cx);
         }
-        let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) else {
-            log::debug!("terminal {}: no text to paste", self.pty.pid);
-            return;
-        };
-        self.paste_text(&text, cx);
+        match cx.read_from_clipboard().and_then(|item| item.text()) {
+            Some(text) => self.paste_text(&text, cx),
+            None if cfg!(windows)
+                && self
+                    .pty
+                    .term
+                    .lock()
+                    .mode()
+                    .contains(TermMode::BRACKETED_PASTE) =>
+            {
+                self.paste_text("", cx);
+            }
+            None => log::debug!("terminal {}: no text to paste", self.pty.pid),
+        }
     }
 
     /// `text` to the program as a paste, bracketed when it asked.
