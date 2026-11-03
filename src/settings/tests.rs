@@ -437,3 +437,29 @@ fn shortcuts_keep_the_keys_a_command_takes_and_refuse_what_no_keymap_holds() {
         assert!(settings.validate().is_err(), "{refused}");
     }
 }
+
+#[test]
+fn a_mask_and_the_pictures_opacity_keep_their_figures() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.background_image_opacity, 1.0);
+    assert!(!settings.background_mask);
+    assert_eq!(settings.background_mask_angle, 90.0);
+    assert_eq!(settings.background_mask_stops, "transparent, black");
+    let masked: Settings = serde_json::from_str(
+        r##"{"background_image_opacity":0.25,"background_mask":true,"background_mask_angle":90,"background_mask_stops":"transparent, black, black"}"##,
+    )
+    .expect("an opacity and a mask");
+    masked.validate().expect("they are in range");
+    let mut broken = masked.clone();
+    broken.background_mask_stops = "black".into();
+    assert!(broken.validate().is_err(), "one stop is no mask");
+    let json = serde_json::to_string(&masked).expect("the settings write");
+    assert!(
+        json.contains(r##""background_image_opacity":0.25"##),
+        "{json}"
+    );
+    assert!(
+        json.contains(r##""background_mask_stops":"transparent, black, black""##),
+        "{json}"
+    );
+}
