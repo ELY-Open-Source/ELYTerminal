@@ -115,6 +115,18 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.picture_repeat_repeat", "Repeat"),
     ("et.appearance.picture_repeat_x", "Repeat across"),
     ("et.appearance.picture_repeat_y", "Repeat down"),
+    ("et.appearance.gradient", "Gradient"),
+    ("et.appearance.gradient_angle", "Gradient angle"),
+    (
+        "et.appearance.gradient_angle_hint",
+        "Degrees: 0 draws upward, increasing clockwise",
+    ),
+    ("et.appearance.gradient_from", "Gradient start"),
+    ("et.appearance.gradient_to", "Gradient end"),
+    (
+        "et.appearance.gradient_color_hint",
+        "A color: #rgb, #rrggbb, #rrggbbaa, rgb(...), rgba(...), or a name",
+    ),
     ("et.custom.new", "New theme"),
     ("et.custom.name_of", "Custom {number}"),
     ("et.custom.name", "Name"),

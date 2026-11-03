@@ -394,3 +394,27 @@ fn a_picture_covers_its_box_unless_the_settings_say_more() {
     );
     assert!(json.contains(r#""background_repeat":"repeat_x""#), "{json}");
 }
+
+#[test]
+fn a_gradient_keeps_its_angle_and_colors() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert!(!settings.background_gradient);
+    assert_eq!(settings.background_gradient_angle, 180.0);
+    assert_eq!(settings.background_gradient_from, "#00000000");
+    assert_eq!(settings.background_gradient_to, "#00000000");
+    let painted: Settings = serde_json::from_str(
+        r##"{"background_gradient":true,"background_gradient_angle":45,"background_gradient_from":"#202030cc","background_gradient_to":"#00000000"}"##,
+    )
+    .expect("a gradient");
+    assert!(painted.background_gradient);
+    assert_eq!(painted.background_gradient_angle, 45.0);
+    painted.validate().expect("the colors read");
+    let mut broken = painted.clone();
+    broken.background_gradient_from = "#zz".into();
+    assert!(broken.validate().is_err());
+    let json = serde_json::to_string(&painted).expect("the settings write");
+    assert!(
+        json.contains(r##""background_gradient_from":"#202030cc""##),
+        "{json}"
+    );
+}
