@@ -16,6 +16,36 @@ jobs:
       - run: scripts/check.sh
       - run: cargo build --locked
 
+  windows-arm:
+    runs-on: windows-11-arm
+    env:
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install --no-self-update
+      # Warm up PowerShell to avoid an intermittent first-start failure in the ARM64 shell tests.
+      - name: Warm up Windows PowerShell
+        shell: pwsh
+        run: |
+          $powershell = "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
+          & $powershell -NoProfile -NonInteractive -Command "Write-Output 'PowerShell warm-up complete'"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows PowerShell warm-up failed with exit code $LASTEXITCODE"
+          }
+      - run: cargo test --locked --quiet
+      - run: cargo build --locked
+      - name: Build Windows ARM64 package
+        shell: pwsh
+        run: ./scripts/windows-zip.ps1
+      - name: Keep Windows ARM64 package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ELYTerminal-windows-aarch64
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          path: target/release/ELYTerminal-*-windows-aarch64.zip
+
   windows:
     runs-on: [self-hosted, ely-windows]
     env:
