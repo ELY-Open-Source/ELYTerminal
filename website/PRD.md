@@ -41,7 +41,7 @@ Unit checks cover platform detection, release links, locale and theme choice, th
 
 ## 8. Deployment
 
-Deploy with Wrangler to `terminal.elygpui.com` as a Cloudflare Custom Domain. Keep the workers.dev URL available for rollback checks. Do not alter unrelated DNS records or the terminal application's settings.
+Deploy with Wrangler to `terminal.elygpui.com` as a Cloudflare Custom Domain, at each published release through the Website workflow. The hero transcript's version is Cargo.toml's, stamped at build. Keep the workers.dev URL available for rollback checks. Do not alter unrelated DNS records or the terminal application's settings.
 
 ## Sources
 

@@ -1,0 +1,38 @@
+name: Website
+
+# Published, not drafted: the site's downloads follow releases/latest, which skips drafts.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          rustup toolchain install --no-self-update
+          rustup target add wasm32-unknown-unknown --toolchain 1.95.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: The release's tag names Cargo.toml's version
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(node --input-type=module -e "import { readFileSync } from 'node:fs'; import { crateVersion } from './website/version.js'; console.log(crateVersion(readFileSync('Cargo.toml', 'utf8')))")
+          if [ "$TAG" != "v$version" ]; then
+            echo "website: release $TAG does not match Cargo.toml's v$version" >&2
+            exit 1
+          fi
+      - run: npm --prefix website ci
+      - run: npm --prefix website test
+      - name: Build and deploy to terminal.elygpui.com
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm --prefix website run deploy
