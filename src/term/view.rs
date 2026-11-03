@@ -346,7 +346,22 @@ impl Render for TerminalView {
         let lit = self.finder.as_ref().map_or_else(Vec::new, |finder| {
             finder.lit(&term, cx.theme().colors.warning)
         });
-        let shown = frame(&term, &ink, &lit);
+        let link = self
+            .pointer
+            .hover
+            .and_then(|_| self.pointer.hovered(window.mouse_position(), self.size))
+            .and_then(|(column, row)| {
+                super::links::hit_at(
+                    &term,
+                    alacritty_terminal::index::Point::new(
+                        alacritty_terminal::index::Line(
+                            row as i32 - term.grid().display_offset() as i32,
+                        ),
+                        alacritty_terminal::index::Column(column),
+                    ),
+                )
+            });
+        let shown = frame(&term, &ink, &lit, link.as_ref());
         let mut graphics = self.pty.graphics();
         // Only a drawn session ticks; a hidden one pauses.
         let next = graphics.tick(Instant::now());
@@ -405,6 +420,11 @@ impl Render for TerminalView {
             .on_action(cx.listener(|view, _: &NextPrompt, _, cx| view.scroll_to_prompt(false, cx)))
             .on_any_mouse_down(cx.listener(Self::mouse_down))
             .on_mouse_move(cx.listener(Self::mouse_move))
+            .hover_listener_mode(gpui::HoverListenerMode::InputModalityIndependent)
+            .on_hover(cx.listener(|view, hovered: &bool, window, cx| {
+                view.pointer.hover = hovered.then(|| window.mouse_position());
+                cx.notify();
+            }))
             .on_scroll_wheel(cx.listener(Self::wheel))
             .on_drop(cx.listener(|view, paths: &ExternalPaths, _, cx| view.drop_paths(paths, cx)))
             .on_drop(cx.listener(|view, drag: &TreeDrag, _, cx| view.dragged(drag, cx)))

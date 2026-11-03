@@ -84,7 +84,12 @@ impl Frame {
 }
 
 /// The screen as it shows now, scrolled back or not; `lit` matches wear their washes.
-pub fn frame<T: EventListener>(term: &Term<T>, ink: &Ink, lit: &[(Match, Hsla)]) -> Frame {
+pub fn frame<T: EventListener>(
+    term: &Term<T>,
+    ink: &Ink,
+    lit: &[(Match, Hsla)],
+    link: Option<&Match>,
+) -> Frame {
     let content = term.renderable_content();
     let offset = content.display_offset as i32;
     let mut rows = vec![Row::default(); term.screen_lines()];
@@ -117,6 +122,13 @@ pub fn frame<T: EventListener>(term: &Term<T>, ink: &Ink, lit: &[(Match, Hsla)])
             .intersects(Flags::WIDE_CHAR_SPACER | Flags::LEADING_WIDE_CHAR_SPACER);
         // A placeholder's image draws over its cell; its glyph never.
         let hidden = cell.flags.contains(Flags::HIDDEN) || cell.c == super::graphics::PLACEHOLDER;
+        if !hidden
+            && look.underline == Underline::None
+            && link.is_some_and(|link| covers(&|at| link.contains(&at)))
+        {
+            look.underline = Underline::Single;
+            look.underline_color = look.fg;
+        }
         let marks = cell.zerowidth().filter(|marks| !marks.is_empty());
         let alone = (!hidden && (marks.is_some() || boxes::drawn(cell.c))).then(|| {
             std::iter::once(cell.c)
@@ -205,6 +217,9 @@ fn style(cell: &Cell, ink: &Ink, set: &Colors) -> Style {
 }
 
 #[cfg(test)]
+mod hover_tests;
+
+#[cfg(test)]
 mod tests {
     use alacritty_terminal::{
         event::VoidListener,
@@ -220,7 +235,7 @@ mod tests {
         let mut parser: Processor = Processor::new();
         parser.advance(&mut term, bytes);
         let ink = Ink::new(themes::find("dracula").expect("dracula"), term.colors());
-        (frame(&term, &ink, &[]), ink)
+        (frame(&term, &ink, &[], None), ink)
     }
 
     #[test]
@@ -338,7 +353,7 @@ mod tests {
         selection.update(Point::new(Line(0), Column(3)), Side::Left);
         term.selection = Some(selection);
         let ink = Ink::new(themes::find("dracula").expect("dracula"), term.colors());
-        let frame = frame(&term, &ink, &[]);
+        let frame = frame(&term, &ink, &[], None);
         let grounds: Vec<_> = frame.rows[0]
             .runs
             .iter()
@@ -369,7 +384,7 @@ mod tests {
                 .map(|(bytes, style)| (*bytes, style.bg))
                 .collect()
         };
-        let shown = frame(&term, &ink, &lit);
+        let shown = frame(&term, &ink, &lit, None);
         assert_eq!(
             &grounds(&shown)[..5],
             [
@@ -386,7 +401,7 @@ mod tests {
             .as_mut()
             .expect("a selection")
             .update(at(6), Side::Right);
-        let shown = frame(&term, &ink, &lit);
+        let shown = frame(&term, &ink, &lit, None);
         assert_eq!(
             grounds(&shown)[3],
             (1, Some(ink.selection)),

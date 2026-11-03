@@ -21,6 +21,7 @@ use crate::settings::SettingsStore;
 /// Where the grid sits, and what the mouse is doing to it.
 #[derive(Default)]
 pub struct Pointer {
+    pub(super) hover: Option<Point<Pixels>>,
     /// The grid's top-left in the window, from the last layout.
     pub origin: Point<Pixels>,
     pub cell: Size<Pixels>,
@@ -36,6 +37,26 @@ pub struct Pointer {
     rest: f32,
     /// Windows mouse reporting keeps fractional notches apart from local lines.
     report_rest: f32,
+}
+
+impl Pointer {
+    pub(super) fn hovered(
+        &self,
+        position: Point<Pixels>,
+        size: (usize, usize),
+    ) -> Option<(usize, usize)> {
+        let delta = position - self.origin;
+        if self.cell.width <= Pixels::ZERO
+            || self.cell.height <= Pixels::ZERO
+            || delta.x < Pixels::ZERO
+            || delta.y < Pixels::ZERO
+        {
+            return None;
+        }
+        let column = (delta.x / self.cell.width) as usize;
+        let row = (delta.y / self.cell.height) as usize;
+        (column < size.0 && row < size.1).then_some((column, row))
+    }
 }
 
 fn button(button: MouseButton) -> Option<Button> {
@@ -189,6 +210,14 @@ impl TerminalView {
         cx: &mut Context<Self>,
     ) {
         let (cell, point, side) = self.cell_at(event.position);
+        let previous = self
+            .pointer
+            .hover
+            .and_then(|position| self.pointer.hovered(position, self.size));
+        self.pointer.hover = Some(event.position);
+        if previous != self.pointer.hovered(event.position, self.size) {
+            cx.notify();
+        }
         if self.pointer.selecting && event.pressed_button == Some(MouseButton::Left) {
             if self.pointer.click.is_some_and(|click| click != point) {
                 self.pointer.click = None;
@@ -235,6 +264,7 @@ impl TerminalView {
 
     /// Ends the mouse's gesture as releases would: a hidden terminal hears none.
     pub fn let_go(&mut self, cx: &mut Context<Self>) {
+        self.pointer.hover = None;
         self.end_selection(cx);
         self.pointer.click = None;
         for held in self.pointer.pressed.clone() {
@@ -460,6 +490,9 @@ fn everything<T>(term: &Term<T>) -> Option<Selection> {
     all.update(last, Side::Right);
     Some(all)
 }
+
+#[cfg(test)]
+mod hover_tests;
 
 #[cfg(test)]
 mod tests {
