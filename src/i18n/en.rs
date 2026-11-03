@@ -94,8 +94,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.image", "Background image"),
     (
         "et.appearance.image_hint",
-        "A picture under the terminal, at the background's opacity",
+        "A picture under the terminal or the window, at the background's opacity",
     ),
+    ("et.appearance.scope", "Picture scope"),
+    ("et.appearance.scope_terminal", "Terminal"),
+    ("et.appearance.scope_window", "Window"),
     ("et.custom.new", "New theme"),
     ("et.custom.name_of", "Custom {number}"),
     ("et.custom.name", "Name"),

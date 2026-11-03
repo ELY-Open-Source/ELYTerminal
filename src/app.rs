@@ -102,6 +102,7 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
             theme,
             settings.custom_themes.clone(),
             settings.background_opacity,
+            !settings.background_image.is_empty(),
         )
     };
     let mut image = SettingsStore::get(cx).background_image.clone();

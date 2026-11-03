@@ -95,6 +95,15 @@ pub enum PanelTab {
     Files,
 }
 
+/// Where the background picture paints: the terminal's column or the window below the title bar.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundScope {
+    #[default]
+    Terminal,
+    Window,
+}
+
 /// Everything the settings window edits. A field the file leaves out takes its default.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -118,6 +127,8 @@ pub struct Settings {
     pub custom_themes: Vec<themes::CustomTheme>,
     /// A picture under the terminal; empty for none.
     pub background_image: String,
+    /// Where the picture paints: the terminal's column or the window below the title bar.
+    pub background_scope: BackgroundScope,
     pub font_family: String,
     /// Families tried in order for a character Font family lacks.
     pub font_fallbacks: Vec<String>,
@@ -193,6 +204,7 @@ impl Default for Settings {
             dark_theme: None,
             custom_themes: Vec::new(),
             background_image: String::new(),
+            background_scope: BackgroundScope::Terminal,
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
             cjk_font: String::new(),

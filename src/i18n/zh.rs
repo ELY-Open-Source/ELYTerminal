@@ -91,8 +91,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.image", "背景图片"),
     (
         "et.appearance.image_hint",
-        "终端下方的图片，按背景不透明度显示",
+        "终端或窗口下方的图片，按背景不透明度显示",
     ),
+    ("et.appearance.scope", "图片范围"),
+    ("et.appearance.scope_terminal", "终端"),
+    ("et.appearance.scope_window", "窗口"),
     ("et.custom.new", "新建主题"),
     ("et.custom.name_of", "自定义 {number}"),
     ("et.custom.name", "名称"),

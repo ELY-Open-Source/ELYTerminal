@@ -26,8 +26,8 @@ use super::{
 use crate::{
     blur,
     settings::{
-        Backdrop, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING, Settings,
-        SettingsStore,
+        Backdrop, BackgroundScope, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, Language, OPACITY, PADDING,
+        Settings, SettingsStore,
     },
 };
 
@@ -42,6 +42,20 @@ const BACKDROPS: [(Backdrop, &str, &str); 3] = [
 const LANGUAGES: [(Language, &str, &str); 2] = [
     (Language::English, "en-US", "et.language.english"),
     (Language::SimplifiedChinese, "zh-CN", "et.language.chinese"),
+];
+
+/// Each picture scope, its key and its name's key.
+const SCOPES: [(BackgroundScope, &str, &str); 2] = [
+    (
+        BackgroundScope::Terminal,
+        "terminal",
+        "et.appearance.scope_terminal",
+    ),
+    (
+        BackgroundScope::Window,
+        "window",
+        "et.appearance.scope_window",
+    ),
 ];
 
 impl SettingsWindow {
@@ -193,6 +207,16 @@ impl SettingsWindow {
                 SettingsRow::new(word("et.appearance.image"))
                     .description(word("et.appearance.image_hint"))
                     .control(image),
+            )
+            .row(
+                SettingsRow::new(word("et.appearance.scope")).control(choice(
+                    &this,
+                    "background_scope",
+                    &SCOPES,
+                    settings.background_scope,
+                    |settings, scope| settings.background_scope = scope,
+                    cx,
+                )),
             )
             .row(SettingsRow::new(word("et.appearance.blur")).control(switch(
                 &this,

@@ -77,7 +77,12 @@ pub fn palette(theme: &TerminalTheme, opacity: f32) -> Palette {
 pub fn apply(cx: &mut App) {
     let settings = SettingsStore::get(cx);
     let theme = active(settings, cx.window_appearance(), cx);
-    let opacity = settings.background_opacity;
+    // A picture grounds the window; the columns leave it as it is.
+    let opacity = if settings.background_image.is_empty() {
+        settings.background_opacity
+    } else {
+        0.0
+    };
     let mode = if theme.is_dark() {
         Mode::Dark
     } else {
