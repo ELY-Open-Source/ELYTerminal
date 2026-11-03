@@ -77,8 +77,13 @@ fn load() -> Result<Vec<Vec<u8>>, String> {
     Ok(fonts)
 }
 
-/// The cached faces, none when a face is missing or the folder holds another set.
+/// Reads the faces from the cache, none when a face is missing or the set is stale.
 fn read_cache(folder: &std::path::Path) -> Option<Vec<Vec<u8>>> {
+    let stamp = stamp();
+    let kept = std::fs::read_to_string(folder.join("archive.txt")).ok()?;
+    if kept != stamp {
+        return None;
+    }
     let mut fonts = Vec::with_capacity(WEIGHTS.len());
     for name in WEIGHTS {
         let face = std::fs::read(folder.join(name)).ok()?;
@@ -90,15 +95,24 @@ fn read_cache(folder: &std::path::Path) -> Option<Vec<Vec<u8>>> {
     Some(fonts)
 }
 
+/// The archive's size and hash, so a new bundle replaces a stale cache.
+fn stamp() -> String {
+    format!(
+        "{} {}",
+        ARCHIVE.len(),
+        ARCHIVE
+            .iter()
+            .fold(0u64, |sum, byte| sum.wrapping_add(u64::from(*byte)))
+    )
+}
+
 /// Writes each face under the name `WEIGHTS` gives it, a temp file renamed in place.
 fn write_cache(folder: &std::path::Path, fonts: &[Vec<u8>]) -> std::io::Result<()> {
     std::fs::create_dir_all(folder)?;
+    std::fs::write(folder.join("archive.txt"), stamp())?;
     for (name, font) in WEIGHTS.iter().zip(fonts) {
         let path = folder.join(name);
-        if std::fs::metadata(&path).is_ok_and(|meta| meta.len() == font.len() as u64) {
-            continue;
-        }
-        let temp = path.with_extension("tmp");
+        let temp = folder.join(format!("{name}.tmp"));
         std::fs::write(&temp, font)?;
         std::fs::rename(&temp, &path)?;
     }
