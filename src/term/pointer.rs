@@ -34,6 +34,8 @@ pub struct Pointer {
     last: Option<(usize, usize)>,
     /// Wheel travel short of a line, in lines.
     rest: f32,
+    /// Windows mouse reporting keeps fractional notches apart from local lines.
+    report_rest: f32,
 }
 
 fn button(button: MouseButton) -> Option<Button> {
@@ -279,11 +281,18 @@ impl TerminalView {
         }
         cx.stop_propagation();
         let rows = self.pty.term.lock().screen_lines();
-        let rest = &mut self.pointer.rest;
-        let Some(lines) = wheel::lines(rest, event, height, rows, wheel::settings) else {
+        let tracking = self.tracking(&event.modifiers);
+        let reporting = cfg!(windows) && tracking != Tracking::Off;
+        let rest = if reporting {
+            &mut self.pointer.report_rest
+        } else {
+            &mut self.pointer.rest
+        };
+        let Some(steps) = wheel::lines(rest, event, height, rows, reporting, wheel::settings)
+        else {
             return;
         };
-        if lines == 0 {
+        if steps == 0 {
             return;
         }
         let shift = if event.modifiers.shift {
@@ -292,32 +301,31 @@ impl TerminalView {
             ""
         };
         log::trace!(
-            "terminal {}: wheel {:?}{shift}, {lines} lines",
+            "terminal {}: wheel {:?}{shift}, {steps} steps",
             self.pty.pid,
             event.delta
         );
         let (cell, ..) = self.cell_at(event.position);
-        let tracking = self.tracking(&event.modifiers);
         let mode = *self.pty.term.lock().mode();
         if tracking != Tracking::Off {
-            let turn = if lines > 0 {
+            let turn = if steps > 0 {
                 Button::WheelUp
             } else {
                 Button::WheelDown
             };
-            for _ in 0..lines.unsigned_abs() {
+            for _ in 0..steps.unsigned_abs() {
                 self.report(Some(turn), Gesture::Press, cell, &event.modifiers, tracking);
             }
         } else if mode.contains(TermMode::ALT_SCREEN | TermMode::ALTERNATE_SCROLL) {
-            let arrow: &[u8] = match (lines > 0, mode.contains(TermMode::APP_CURSOR)) {
+            let arrow: &[u8] = match (steps > 0, mode.contains(TermMode::APP_CURSOR)) {
                 (true, true) => b"\x1bOA",
                 (true, false) => b"\x1b[A",
                 (false, true) => b"\x1bOB",
                 (false, false) => b"\x1b[B",
             };
-            self.pty.write(arrow.repeat(lines.unsigned_abs() as usize));
+            self.pty.write(arrow.repeat(steps.unsigned_abs() as usize));
         } else {
-            self.pty.term.lock().scroll_display(Scroll::Delta(lines));
+            self.pty.term.lock().scroll_display(Scroll::Delta(steps));
             cx.notify();
         }
     }
