@@ -1,4 +1,4 @@
-//! Lines a wheel event scrolls, from gpui's units per system.
+//! Local lines or mouse reports, from gpui's units per system.
 
 use gpui::{Pixels, ScrollDelta, ScrollWheelEvent};
 
@@ -7,12 +7,13 @@ const NOTCH: f32 = if cfg!(target_os = "macos") { 3. } else { 1. };
 /// Windows' one screen at a time, in lines a notch.
 const PAGE: f32 = u32::MAX as f32;
 
-/// Whole lines `event` moves, `rows` at most; `rest` keeps parts.
+/// Whole local lines or Windows reporting notches; `rest` keeps parts.
 pub fn lines(
     rest: &mut f32,
     event: &ScrollWheelEvent,
     height: Pixels,
     rows: usize,
+    reporting: bool,
     settings: impl FnOnce() -> Option<(f32, f32)>,
 ) -> Option<i32> {
     let page = rows as f32;
@@ -30,8 +31,10 @@ pub fn lines(
         ScrollDelta::Lines(delta) if delta.y == 0. => 0.,
         ScrollDelta::Lines(delta) => {
             let (lines, _) = settings()?;
-            // A paged notch's parts scroll their share of a screen.
-            if lines == PAGE {
+            if cfg!(windows) && reporting {
+                if lines == 0. { 0. } else { delta.y / lines }
+            } else if lines == PAGE {
+                // A paged notch's parts scroll their share of a screen.
                 delta.y / PAGE * page
             } else {
                 delta.y * NOTCH
@@ -123,7 +126,7 @@ mod tests {
     fn a_notch_scrolls_as_the_system_asks_and_an_event_a_screen_at_most() {
         let mut rest = 0.;
         let mut scroll = |delta, shift, sideways: (f32, f32)| {
-            lines(&mut rest, &wheel(delta, shift), px(14.4), 24, || {
+            lines(&mut rest, &wheel(delta, shift), px(14.4), 24, false, || {
                 Some(sideways)
             })
         };
@@ -207,10 +210,66 @@ mod tests {
                         false => ScrollDelta::Lines(point(0., share * PAGE)),
                     };
                     let event = wheel(delta, shift);
-                    moved += lines(&mut rest, &event, px(14.4), 53, || Some((PAGE, 3.))).unwrap();
+                    moved +=
+                        lines(&mut rest, &event, px(14.4), 53, false, || Some((PAGE, 3.))).unwrap();
                 }
                 assert_eq!(moved, 53, "{parts} messages, Shift {shift}");
             }
+        }
+    }
+
+    #[cfg(windows)]
+    fn reports(rest: &mut f32, delta: f32, setting: f32) -> Option<i32> {
+        let event = wheel(ScrollDelta::Lines(point(0., delta)), false);
+        lines(rest, &event, px(14.4), 24, true, || Some((setting, 3.)))
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn mouse_reports_count_windows_notches_not_scrollback_lines() {
+        for setting in [1., 3., 5., 100., PAGE] {
+            let mut rest = 0.;
+            assert_eq!(reports(&mut rest, setting, setting), Some(1));
+            assert_eq!(reports(&mut rest, -setting, setting), Some(-1));
+            assert_eq!(reports(&mut rest, setting * 2., setting), Some(2));
+            assert_eq!(rest, 0.);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn fractional_windows_notches_accumulate_before_reports_are_counted() {
+        for setting in [1., 3., 5., 100., PAGE] {
+            for parts in [2, 10, 120] {
+                for direction in [-1, 1] {
+                    let mut rest = 0.;
+                    let delta = (120 / parts) as f32 / 120. * setting * direction as f32;
+                    for _ in 1..parts {
+                        assert_eq!(reports(&mut rest, delta, setting), Some(0));
+                    }
+                    assert_eq!(reports(&mut rest, delta, setting), Some(direction));
+                    assert_eq!(rest, 0.);
+                }
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn mouse_reporting_keeps_pixels_and_handles_disabled_or_invalid_wheels() {
+        let mut rest = 0.;
+        assert_eq!(reports(&mut rest, 0., 0.), Some(0));
+        assert_eq!(reports(&mut rest, 5., 0.), Some(0));
+        assert_eq!(reports(&mut rest, f32::NAN, 5.), None);
+        assert_eq!(reports(&mut rest, 5., 5.), Some(1));
+        let event = wheel(ScrollDelta::Pixels(point(px(0.), px(10.))), false);
+        for expected in [0, 1] {
+            assert_eq!(
+                lines(&mut rest, &event, px(14.4), 24, true, || {
+                    panic!("pixels need no wheel settings")
+                }),
+                Some(expected)
+            );
         }
     }
 }
