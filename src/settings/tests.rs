@@ -361,3 +361,14 @@ fn the_interface_wears_the_system_font_at_13_px_unless_named() {
         );
     }
 }
+
+#[test]
+fn a_picture_lies_under_the_terminal_unless_the_window_is_chosen() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.background_scope, BackgroundScope::Terminal);
+    let window: Settings =
+        serde_json::from_str(r#"{"background_scope":"window"}"#).expect("a scope");
+    assert_eq!(window.background_scope, BackgroundScope::Window);
+    let json = serde_json::to_string(&window).expect("the settings write");
+    assert!(json.contains(r#""background_scope":"window""#), "{json}");
+}
