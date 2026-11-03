@@ -60,6 +60,8 @@ pub fn grid(
             let lines = (bounds.size.height / cell.height).floor() as usize;
             let origin = snapped(bounds.origin, window);
             fit.update(cx, |view, cx| {
+                let moved = view.pointer.hover.is_some()
+                    && (view.pointer.origin != origin || view.pointer.cell != cell);
                 (view.pointer.origin, view.pointer.cell) = (origin, cell);
                 if let Some((row, column)) = at {
                     let corner =
@@ -70,7 +72,7 @@ pub fn grid(
                         view.caret = caret;
                     }
                 }
-                if view.fit(columns, lines, cx) {
+                if view.fit(columns, lines, cx) || moved {
                     cx.notify();
                     window.request_animation_frame();
                 }
