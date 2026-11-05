@@ -78,3 +78,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T153
 
 - Round 1, 8292748 and the reply to #73: PASS. Posted; #73 stays open for zcg's theme.
+
+## T154
+
+- Round 1, the decision on PR #79 and its reply: PASS. The table, the units, Ghostty's `Metrics.zig` rule and gpui's private metrics checked. Posted on #79 and #78.

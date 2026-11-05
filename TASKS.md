@@ -287,7 +287,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - [x] T153 Issue #73: Background opacity runs down to 0%, which zcg's full-acrylic look needs, as Windows Terminal's and Ghostty's do; the theme itself waits for zcg's PR, as the owner offered; answered.
-- [ ] T154 PR #79, issue #78: box and underline rules round up to a device pixel, as Ghostty's; the PR checked, merged with its author.
+- [x] T154 PR #79, issue #78: the rule's width checked against Ghostty's at equal sizes; the PR merged with its author if it holds, else answered with the numbers. Not merged: at equal sizes today's rounding matches Ghostty's ceil of JetBrains Mono's 0.05 em, and ceil would add a pixel on Retina; the report compared 16 px with 16 pt. Asked for the sizes; #78 and #79 stay open.
 - [ ] T155 Issue #66: on Windows a typed space draws a black block that stays; reproduced on the owner's PC first, the cause fixed, logged.
 - [ ] T156 Issue #77: Shift+Enter makes a new line in Grok Build on macOS; how Grok detects the kitty keyboard protocol found, fixed at the cause.
 - [ ] T157 PR #69, issue #68: on Windows a wheel notch sends one report to a program that tracks the mouse; the PR checked, merged with its author.
