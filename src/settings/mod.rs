@@ -145,6 +145,8 @@ pub struct Settings {
     /// Option and Command edit text by word and line, as macOS's text does.
     pub natural_text_editing: bool,
     pub copy_on_select: bool,
+    /// A right press copies a selection, else pastes, as Windows Terminal does.
+    pub right_click_paste: bool,
     /// Ely peeks over the main window's top edge.
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
@@ -213,6 +215,7 @@ impl Default for Settings {
             option_as_alt: OptionAsAlt::Off,
             natural_text_editing: false,
             copy_on_select: false,
+            right_click_paste: cfg!(windows),
             ely: true,
             ely_left: 140.0,
             check_updates: true,

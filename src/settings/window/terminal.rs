@@ -116,6 +116,12 @@ impl SettingsWindow {
             settings.copy_on_select,
             |settings, on| settings.copy_on_select = on,
         );
+        let right = switch(
+            &this,
+            "right_click_paste",
+            settings.right_click_paste,
+            |settings, on| settings.right_click_paste = on,
+        );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
         let drag = switch(
             &this,
@@ -134,6 +140,11 @@ impl SettingsWindow {
         });
         let section = section
             .row(SettingsRow::new(word("et.terminal.copy_on_select")).control(copy))
+            .row(
+                SettingsRow::new(word("et.terminal.right_click_paste"))
+                    .description(word("et.terminal.right_click_paste_hint"))
+                    .control(right),
+            )
             .row(
                 SettingsRow::new(word("et.terminal.drag_sessions"))
                     .description(word("et.terminal.drag_sessions_hint"))

@@ -135,6 +135,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Option and Command edit by word and line",
     ),
     ("et.terminal.copy_on_select", "Copy on select"),
+    ("et.terminal.right_click_paste", "Right click pastes"),
+    (
+        "et.terminal.right_click_paste_hint",
+        "A right press copies the selection, or pastes when nothing is selected.",
+    ),
     ("et.terminal.drag_sessions", "Drag sessions to reorder"),
     (
         "et.terminal.drag_sessions_hint",

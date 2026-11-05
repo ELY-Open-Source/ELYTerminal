@@ -129,6 +129,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Option 和 Command 按词和按行编辑",
     ),
     ("et.terminal.copy_on_select", "选中即拷贝"),
+    ("et.terminal.right_click_paste", "右键粘贴"),
+    (
+        "et.terminal.right_click_paste_hint",
+        "右键拷贝选中的文字；没有选中时粘贴。",
+    ),
     ("et.terminal.drag_sessions", "拖动会话以排序"),
     (
         "et.terminal.drag_sessions_hint",

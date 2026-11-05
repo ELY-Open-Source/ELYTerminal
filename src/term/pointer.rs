@@ -148,6 +148,9 @@ impl TerminalView {
             }
             return;
         }
+        if event.button == MouseButton::Right && SettingsStore::get(cx).right_click_paste {
+            return self.right_click(cx);
+        }
         if event.button != MouseButton::Left {
             return;
         }
@@ -359,6 +362,18 @@ impl TerminalView {
             self.copy_text(text, true, cx);
         }
         cx.notify();
+    }
+
+    /// Windows Terminal's right press: copy and clear a selection, else paste.
+    fn right_click(&mut self, cx: &mut Context<Self>) {
+        match self.selected() {
+            Some(text) => {
+                self.copy_text(text, false, cx);
+                self.pty.term.lock().selection = None;
+                cx.notify();
+            }
+            None => self.paste(cx),
+        }
     }
 
     /// The selection to the clipboard.

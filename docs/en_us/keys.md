@@ -13,6 +13,7 @@ Settings › Terminal lists them all, as this platform binds them.
 | Sessions column | Cmd-B | Ctrl-Shift-B |
 | Right column | Cmd-Alt-B | Ctrl-Shift-Alt-B |
 | Copy, paste | Cmd-C, Cmd-V | Ctrl-Shift-C, Ctrl-Shift-V; on Windows Ctrl-V pastes too |
+| Copy the selection, or paste when none | Right press, with Settings › Terminal › Right click pastes on | Right press, with that switch on; on by default on Windows |
 | Select all | Cmd-A | Ctrl-Shift-A |
 | Find | Cmd-F | Ctrl-Shift-F |
 | Bigger, smaller, reset size | Cmd-=, Cmd-minus, Cmd-0 | Ctrl-=, Ctrl-minus, Ctrl-0 |

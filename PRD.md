@@ -138,6 +138,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Option as Alt: off, left, right, both (macOS only).
   - Natural text editing: a switch, off by default (macOS only); Option and Command edit by word and line, as the shell expects.
   - Copy on select.
+  - Right click pastes: a right press copies and clears the selection, or pastes when none, as Windows Terminal does; on by default on Windows.
   - Drag sessions to reorder: a switch, on by default; off, a drag on a session's row moves nothing.
   - Session menu: a switch, on by default; off, a right press on a session's row opens nothing.
   - Files menu: a switch, off by default; off, a right press on a Files name opens nothing.
