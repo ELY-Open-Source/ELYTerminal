@@ -2446,7 +2446,7 @@ dependencies = [
  "log",
  "presser",
  "thiserror 2.0.21",
- "windows 0.62.2",
+ "windows 0.57.0",
 ]
 
 [[package]]
@@ -2872,7 +2872,7 @@ dependencies = [
 [[package]]
 name = "gpui-pre-windows"
 version = "0.3.8"
-source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=8b9ce598956472934fcd54a060a9153575877475#8b9ce598956472934fcd54a060a9153575877475"
+source = "git+https://github.com/ELY-Open-Source/gpui-pre-windows.git?rev=0b74ab730f360e83b0aa914c25d95a088e24da4f#0b74ab730f360e83b0aa914c25d95a088e24da4f"
 dependencies = [
  "accesskit",
  "accesskit_windows",
@@ -3115,7 +3115,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -7693,7 +7693,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

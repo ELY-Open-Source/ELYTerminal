@@ -77,7 +77,7 @@ windows-sys = { version = "0.61", features = ["Win32_Security", "Win32_System_IO
 alacritty_terminal = { git = "https://github.com/ELY-Open-Source/alacritty.git", rev = "d2781caf4908e58404a31efa0bbac03c562380bc" }
 vte = { git = "https://github.com/ELY-Open-Source/vte.git", rev = "8fa83a9b51cadcad3269e1ef3ab059672d875983" }
 xim-ctext = { path = "vendor/xim-ctext" }
-gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "8b9ce598956472934fcd54a060a9153575877475" }
+gpui-pre-windows = { git = "https://github.com/ELY-Open-Source/gpui-pre-windows.git", rev = "0b74ab730f360e83b0aa914c25d95a088e24da4f" }
 gpui-pre-macos = { git = "https://github.com/ELY-Open-Source/gpui-pre-macos.git", rev = "b3e25d5c00b0e97c5c8f2e3fe0c22da16aa293bb" }
 gpui-pre-linux = { git = "https://github.com/ELY-Open-Source/gpui-pre-linux.git", rev = "db0ff3c44e3fb1a3ee6ba6a06a44d94bf5d1ff32" }
 
