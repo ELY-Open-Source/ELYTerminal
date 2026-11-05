@@ -1,4 +1,9 @@
-use gpui::Context;
+use std::time::Instant;
+
+use ely_gpui_component::{lists::List, motion::Reorder};
+use gpui::{AnyElement, Context, IntoElement, ParentElement, Styled, div};
+
+use crate::sessions;
 
 use super::Workspace;
 
@@ -16,6 +21,43 @@ pub fn after_move(active: usize, from: usize, to: usize) -> usize {
 }
 
 impl Workspace {
+    /// The sessions' rows; only a drag needs Reorder, and List keeps its own gap.
+    pub(super) fn session_list(
+        &self,
+        drag: bool,
+        now: Instant,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let workspace = cx.entity();
+        let home = dirs::home_dir();
+        let rows: Vec<(String, AnyElement)> = self
+            .sessions
+            .iter()
+            .enumerate()
+            .map(|(index, session)| {
+                let active = index == self.active;
+                let pid = session.terminal.read(cx).pid();
+                let row =
+                    sessions::row(&workspace, index, session, active, home.as_deref(), now, cx);
+                (pid.to_string(), row.into_any_element())
+            })
+            .collect();
+        if drag {
+            rows.into_iter()
+                .fold(
+                    Reorder::new("session-rows").on_reorder(move |from, to, _, cx| {
+                        workspace.update(cx, |this, cx| this.reorder(from, to, cx))
+                    }),
+                    |list, (key, row)| list.row(key, div().pb_0p5().child(row)),
+                )
+                .into_any_element()
+        } else {
+            List::new()
+                .children(rows.into_iter().map(|(_, row)| row))
+                .into_any_element()
+        }
+    }
+
     /// Moves session `from` to place `to`, both inside the list.
     pub(super) fn move_session(&mut self, from: usize, to: usize) {
         let moved = self.sessions.remove(from);
