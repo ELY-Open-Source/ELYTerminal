@@ -281,3 +281,24 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T150 The README, its Chinese twin and the guides say what 0.2.2 does; PRD, AGENTS.md and the acceptance table hold T139 to T149; each issue answered.
 - [x] T151 Release 0.2.2, which the owner asked for once the fixes are in: the version raised, every build on the release, the notes in English and Chinese, the cask and winget following, each issue answered.
 - [ ] T152 Ely main's CI green, which the owner asked for so Ely PR #11 merges: the `ely-core` API snapshot `d6334fc` left stale, `ely-editor`'s version past its release for `Metrics.wheel`, deny's yanked `async-executor` and markdown advisory, and the gate's GPUI Kit compat step; then Ely PR #11 merged.
+
+## 44. Issues and PRs after 0.2.2
+
+In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
+
+- [ ] T153 Issue #73: zcg's full-acrylic look; answered, left open for zcg's PR, as the owner offered.
+- [ ] T154 PR #79, issue #78: box and underline rules round up to a device pixel, as Ghostty's; the PR checked, merged with its author.
+- [ ] T155 Issue #66: on Windows a typed space draws a black block that stays; reproduced on the owner's PC first, the cause fixed, logged.
+- [ ] T156 Issue #77: Shift+Enter makes a new line in Grok Build on macOS; how Grok detects the kitty keyboard protocol found, fixed at the cause.
+- [ ] T157 PR #69, issue #68: on Windows a wheel notch sends one report to a program that tracks the mouse; the PR checked, merged with its author.
+- [ ] T158 PR #71, issue #70: a paste with no text sends an empty bracketed paste, so OpenCode reads the image itself; the PR checked, merged with its author.
+- [ ] T159 Issue #67: typing hides the mouse pointer over the terminal until it moves, as Windows Terminal does.
+- [ ] T160 Issue #75: a right press on the terminal may paste, or copy a selection, as Windows' QuickEdit does; a setting.
+- [ ] T161 PR #61: links underline under the pointer; the PR checked, merged with its author.
+- [ ] T162 Issue #76: on Plasma's Wayland a window moves without jitter while Ely shows; reproduced under KWin first, the cause fixed, logged.
+- [ ] T163 PR #62: the background picture's scope, the terminal or the window; the PR checked, merged with its author.
+- [ ] T164 PR #65: the picture's size, position and repeat; the PR checked, merged with its author.
+- [ ] T165 PR #58: answered once its pieces landed, closed or left open for the rest.
+- [ ] T166 PR #64: zcg's font-weight reference; answered, closed as not for merge, as its author asked.
+- [ ] T167 PR #72, issue #63: a Windows ARM64 build in CI, and on the release; the PR checked, merged with its author.
+- [ ] T168 PRD, AGENTS.md, the guides and the acceptance table hold T152 to T167; each issue answered.
