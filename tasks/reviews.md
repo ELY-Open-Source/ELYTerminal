@@ -74,3 +74,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - Round 1, Ely 601ad331: FAIL. No crate's version rose for the new gpui pin; the README and the Kit guide still named Kit 0.8; the ADR said never sleep where Ely's own transitions need it, and AGENTS named a glide that gpui drives; the dated acceptance table took a new pin. Each crate published at 0.1.1 is 0.2.0, ely-core 0.3.0; both docs name Kit 0.9; the table is back as checked. The 500-line finding was the brief's error: Ely warns past 800.
 - Round 2, Ely 8ad88955: FAIL. The AGENTS list of transitions that read `Instant::now` left four out. The rule names no list.
 - Round 3, Ely 105e2620: PASS.
+
+## T153
+
+- Round 1, 8292748 and the reply to #73: PASS. Posted; #73 stays open for zcg's theme.
