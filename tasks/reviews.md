@@ -110,3 +110,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T160
 
 - Round 1, b0d10d9: PASS.
+
+## T161
+
+- Round 1, c9d21d2 and 038c3f7: PASS. The reviewer compared old and new Cmd-press over 1,049,760 cases within the budgets and found no difference.
