@@ -103,7 +103,7 @@ pub enum PictureLength {
     Auto,
     /// Points.
     Px(f32),
-    /// A percentage of the box, 0 to 100.
+    /// A percentage of the box.
     Percent(f32),
 }
 
@@ -165,7 +165,7 @@ pub enum PictureAxis {
     Start,
     /// The box's end: its right or bottom.
     End,
-    /// A percentage of the free room, 0 to 100.
+    /// A percentage of the free room.
     Percent(f32),
     /// Points from the box's start.
     Px(f32),
@@ -225,44 +225,69 @@ fn side(axis: PictureAxis, start: &str, end: &str) -> String {
     }
 }
 
+/// One word of a place: a side's keyword, `center`, or an offset.
+enum Word {
+    X(PictureAxis),
+    Y(PictureAxis),
+    Center,
+    Offset(PictureAxis),
+}
+
+fn word(word: &str, text: &str) -> anyhow::Result<Word> {
+    Ok(match word {
+        "left" => Word::X(PictureAxis::Start),
+        "right" => Word::X(PictureAxis::End),
+        "top" => Word::Y(PictureAxis::Start),
+        "bottom" => Word::Y(PictureAxis::End),
+        "center" => Word::Center,
+        offset => {
+            let (number, percent) = match offset.strip_suffix('%') {
+                Some(number) => (number, true),
+                None => (offset.strip_suffix("px").unwrap_or(offset), false),
+            };
+            let value: f32 = number
+                .parse()
+                .with_context(|| format!("position is {text:?}, {offset:?} places nothing"))?;
+            ensure!(
+                value.is_finite(),
+                "position is {text:?}, {offset:?} is no number"
+            );
+            Word::Offset(if percent {
+                PictureAxis::Percent(value)
+            } else {
+                PictureAxis::Px(value)
+            })
+        }
+    })
+}
+
 impl FromStr for PicturePosition {
     type Err = anyhow::Error;
 
+    /// CSS's one and two values: an offset first is across, second down.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
+        use PictureAxis::Center as Mid;
         let words: Vec<&str> = text.split_whitespace().collect();
-        ensure!(!words.is_empty(), "position is empty");
-        ensure!(
-            words.len() <= 2,
-            "position is {text:?}, more than two places"
-        );
-        let (mut x, mut y) = (None, None);
-        for word in words {
-            match word {
-                "left" => x = Some(PictureAxis::Start),
-                "right" => x = Some(PictureAxis::End),
-                "top" => y = Some(PictureAxis::Start),
-                "bottom" => y = Some(PictureAxis::End),
-                "center" => {}
-                length => {
-                    let axis = match length.parse::<PictureLength>()? {
-                        PictureLength::Auto => bail!("position is {text:?}, auto places nothing"),
-                        PictureLength::Px(points) => PictureAxis::Px(points),
-                        PictureLength::Percent(percent) => PictureAxis::Percent(percent),
-                    };
-                    if x.is_none() {
-                        x = Some(axis);
-                    } else if y.is_none() {
-                        y = Some(axis);
-                    } else {
-                        bail!("position is {text:?}, more than two places");
-                    }
-                }
-            }
-        }
-        Ok(Self {
-            x: x.unwrap_or_default(),
-            y: y.unwrap_or_default(),
-        })
+        let (x, y) = match words.as_slice() {
+            [] => bail!("position is empty"),
+            [one] => match word(one, text)? {
+                Word::X(x) | Word::Offset(x) => (x, Mid),
+                Word::Y(y) => (Mid, y),
+                Word::Center => (Mid, Mid),
+            },
+            [first, second] => match (word(first, text)?, word(second, text)?) {
+                (Word::X(x) | Word::Offset(x), Word::Y(y) | Word::Offset(y)) => (x, y),
+                (Word::X(x) | Word::Offset(x), Word::Center) => (x, Mid),
+                (Word::Center, Word::Y(y) | Word::Offset(y)) => (Mid, y),
+                (Word::Y(y), Word::X(x)) => (x, y),
+                (Word::Y(y), Word::Center) => (Mid, y),
+                (Word::Center, Word::X(x)) => (x, Mid),
+                (Word::Center, Word::Center) => (Mid, Mid),
+                _ => bail!("position is {text:?}, two places on one side"),
+            },
+            _ => bail!("position is {text:?}, more than two places"),
+        };
+        Ok(Self { x, y })
     }
 }
 
@@ -360,6 +385,9 @@ mod tests {
             "right bottom",
             "125% 100%",
             "10px center",
+            "center 10px",
+            "-10px 20px",
+            "-5% center",
         ] {
             let position: PicturePosition = text.parse().expect(text);
             assert_eq!(position.to_string(), text);
@@ -371,11 +399,30 @@ mod tests {
                 y: PictureAxis::Start
             }
         );
+        let down: PicturePosition = "center 10px".parse().expect("a place");
+        assert_eq!(
+            (down.x, down.y),
+            (PictureAxis::Center, PictureAxis::Px(10.0))
+        );
+        let across: PicturePosition = "top left".parse().expect("a place");
+        assert_eq!(
+            (across.x, across.y),
+            (PictureAxis::Start, PictureAxis::Start)
+        );
     }
 
     #[test]
     fn a_position_refuses_what_is_not_one() {
-        for text in ["", "auto", "left right top"] {
+        for text in [
+            "",
+            "auto",
+            "left right top",
+            "left right",
+            "top bottom",
+            "10px left",
+            "top 10px",
+            "NaNpx",
+        ] {
             assert!(text.parse::<PicturePosition>().is_err(), "{text:?}");
         }
     }

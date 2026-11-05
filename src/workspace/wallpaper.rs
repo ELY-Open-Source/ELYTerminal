@@ -108,6 +108,7 @@ pub(super) fn paint(
     let place = settings.background_position.points(free);
     let mut boxed = div()
         .absolute()
+        .overflow_hidden()
         .left(bounds.origin.x)
         .top(bounds.origin.y)
         .w(bounds.size.width)
@@ -136,48 +137,48 @@ fn tiles(
     drawn: (f32, f32),
     container: (f32, f32),
 ) -> Vec<(f32, f32)> {
-    let xs = if matches!(repeat, PictureRepeat::Repeat | PictureRepeat::RepeatX) {
+    let across = matches!(repeat, PictureRepeat::Repeat | PictureRepeat::RepeatX);
+    let down = matches!(repeat, PictureRepeat::Repeat | PictureRepeat::RepeatY);
+    let xs = if across {
         along(place.0, drawn.0, container.0)
     } else {
-        vec![place.0]
+        Some(vec![place.0])
     };
-    let ys = if matches!(repeat, PictureRepeat::Repeat | PictureRepeat::RepeatY) {
+    let ys = if down {
         along(place.1, drawn.1, container.1)
     } else {
-        vec![place.1]
+        Some(vec![place.1])
     };
-    if xs.len() * ys.len() > MAX_TILES {
-        log::debug!(
-            "background: {} tiles pass {MAX_TILES}; one draws",
-            xs.len() * ys.len()
-        );
-        return vec![place];
-    }
-    let mut tiles = Vec::with_capacity(xs.len() * ys.len());
-    for y in ys {
-        for x in &xs {
-            tiles.push((*x, y));
+    match (xs, ys) {
+        (Some(xs), Some(ys)) if xs.len() * ys.len() <= MAX_TILES => ys
+            .into_iter()
+            .flat_map(|y| xs.iter().map(move |x| (*x, y)))
+            .collect(),
+        _ => {
+            log::debug!("background: tiles of {drawn:?} pass {MAX_TILES}; one draws");
+            vec![place]
         }
     }
-    tiles
 }
 
-/// The starts of one repeated tile across `extent`, from `at`.
-fn along(at: f32, step: f32, extent: f32) -> Vec<f32> {
+/// The starts of one repeated tile across `extent`, from `at`; `None` past `MAX_TILES`.
+fn along(at: f32, step: f32, extent: f32) -> Option<Vec<f32>> {
     if step <= 0.0 {
-        return vec![at];
+        return Some(vec![at]);
     }
-    let mut first = at.rem_euclid(step);
-    if first > 0.0 {
-        first -= step;
+    let mut start = at.rem_euclid(step);
+    if start > 0.0 {
+        start -= step;
     }
     let mut starts = Vec::new();
-    let mut start = first;
-    while start < extent && starts.len() < MAX_TILES {
+    while start < extent {
+        if starts.len() == MAX_TILES {
+            return None;
+        }
         starts.push(start);
         start += step;
     }
-    starts
+    Some(starts)
 }
 
 /// Logs a picture that would not load, once per file.
@@ -269,5 +270,12 @@ mod tests {
             (1000.0, 1000.0),
         );
         assert_eq!(once.len(), 1);
+        let row = tiles(
+            PictureRepeat::RepeatX,
+            (0.0, 0.0),
+            (2.0, 2.0),
+            (1200.0, 100.0),
+        );
+        assert_eq!(row, vec![(0.0, 0.0)], "one axis past the cap draws once");
     }
 }
