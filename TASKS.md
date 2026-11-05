@@ -280,7 +280,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 - [x] T149 PR #58: its author asked to cut the change smaller and drop the old keys' shim; left open.
 - [x] T150 The README, its Chinese twin and the guides say what 0.2.2 does; PRD, AGENTS.md and the acceptance table hold T139 to T149; each issue answered.
 - [x] T151 Release 0.2.2, which the owner asked for once the fixes are in: the version raised, every build on the release, the notes in English and Chinese, the cask and winget following, each issue answered.
-- [ ] T152 Ely main's CI green, which the owner asked for so Ely PR #11 merges: the `ely-core` API snapshot `d6334fc` left stale, `ely-editor`'s version past its release for `Metrics.wheel`, deny's yanked `async-executor` and markdown advisory, and the gate's GPUI Kit compat step; then Ely PR #11 merged.
+- [x] T152 Ely main's CI green, which the owner asked for so Ely PR #11 merges: the `ely-core` API snapshot `d6334fc` left stale, `ely-editor`'s version past its release for `Metrics.wheel`, deny's yanked `async-executor` and markdown advisory, and the gate's GPUI Kit compat step; then Ely PR #11 merged. Ely PR #11 merged; the gate's last red was Kit 0.9.0's move to gpui-pre 0.3.11, so Ely moved to it at 105e2620, every published crate's minor raised, tests advancing the executor's clock that gpui's animations now read; the gate passed on this Mac; CI run 42095343061 checked again before T168.
 
 ## 44. Issues and PRs after 0.2.2
 

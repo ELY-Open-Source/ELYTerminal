@@ -66,3 +66,11 @@ T01 to T49 are in `reviews-t01-t49.md`, T50 to T99 in `reviews-t50-t99.md`, T100
 - Round 1, the notes: FAIL. WSL lacked Docker Desktop's exclusion, the 1/255 measure read as general, and New session here's failure dialog was left out. Each mended.
 - Round 2, the notes: PASS. v0.2.2 published at a0550a6, twelve assets: CI passed on macOS, Windows and Linux; the Windows zip from `scripts/windows-zip.ps1` on the owner's PC after its 415 tests (sha256 d4267f60…); the four Linux packages from run 41524992041, checked against its SHA-256 file; the disk image from Release run 41526766309, stapled and accepted by Gatekeeper as notarized Developer ID, its app 0.2.2. The version-less links resolve to it. The tap holds 0.2.2, installed into a temp folder, team 9PDD8M2SMS, and removed; winget: `winget validate` passed, microsoft/winget-pkgs#469024 beside #466704.
 - Round 3, the replies to #52, #55 and #60: FAIL. #60 promised the nearest face where font-kit matches its own way; #55 promised folder-following to any program alone. Both mended to the code, round 3 the last; posted, the three closed as completed.
+
+## T152
+
+Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
+
+- Round 1, Ely 601ad331: FAIL. No crate's version rose for the new gpui pin; the README and the Kit guide still named Kit 0.8; the ADR said never sleep where Ely's own transitions need it, and AGENTS named a glide that gpui drives; the dated acceptance table took a new pin. Each crate published at 0.1.1 is 0.2.0, ely-core 0.3.0; both docs name Kit 0.9; the table is back as checked. The 500-line finding was the brief's error: Ely warns past 800.
+- Round 2, Ely 8ad88955: FAIL. The AGENTS list of transitions that read `Instant::now` left four out. The rule names no list.
+- Round 3, Ely 105e2620: PASS.
