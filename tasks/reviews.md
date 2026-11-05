@@ -137,3 +137,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T166
 
 - Round 1, the reply to #64: PASS. Posted; #64 closed.
+
+## T167
+
+- Round 1, 231527f and dcd1280: PASS. Pushed before the review, against the order; CI run 42126749944 green on all four jobs; the artifact held AArch64 binaries.

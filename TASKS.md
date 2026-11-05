@@ -300,5 +300,5 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - [x] T164 PR #65: the picture's size, position and repeat; the PR checked, merged with its author. Cherry-picked with its author as 3100fe8, on T163's measured box; the box clips the picture, the tile cap counts each side, positions follow CSS's one- and two-value rules of any sign, and the guides name the file's repeat spellings.
 - [x] T165 PR #58: answered once its pieces landed, closed or left open for the rest. #62 and #65 landed; the gradient, and the opacity and mask, remain; #58 stays open as the reference.
 - [x] T166 PR #64: zcg's font-weight reference; answered, closed as not for merge, as its author asked. A family's real faces in the picker need gpui's platform layer on all three systems first; the reply says so.
-- [ ] T167 PR #72, issue #63: a Windows ARM64 build in CI, and on the release; the PR checked, merged with its author.
+- [x] T167 PR #72, issue #63: a Windows ARM64 build in CI, and on the release; the PR checked, merged with its author. Cherry-picked with its author as 231527f; CI run 42126749944 passed all four jobs, ARM64's 446 tests and its zip, AArch64 binaries; the release takes the zip by hand at the next version.
 - [ ] T168 PRD, AGENTS.md, the guides and the acceptance table hold T152 to T167; each issue answered.
