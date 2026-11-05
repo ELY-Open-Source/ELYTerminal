@@ -124,3 +124,8 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - Round 1, c6b8ca1 and 37445d8: FAIL. On Linux the picture lay in window coordinates inside ResizeBorder's margin. It lies in the box it paints in, measured.
 - Round 2: PASS. Under Hyprland, floated, both scopes met the column borders and the pane's edges.
+
+## T164
+
+- Round 1, 3100fe8: FAIL. A covering picture escaped its box; one axis stopped at 400 tiles in silence; `center 10px` took the wrong axis and `left right` passed; negative offsets were refused; the guides lacked the file's repeat spellings and AGENTS gave percentages a range of 0 to 100. Each fixed.
+- Round 2, 2189207: PASS.
