@@ -82,3 +82,8 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T154
 
 - Round 1, the decision on PR #79 and its reply: PASS. The table, the units, Ghostty's `Metrics.zig` rule and gpui's private metrics checked. Posted on #79 and #78.
+
+## T155
+
+- Round 1, the reply to #66: FAIL. `typed` logs at trace, and a release build on Windows has no console. The log line names `elyterminal::term::input=trace` and redirects stderr through `Start-Process`, which a release build on the owner's PC proved.
+- Round 2: PASS. Posted; #66 stays open.
