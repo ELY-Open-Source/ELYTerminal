@@ -119,3 +119,8 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - Round 1, the reply to #76: FAIL. It asked for `elyterminal --version`, which is no flag. It asks for the version Settings shows.
 - Round 2: PASS. Posted; #76 stays open.
+
+## T163
+
+- Round 1, c6b8ca1 and 37445d8: FAIL. On Linux the picture lay in window coordinates inside ResizeBorder's margin. It lies in the box it paints in, measured.
+- Round 2: PASS. Under Hyprland, floated, both scopes met the column borders and the pane's edges.
