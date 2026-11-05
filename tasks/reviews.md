@@ -133,3 +133,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T165
 
 - Round 1, the reply to #58: PASS. Posted; #58 stays open.
+
+## T166
+
+- Round 1, the reply to #64: PASS. Posted; #64 closed.
