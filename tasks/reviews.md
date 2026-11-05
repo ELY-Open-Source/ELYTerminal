@@ -141,3 +141,9 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T167
 
 - Round 1, 231527f and dcd1280: PASS. Pushed before the review, against the order; CI run 42126749944 green on all four jobs; the artifact held AArch64 binaries.
+
+## T168
+
+- Round 1, e2f80d3: FAIL. The settings count and tasks were stale, the picture row cited T109 alone, a capture claim named no run, the T159 row sat in section 10, and Right click pastes had no settings row. Each mended.
+- Round 2, 31f22a7: FAIL. The settings row lacked T125 and T134; a trace of each field also found T67 and T73.
+- Round 3, ee20cfc: PASS.
