@@ -295,7 +295,7 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - [x] T159 Issue #67: typing hides the mouse pointer over the terminal until it moves, as Windows Terminal does; the Windows fork showed it again at the move Windows sends on a repaint.
 - [x] T160 Issue #75: a right press on the terminal may paste, or copy a selection, as Windows' QuickEdit does; a setting.
 - [x] T161 PR #61: links underline under the pointer; the PR checked, merged with its author. Cherry-picked with its author as c9d21d2; copy and paste moved to `pointer/copy.rs` to keep `pointer.rs` under 500 lines; documented.
-- [ ] T162 Issue #76: on Plasma's Wayland a window moves without jitter while Ely shows; reproduced under KWin first, the cause fixed, logged.
+- [x] T162 Issue #76: on Plasma's Wayland a window moves without jitter while Ely shows; reproduced under KWin first, the cause fixed, logged. Unreproduced: no Plasma Wayland machine at hand, and a nested headless KWin shows no interactive move's judder. No guessed fix; her height, 123.4 points, makes 154.25 device pixels at 125%, a lead the reply names; the log already writes each close and reopen of her popup with its reason. The reporter was asked for a run with Ely off, a debug log during a drag, 60 Hz and the version; #76 stays open.
 - [ ] T163 PR #62: the background picture's scope, the terminal or the window; the PR checked, merged with its author.
 - [ ] T164 PR #65: the picture's size, position and repeat; the PR checked, merged with its author.
 - [ ] T165 PR #58: answered once its pieces landed, closed or left open for the rest.

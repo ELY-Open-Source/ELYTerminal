@@ -114,3 +114,8 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T161
 
 - Round 1, c9d21d2 and 038c3f7: PASS. The reviewer compared old and new Cmd-press over 1,049,760 cases within the budgets and found no difference.
+
+## T162
+
+- Round 1, the reply to #76: FAIL. It asked for `elyterminal --version`, which is no flag. It asks for the version Settings shows.
+- Round 2: PASS. Posted; #76 stays open.
