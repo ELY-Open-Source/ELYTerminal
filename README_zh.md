@@ -26,7 +26,7 @@
 - + 旁的配置文件：你自己的命令行，以及本机的 shell，包括 WSL 发行版和 Git Bash。
 - Ely 从窗口边缘探出头，跟着会话走。
 - 通过 kitty 图形协议显示图片，包括动画；通过 kitty 的 OSC 5522 读写剪贴板，程序读取其中内容前默认先问你；本会话内允许过的程序和响应粘贴的读取除外。
-- macOS、Windows、Wayland 和 X11 上的背景不透明度和模糊，Windows 11 上还有云母。
+- macOS、Windows、Wayland 和 X11 上的背景不透明度（可低至 0%）和模糊，Windows 11 上还有云母；背景图片可铺在终端或整个窗口下，尺寸、位置和平铺与 CSS 相同。
 
 细则见 [docs/zh_cn/features.md](docs/zh_cn/features.md)。
 
