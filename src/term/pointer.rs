@@ -6,7 +6,7 @@ use alacritty_terminal::{
 };
 use gpui::{
     ClipboardItem, Context, Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
-    Pixels, Point, ScrollWheelEvent, Size, Window,
+    Pixels, Point, ScrollDelta, ScrollWheelEvent, Size, Window,
 };
 
 use super::{
@@ -282,7 +282,10 @@ impl TerminalView {
         cx.stop_propagation();
         let rows = self.pty.term.lock().screen_lines();
         let tracking = self.tracking(&event.modifiers);
-        let reporting = cfg!(windows) && tracking != Tracking::Off;
+        // A touchpad's pixels stay lines.
+        let reporting = cfg!(windows)
+            && tracking != Tracking::Off
+            && matches!(event.delta, ScrollDelta::Lines(_));
         let rest = if reporting {
             &mut self.pointer.report_rest
         } else {
