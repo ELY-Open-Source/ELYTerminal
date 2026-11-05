@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: rustup toolchain install --no-self-update
-      # Warm up PowerShell to avoid an intermittent first-start failure in the ARM64 shell tests.
+      # A cold first PowerShell outruns the shell tests.
       - name: Warm up Windows PowerShell
         shell: pwsh
         run: |
