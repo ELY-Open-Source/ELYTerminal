@@ -17,7 +17,7 @@ Settings › Terminal lists them all, as this platform binds them.
 | Select all | Cmd-A | Ctrl-Shift-A |
 | Find | Cmd-F | Ctrl-Shift-F |
 | Bigger, smaller, reset size | Cmd-=, Cmd-minus, Cmd-0 | Ctrl-=, Ctrl-minus, Ctrl-0 |
-| Open a link | Cmd-press | Ctrl-press |
+| Open a link, underlined while the pointer is over it | Cmd-press | Ctrl-press |
 | Settings | Cmd-, | Ctrl-, |
 | Minimize | Cmd-M | |
 | Quit | Cmd-Q | Ctrl-Shift-Q |
