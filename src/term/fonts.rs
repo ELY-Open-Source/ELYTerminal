@@ -73,7 +73,7 @@ pub(super) fn look(
         cjk,
         baseline: (cell.height - ascent - descent) / 2. + ascent,
         descent,
-        rule: snap((text / 14.).max(px(1.))),
+        rule: rule(points, scale),
         size: text,
         cell,
         font,
@@ -82,6 +82,11 @@ pub(super) fn look(
         fg: ink.fg,
         bg: ink.bg,
     })
+}
+
+/// The underline and box-drawing thickness at `points` and `scale`, rounded up to a device pixel.
+fn rule(points: f32, scale: f32) -> Pixels {
+    px(((points / 14.).max(1.) * scale).ceil() / scale)
 }
 
 /// Han, kana, Hangul, Bopomofo, CJK punctuation, vertical, small and fullwidth forms.
@@ -106,6 +111,26 @@ pub fn cjk(ch: char) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use gpui::{Pixels, px};
+
+    /// The whole device pixels a rule of `thickness` covers at `scale`.
+    fn device(thickness: Pixels, scale: f32) -> u32 {
+        (f32::from(thickness) * scale).round() as u32
+    }
+
+    #[test]
+    fn rule_rounds_up_to_a_device_pixel() {
+        assert_eq!(super::rule(13., 1.), px(1.));
+        assert_eq!(super::rule(14., 1.), px(1.));
+        assert_eq!(super::rule(16., 1.), px(2.));
+        assert_eq!(super::rule(13., 1.25), px(2. / 1.25));
+        assert_eq!(super::rule(16., 1.25), px(2. / 1.25));
+        assert_eq!(device(super::rule(13., 1.25), 1.25), 2);
+        assert_eq!(device(super::rule(16., 1.25), 1.25), 2);
+        // A heavy arm is twice a light one, as Ghostty draws it.
+        assert_eq!(device(super::rule(16., 1.25), 1.25) * 2, 4);
+    }
+
     #[test]
     fn cjk_holds_han_kana_hangul_and_fullwidth_alone() {
         let more = [
