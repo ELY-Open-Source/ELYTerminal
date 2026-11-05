@@ -286,7 +286,7 @@ Each task ends with a short thanks on its issue or pull request, then closes it.
 
 In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
-- [ ] T153 Issue #73: zcg's full-acrylic look; answered, left open for zcg's PR, as the owner offered.
+- [ ] T153 Issue #73: Background opacity runs down to 0%, which zcg's full-acrylic look needs, as Windows Terminal's and Ghostty's do; the theme itself waits for zcg's PR, as the owner offered; answered.
 - [ ] T154 PR #79, issue #78: box and underline rules round up to a device pixel, as Ghostty's; the PR checked, merged with its author.
 - [ ] T155 Issue #66: on Windows a typed space draws a black block that stays; reproduced on the owner's PC first, the cause fixed, logged.
 - [ ] T156 Issue #77: Shift+Enter makes a new line in Grok Build on macOS; how Grok detects the kitty keyboard protocol found, fixed at the cause.

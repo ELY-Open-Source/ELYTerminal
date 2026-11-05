@@ -274,9 +274,9 @@ mod tests {
         let folder = folder("range");
         let path = folder.join("settings.json");
         fs::create_dir_all(&folder).expect("folder");
-        fs::write(&path, r#"{ "background_opacity": 0.1 }"#).expect("write");
-        let error = load(&path).expect_err("too clear");
-        assert!(format!("{error:#}").contains("background_opacity is 0.1"));
+        fs::write(&path, r#"{ "background_opacity": -0.1 }"#).expect("write");
+        let error = load(&path).expect_err("past clear");
+        assert!(format!("{error:#}").contains("background_opacity is -0.1"));
         fs::remove_dir_all(folder).expect("cleanup");
     }
 }

@@ -422,8 +422,8 @@ mod tests {
     #[test]
     fn each_percent_saves_as_its_own_short_fraction() {
         let (low, high) = (percent(*OPACITY.start()), percent(*OPACITY.end()));
-        assert_eq!((low, high), (30., 100.));
-        for whole in 30..=100 {
+        assert_eq!((low, high), (0., 100.));
+        for whole in 0..=100 {
             let saved = fraction(f64::from(whole));
             assert_eq!(percent(saved), f64::from(whole));
             let text = serde_json::to_string(&saved).expect("a number");
