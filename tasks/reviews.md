@@ -96,3 +96,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - Round 1, cae1833 and 92d8196: FAIL. The report remainder summed a touchpad's pixel lines with a wheel's notches. Only line deltas count as notches now.
 - Round 2: PASS.
+
+## T158
+
+- Round 1, d21c4fa and the AGENTS line: PASS.
