@@ -106,3 +106,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - Round 1, gpui-pre-windows 96cede5: FAIL. The cache started at 0,0, compared logical points across a DPI change, and missed non-client moves. It holds device pixels, unset until a client move, cleared on leave and on a non-client move.
 - Round 2, c141eba: PASS.
 - Round 3, the pin 0b74ab7 and the docs: PASS.
+
+## T160
+
+- Round 1, b0d10d9: PASS.
