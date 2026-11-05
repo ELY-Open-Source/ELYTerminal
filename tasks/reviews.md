@@ -87,3 +87,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - Round 1, the reply to #66: FAIL. `typed` logs at trace, and a release build on Windows has no console. The log line names `elyterminal::term::input=trace` and redirects stderr through `Start-Process`, which a release build on the owner's PC proved.
 - Round 2: PASS. Posted; #66 stays open.
+
+## T156
+
+- Round 1, the probe and the reply to #77: PASS. The reviewer ran the probes again and read Grok's own docs. Posted; #77 closed.
