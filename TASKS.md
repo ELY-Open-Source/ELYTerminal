@@ -302,3 +302,8 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - [x] T166 PR #64: zcg's font-weight reference; answered, closed as not for merge, as its author asked. A family's real faces in the picker need gpui's platform layer on all three systems first; the reply says so.
 - [x] T167 PR #72, issue #63: a Windows ARM64 build in CI, and on the release; the PR checked, merged with its author. Cherry-picked with its author as 231527f; CI run 42126749944 passed all four jobs, ARM64's 446 tests and its zip, AArch64 binaries; the release takes the zip by hand at the next version.
 - [x] T168 PRD, AGENTS.md, the guides and the acceptance table hold T152 to T167; each issue answered. PRD's mouse, clipboard, pointer and release lines; both READMEs; acceptance rows for T153, T157 to T161, T163, T164 and T167, a settings row for Right click pastes, and the settings count at 41 of 50 fields.
+
+## 45. 0.2.3
+
+- [x] T169 PR #79, issue #78: its author measured both terminals at 16 px, Windows Terminal's `┃` 4 device pixels at 125% against ELYTerminal's 2; the rule rounds up to a device pixel, the PR merged with its author. Cherry-picked with its author as bf10492; 13 px on Retina keeps its 4-pixel heavy line.
+- [ ] T170 Release 0.2.3, which the owner asked for: the version raised, every build on the release, Windows ARM64's zip among them, the notes in English and Chinese, the cask and winget following, each issue answered.
