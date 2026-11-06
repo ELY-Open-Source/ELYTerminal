@@ -57,8 +57,8 @@ the four installed files; settings stay in the config folder.
 
 # Windows
 
-Windows 10 or later, x86_64. Unzip `ELYTerminal-VERSION-windows-x86_64.zip`
-anywhere and run `elyterminal.exe`; keep `conpty.dll` and `OpenConsole.exe`
+Windows 10 or later, x86_64, or Windows 11 on ARM64. Unzip
+`ELYTerminal-VERSION-windows-x86_64.zip`, or `-windows-aarch64.zip`, anywhere and run `elyterminal.exe`; keep `conpty.dll` and `OpenConsole.exe`
 beside it. Settings › Terminal › Explorer menu adds Open in ELYTerminal to a
 folder's right-click menu. With winget, once Microsoft's catalog holds it:
 

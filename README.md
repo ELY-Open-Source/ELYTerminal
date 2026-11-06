@@ -16,7 +16,7 @@ A terminal for macOS, Windows and Linux, in Rust on GPUI and Ely components. Ses
 A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) carries builds for each platform.
 
 - macOS 11 or later, Apple silicon: open `ELYTerminal-VERSION.dmg` and drag ELYTerminal into Applications. The app is signed with Developer ID and notarized. With Homebrew: `brew install --cask ely-open-source/tap/elyterminal`.
-- Windows 10 or later, x86_64: unzip `ELYTerminal-VERSION-windows-x86_64.zip` and run `elyterminal.exe`, the zip's other files kept beside it. With winget, once Microsoft's catalog holds it: `winget install ELYOpenSource.ELYTerminal`. It is unsigned; SmartScreen and Defender are told apart in [Windows](docs/en_us/install.md#windows).
+- Windows 10 or later, x86_64, or Windows 11 on ARM64: unzip `ELYTerminal-VERSION-windows-x86_64.zip`, or `-windows-aarch64.zip`, and run `elyterminal.exe`, the zip's other files kept beside it. With winget, once Microsoft's catalog holds it: `winget install ELYOpenSource.ELYTerminal`. It is unsigned; SmartScreen and Defender are told apart in [Windows](docs/en_us/install.md#windows).
 - Linux, x86_64: [packages](docs/en_us/install.md).
 
 ## What it does

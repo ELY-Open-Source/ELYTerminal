@@ -56,8 +56,8 @@ install -Dm644 elyterminal.1.gz -t ~/.local/share/man/man1
 
 # Windows
 
-Windows 10 或更高，x86_64。把 `ELYTerminal-VERSION-windows-x86_64.zip`
-解压到任意位置，运行 `elyterminal.exe`；`conpty.dll` 和 `OpenConsole.exe`
+Windows 10 或更高，x86_64；或 ARM64 上的 Windows 11。把
+`ELYTerminal-VERSION-windows-x86_64.zip`（ARM64 用 `-windows-aarch64.zip`）解压到任意位置，运行 `elyterminal.exe`；`conpty.dll` 和 `OpenConsole.exe`
 须留在它旁边。设置 › 终端 › 资源管理器菜单 可在文件夹的右键菜单中加入
 “在 ELYTerminal 中打开”。微软的目录收录后也可用 winget：
 
