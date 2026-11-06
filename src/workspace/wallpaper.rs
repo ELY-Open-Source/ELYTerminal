@@ -2,7 +2,6 @@
 
 use std::{
     cell::{Cell, RefCell},
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     thread::LocalKey,
@@ -13,14 +12,13 @@ use gpui::{
     RenderImage, Resource, Styled, StyledImage, Window, canvas, div, img, linear_color_stop,
     linear_gradient, point, px, size,
 };
-use image::{Frame, RgbaImage};
 
 use crate::settings::{BackgroundScope, Mask, PictureRepeat, Settings, color};
 
+mod mask;
+
 /// The most tiles one picture draws; past it the picture draws once.
 const MAX_TILES: usize = 400;
-/// The most masked copies kept, each a whole picture's pixels.
-const MASKED: usize = 4;
 
 thread_local! {
     /// The terminal body's bounds, as the last frame laid them.
@@ -29,17 +27,6 @@ thread_local! {
     static GROUND: Cell<Option<Bounds<Pixels>>> = const { Cell::new(None) };
     /// The picture whose failure was logged last, so each frame does not log it again.
     static FAILED: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
-    /// The masked pictures by their image, mask and box, so each frame does not mask again.
-    static MASKED_IMAGES: RefCell<HashMap<MaskKey, Arc<RenderImage>>> = RefCell::new(HashMap::new());
-}
-
-/// What makes a masked copy: the image, the mask and the box it covers.
-#[derive(Clone, PartialEq, Eq, Hash)]
-struct MaskKey {
-    image: u64,
-    angle: u32,
-    stops: String,
-    box_of: [u32; 6],
 }
 
 /// The picture's bounds inside `ground`: the terminal body, or all of it below the title bar.
@@ -136,13 +123,15 @@ pub(super) fn paint(
         )
     });
     let mask = mask.and_then(Result::ok);
+    let mask_box = mask.as_ref().map(|_| mask::mask_box(settings, container));
     let once = settings.background_repeat == PictureRepeat::NoRepeat;
     for (x, y) in tiles(settings.background_repeat, place, drawn, container) {
-        let masked = match (&mask, once) {
-            (Some(mask), true) => masked(
+        let masked = match (&mask, mask_box, once) {
+            (Some(mask), Some(mask_box), true) => mask::masked(
                 &image,
                 mask,
                 &settings.background_mask_stops,
+                mask_box,
                 (x, y),
                 drawn,
                 container,
@@ -191,62 +180,6 @@ fn tile(
         .h(px(drawn.1))
         .object_fit(ObjectFit::Fill)
         .opacity(opacity)
-}
-
-/// The picture with its mask as alpha, its straight BGRA bytes scaled; a copy kept by image, mask and box.
-fn masked(
-    image: &Arc<RenderImage>,
-    mask: &Mask,
-    stops: &str,
-    place: (f32, f32),
-    drawn: (f32, f32),
-    container: (f32, f32),
-) -> Option<Arc<RenderImage>> {
-    let pixels = image.size(0);
-    let (width, height) = (pixels.width.0, pixels.height.0);
-    if width <= 0 || height <= 0 || container.0 <= 0.0 || container.1 <= 0.0 {
-        return None;
-    }
-    let (width, height) = (width as usize, height as usize);
-    let key = MaskKey {
-        image: Arc::as_ptr(image) as usize as u64,
-        angle: mask.angle.to_bits(),
-        stops: stops.to_string(),
-        box_of: [
-            place.0.to_bits(),
-            place.1.to_bits(),
-            drawn.0.to_bits(),
-            drawn.1.to_bits(),
-            container.0.to_bits(),
-            container.1.to_bits(),
-        ],
-    };
-    if let Some(kept) = MASKED_IMAGES.with(|images| images.borrow().get(&key).cloned()) {
-        return Some(kept);
-    }
-    let mut bytes = image.as_bytes(0)?.to_vec();
-    if bytes.len() != width * height * 4 {
-        return None;
-    }
-    for y in 0..height {
-        for x in 0..width {
-            let u = (place.0 + (x as f32 + 0.5) / width as f32 * drawn.0) / container.0;
-            let v = (place.1 + (y as f32 + 0.5) / height as f32 * drawn.1) / container.1;
-            let alpha = mask.alpha(u, v).clamp(0.0, 1.0);
-            let at = (y * width + x) * 4 + 3;
-            bytes[at] = (f32::from(bytes[at]) * alpha).round() as u8;
-        }
-    }
-    let frame = Frame::new(RgbaImage::from_raw(width as u32, height as u32, bytes)?);
-    let masked = Arc::new(RenderImage::new(vec![frame]));
-    MASKED_IMAGES.with(|images| {
-        let mut images = images.borrow_mut();
-        if images.len() >= MASKED {
-            images.clear();
-        }
-        images.insert(key, masked.clone());
-    });
-    Some(masked)
 }
 
 /// Where each tile starts, from the picture's place in its box; past `MAX_TILES`, the first one alone.
@@ -396,38 +329,5 @@ mod tests {
             (1200.0, 100.0),
         );
         assert_eq!(row, vec![(0.0, 0.0)], "one axis past the cap draws once");
-    }
-
-    #[test]
-    fn the_mask_fades_the_pictures_alpha() {
-        let mut pixels = Vec::new();
-        for _ in 0..4 {
-            pixels.extend_from_slice(&[10, 20, 30, 255]);
-        }
-        let buffer = RgbaImage::from_raw(2, 2, pixels).expect("four pixels");
-        let image = Arc::new(RenderImage::new(vec![Frame::new(buffer)]));
-        let mask = Mask::new(90.0, "transparent, black").expect("two stops");
-        let faded = masked(
-            &image,
-            &mask,
-            "transparent, black",
-            (0.0, 0.0),
-            (2.0, 2.0),
-            (2.0, 2.0),
-        )
-        .expect("a masked copy");
-        let bytes = faded.as_bytes(0).expect("a frame");
-        assert_eq!(bytes[3], 64, "the left is a quarter through the stops");
-        assert_eq!(bytes[7], 191, "the right is three quarters");
-        let kept = masked(
-            &image,
-            &mask,
-            "transparent, black",
-            (0.0, 0.0),
-            (2.0, 2.0),
-            (2.0, 2.0),
-        )
-        .expect("the same copy");
-        assert!(Arc::ptr_eq(&faded, &kept), "a frame masks once");
     }
 }
