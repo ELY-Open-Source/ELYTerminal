@@ -69,12 +69,16 @@ pub(super) struct Fields {
     from: Entity<TextInput>,
     to: Entity<TextInput>,
     stops: Entity<TextInput>,
+    mask_size: Entity<TextInput>,
+    mask_position: Entity<TextInput>,
     pub(super) refused_image: Option<SharedString>,
     refused_size: Option<SharedString>,
     refused_position: Option<SharedString>,
     refused_from: Option<SharedString>,
     refused_to: Option<SharedString>,
     refused_stops: Option<SharedString>,
+    refused_mask_size: Option<SharedString>,
+    refused_mask_position: Option<SharedString>,
     _typed: Vec<Subscription>,
 }
 
@@ -112,6 +116,16 @@ impl Fields {
             input.set_text(settings.background_mask_stops.clone(), cx);
             input
         });
+        let mask_size = cx.new(|cx| {
+            let mut input = TextInput::new(window, cx);
+            input.set_text(settings.background_mask_size.to_string(), cx);
+            input
+        });
+        let mask_position = cx.new(|cx| {
+            let mut input = TextInput::new(window, cx);
+            input.set_text(settings.background_mask_position.to_string(), cx);
+            input
+        });
         let mut fields = Self {
             image,
             size,
@@ -119,12 +133,16 @@ impl Fields {
             from,
             to,
             stops,
+            mask_size,
+            mask_position,
             refused_image: None,
             refused_size: None,
             refused_position: None,
             refused_from: None,
             refused_to: None,
             refused_stops: None,
+            refused_mask_size: None,
+            refused_mask_position: None,
             _typed: Vec::new(),
         };
         fields.watch(cx);
@@ -208,6 +226,37 @@ impl Fields {
                 }
             }),
         );
+        self._typed.push(
+            cx.subscribe(&self.mask_size, |this, input, event: &InputEvent, cx| {
+                if let InputEvent::Changed = event {
+                    let text = input.read(cx).text().to_string();
+                    let refused = save(
+                        this,
+                        "background_mask_size",
+                        text,
+                        |settings, size| settings.background_mask_size = size,
+                        cx,
+                    );
+                    this.picture.refused_mask_size = refused;
+                }
+            }),
+        );
+        self._typed.push(cx.subscribe(
+            &self.mask_position,
+            |this, input, event: &InputEvent, cx| {
+                if let InputEvent::Changed = event {
+                    let text = input.read(cx).text().to_string();
+                    let refused = save(
+                        this,
+                        "background_mask_position",
+                        text,
+                        |settings, position| settings.background_mask_position = position,
+                        cx,
+                    );
+                    this.picture.refused_mask_position = refused;
+                }
+            },
+        ));
     }
 
     /// The rows the picture fills: its file, scope, size, position and repeat.
@@ -293,6 +342,16 @@ impl Fields {
             }
         });
         let stops = field(Input::new(&self.stops), self.refused_stops.clone(), cx);
+        let mask_size = field(
+            Input::new(&self.mask_size),
+            self.refused_mask_size.clone(),
+            cx,
+        );
+        let mask_position = field(
+            Input::new(&self.mask_position),
+            self.refused_mask_position.clone(),
+            cx,
+        );
         vec![
             SettingsRow::new(word("et.appearance.image"))
                 .description(word("et.appearance.image_hint"))
@@ -344,6 +403,12 @@ impl Fields {
             SettingsRow::new(word("et.appearance.mask_angle"))
                 .description(word("et.appearance.mask_angle_hint"))
                 .control(mask_angle),
+            SettingsRow::new(word("et.appearance.mask_size"))
+                .description(word("et.appearance.mask_size_hint"))
+                .control(mask_size),
+            SettingsRow::new(word("et.appearance.mask_position"))
+                .description(word("et.appearance.mask_position_hint"))
+                .control(mask_position),
             SettingsRow::new(word("et.appearance.mask_stops"))
                 .description(word("et.appearance.mask_stops_hint"))
                 .control(stops),

@@ -143,6 +143,16 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.appearance.mask_stops_hint",
         "Two to sixteen colors, comma separated; their alpha is the mask",
     ),
+    ("et.appearance.mask_size", "Mask size"),
+    (
+        "et.appearance.mask_size_hint",
+        "The mask's box in the picture: cover, contain, fill, auto, or a width and a height",
+    ),
+    ("et.appearance.mask_position", "Mask position"),
+    (
+        "et.appearance.mask_position_hint",
+        "Where the mask's box sits: a place such as right top, or an offset such as 40% 100%",
+    ),
     ("et.custom.new", "New theme"),
     ("et.custom.name_of", "Custom {number}"),
     ("et.custom.name", "Name"),

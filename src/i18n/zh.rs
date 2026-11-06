@@ -137,6 +137,16 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.appearance.mask_stops_hint",
         "逗号分隔，2 到 16 个颜色；其 alpha 即遮罩",
     ),
+    ("et.appearance.mask_size", "遮罩尺寸"),
+    (
+        "et.appearance.mask_size_hint",
+        "遮罩在图片中的盒子：cover、contain、fill、auto，或宽高如 40% 100%",
+    ),
+    ("et.appearance.mask_position", "遮罩位置"),
+    (
+        "et.appearance.mask_position_hint",
+        "遮罩盒子的位置：如 right top，或偏移如 40% 100%",
+    ),
     ("et.custom.new", "新建主题"),
     ("et.custom.name_of", "自定义 {number}"),
     ("et.custom.name", "名称"),

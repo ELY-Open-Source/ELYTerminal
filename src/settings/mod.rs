@@ -155,6 +155,10 @@ pub struct Settings {
     pub background_mask: bool,
     /// The mask's angle in degrees, 0 up and turning clockwise.
     pub background_mask_angle: f32,
+    /// The mask's size in the picture's box, as CSS's `mask-size`.
+    pub background_mask_size: PictureSize,
+    /// Where the mask sits in the picture's box, as CSS's `mask-position`.
+    pub background_mask_position: PicturePosition,
     /// The mask's stops: two to sixteen colors, comma separated.
     pub background_mask_stops: String,
     pub font_family: String,
@@ -245,6 +249,8 @@ impl Default for Settings {
             background_image_opacity: 1.0,
             background_mask: false,
             background_mask_angle: 90.0,
+            background_mask_size: PictureSize::Cover,
+            background_mask_position: PicturePosition::default(),
             background_mask_stops: "transparent, black".into(),
             font_family: "JetBrains Mono".into(),
             font_fallbacks: Vec::new(),
