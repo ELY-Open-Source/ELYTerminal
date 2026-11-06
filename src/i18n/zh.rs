@@ -111,6 +111,18 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.picture_repeat_repeat", "重复"),
     ("et.appearance.picture_repeat_x", "横向重复"),
     ("et.appearance.picture_repeat_y", "纵向重复"),
+    ("et.appearance.gradient", "渐变"),
+    ("et.appearance.gradient_angle", "渐变角度"),
+    (
+        "et.appearance.gradient_angle_hint",
+        "角度：0 向上，顺时针增加",
+    ),
+    ("et.appearance.gradient_from", "渐变起始色"),
+    ("et.appearance.gradient_to", "渐变结束色"),
+    (
+        "et.appearance.gradient_color_hint",
+        "颜色：#rgb、#rrggbb、#rrggbbaa、rgb(...)、rgba(...) 或颜色名",
+    ),
     ("et.custom.new", "新建主题"),
     ("et.custom.name_of", "自定义 {number}"),
     ("et.custom.name", "名称"),
