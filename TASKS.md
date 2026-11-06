@@ -306,4 +306,4 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## 45. 0.2.3
 
 - [x] T169 PR #79, issue #78: its author measured both terminals at 16 px, Windows Terminal's `┃` 4 device pixels at 125% against ELYTerminal's 2; the rule rounds up to a device pixel, the PR merged with its author. Cherry-picked with its author as bf10492; 13 px on Retina keeps its 4-pixel heavy line.
-- [ ] T170 Release 0.2.3, which the owner asked for: the version raised, every build on the release, Windows ARM64's zip among them, the notes in English and Chinese, the cask and winget following, each issue answered.
+- [x] T170 Release 0.2.3, which the owner asked for: the version raised, every build on the release, Windows ARM64's zip among them, the notes in English and Chinese, the cask and winget following, each issue answered. Published at c82e206, thirteen assets, Windows ARM64 the new one; #78 and #79 closed; the tap holds 0.2.3; winget: microsoft/winget-pkgs#471905.

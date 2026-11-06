@@ -147,3 +147,11 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 - Round 1, e2f80d3: FAIL. The settings count and tasks were stale, the picture row cited T109 alone, a capture claim named no run, the T159 row sat in section 10, and Right click pastes had no settings row. Each mended.
 - Round 2, 31f22a7: FAIL. The settings row lacked T125 and T134; a trace of each field also found T67 and T73.
 - Round 3, ee20cfc: PASS.
+
+## T169
+
+- Round 1, bf10492 and 42926fb: PASS. The ceil holds the one-pixel floor; the tests fail on the old rounding; `cargo test --lib fonts` passed.
+
+## T170
+
+- v0.2.3 published at c82e206: CI passed on macOS, Linux, Windows and Windows ARM64 (run 42147003020); the Windows x86_64 zip from `scripts/windows-zip.ps1` on the owner's PC after its 447 tests (sha256 ad87763d…); the ARM64 zip from CI; the four Linux packages from run 42147003019, checked against its SHA-256 file; the disk image from Release run 42148683456, stapled and accepted by Gatekeeper as notarized Developer ID, its app 0.2.3. The version-less links resolve to it. #78 and #79 answered and closed; the tap holds 0.2.3; winget: microsoft/winget-pkgs#471905.
