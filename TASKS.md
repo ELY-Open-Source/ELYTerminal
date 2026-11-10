@@ -312,7 +312,7 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 In PRD order. Reviews by Cindy's reviewer Worker, Codex on GPT-6.1 Sol, three rounds at most.
 
-- [ ] T171 Issue #66: on Windows, under a light theme, a typed space draws a black block that stays; reproduced first, the cause fixed so the cell wears the theme's ground, logged.
+- [x] T171 Issue #66: on Windows, under a light theme, a typed space draws a black block that stays; reproduced first, the cause fixed so the cell wears the theme's ground, logged. Unreproduced on the owner's Windows 11 PC: through the bundled ConPTY, Windows PowerShell 5.1, pwsh 7 and cmd wrote no ground into any cell after a typed space, and the window under four light themes, the space posted to it as a character and as a key, drew no block but the cursor; that PC holds no input method, and a focused key through one could not be driven. No guessed fix: each paint now traces the caret row's grounds, the cursor and the composition, so a reporter's log names what draws the block; #66 stays open for it.
 - [ ] T172 Issue #82: Clear screen, Cmd-K on macOS and Ctrl-Shift-K elsewhere, clears the screen and the history; a menu item and a listed shortcut.
 - [ ] T173 Issue #83: on Linux the right column's toggle shows at every width, so the column hides and comes back as on macOS; reproduced first.
 - [ ] T174 Issue #85: the menu beside + offers Choose folder…, which starts a session in a picked folder; a profile keeps a folder for later, which the reply says.
