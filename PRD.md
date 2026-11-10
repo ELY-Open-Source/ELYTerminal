@@ -90,7 +90,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - The title bar is transparent, as Ghostty's: the window's background, opacity and blur run under it, so it wears the terminal's color.
 - Every control in the title bar takes its own press on every platform, the window buttons Ely draws on Windows and Linux too.
 - Given a folder on the command line, `elyterminal [FOLDER]`, or after `--working-directory`, `-d` or `--startingDirectory`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
-- Off macOS the right column is no narrower than 240 px, room for its toggle, the gear and the window's buttons; the toggle leads the gear, so a window too narrow for both columns clips the gear first.
+- Off macOS the right column draws at 240 px or more, and a drag takes it no narrower, room for its toggle, the gear and the window's buttons; a window too narrow for both columns still squeezes it, and the toggle leads the gear, so the gear clips first.
 
 
 ## 7. Sessions panel

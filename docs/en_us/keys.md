@@ -16,7 +16,7 @@ Settings › Terminal › Shortcuts lists them all, as this platform binds them,
 | Copy the selection, or paste when none | Right press, with Settings › Terminal › Right click pastes on | Right press, with that switch on; on by default on Windows |
 | Select all | Cmd-A | Ctrl-Shift-A |
 | Find | Cmd-F | Ctrl-Shift-F |
-| Clear the screen and the history | Cmd-K | Ctrl-Shift-K |
+| Clear the history and the screen above the prompt | Cmd-K | Ctrl-Shift-K; on Windows the history alone |
 | Bigger, smaller, reset size | Cmd-=, Cmd-minus, Cmd-0 | Ctrl-=, Ctrl-minus, Ctrl-0 |
 | Open a link, underlined while the pointer is over it | Cmd-press | Ctrl-press |
 | Settings | Cmd-, | Ctrl-, |

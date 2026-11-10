@@ -16,7 +16,7 @@
 | 拷贝选中文字，没有选中时粘贴 | 右键，需打开设置 › 终端 › 右键粘贴 | 右键，需打开同一开关；Windows 上默认打开 |
 | 全选 | Cmd-A | Ctrl-Shift-A |
 | 查找 | Cmd-F | Ctrl-Shift-F |
-| 清屏并清空历史 | Cmd-K | Ctrl-Shift-K |
+| 清空历史和提示符以上的屏幕 | Cmd-K | Ctrl-Shift-K；在 Windows 上只清空历史 |
 | 放大、缩小、重置大小 | Cmd-=、Cmd-minus、Cmd-0 | Ctrl-=、Ctrl-minus、Ctrl-0 |
 | 打开链接（指针在上面时显示下划线） | Cmd-点按 | Ctrl-点按 |
 | 设置 | Cmd-, | Ctrl-, |
