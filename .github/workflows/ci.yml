@@ -69,7 +69,11 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - run: rustup toolchain install --no-self-update
+      # huacnlee/cargo replaces the rustup proxy; its build files live in ~/.cargo/targets.
+      - run: curl -fsSL https://huacnlee.github.io/cargo/install.sh | sh
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: ~/.cargo/targets
       # The job container runs as root, which ignores the file permissions the tests check.
       - run: |
           apt-get update && apt-get install -y --no-install-recommends pkg-config libwayland-dev \
