@@ -7,7 +7,8 @@ use gpui::{App, Context, PathPromptOptions, PromptLevel, Window};
 use super::Workspace;
 
 impl Workspace {
-    pub(super) fn choose_folder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// Asks for a folder and opens the shown session's shell there.
+    pub(crate) fn choose_folder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.choosing_folder {
             return;
         }

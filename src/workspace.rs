@@ -373,13 +373,11 @@ impl Render for Workspace {
                 .on_click(move |_, window, cx| {
                     workspace.update(cx, |this, cx| this.new_session(window, cx))
                 });
-            let mut column = self
+            let column = self
                 .side_column(Side::Sessions, cx)
                 .leading(left)
-                .action(new);
-            if let Some(profiles) = crate::profiles::button(&cx.entity(), &self.found, cx) {
-                column = column.action(profiles);
-            }
+                .action(new)
+                .action(crate::profiles::button(&cx.entity(), &self.found, cx));
             shell = shell.column(
                 column.child(
                     div()

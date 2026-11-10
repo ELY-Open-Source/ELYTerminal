@@ -69,12 +69,9 @@ fn listed(text: &str) -> Vec<Found> {
     found
 }
 
-/// The chevron beside +, its menu of profiles; none while there is none.
-pub fn button(workspace: &Entity<Workspace>, found: &[Found], cx: &App) -> Option<OverflowMenu> {
+/// The chevron beside +: its menu of profiles and shells, then a folder to choose.
+pub fn button(workspace: &Entity<Workspace>, found: &[Found], cx: &App) -> OverflowMenu {
     let profiles = &SettingsStore::get(cx).profiles;
-    if profiles.is_empty() && found.is_empty() {
-        return None;
-    }
     let mut menu = Menu::new();
     for profile in profiles {
         let words = settings::words(&profile.command).expect("the settings checked it");
@@ -87,12 +84,18 @@ pub fn button(workspace: &Entity<Workspace>, found: &[Found], cx: &App) -> Optio
     for shell in found {
         menu = menu.item(item(workspace, &shell.name, shell.words.clone(), None));
     }
-    let tooltip = text(cx, "et.session.profiles", &[]);
-    Some(
-        OverflowMenu::new("profiles", menu)
-            .icon(IconName::ChevronDown)
-            .tooltip(tooltip),
-    )
+    if !profiles.is_empty() || !found.is_empty() {
+        menu = menu.separator();
+    }
+    let chooser = workspace.clone();
+    menu = menu.item(
+        MenuItem::new(text(cx, "et.files.choose_folder", &[])).on_click(move |window, cx| {
+            chooser.update(cx, |this, cx| this.choose_folder(window, cx));
+        }),
+    );
+    OverflowMenu::new("profiles", menu)
+        .icon(IconName::ChevronDown)
+        .tooltip(text(cx, "et.session.profiles", &[]))
 }
 
 /// An entry that opens `words` in `folder`, else where Start in says.
