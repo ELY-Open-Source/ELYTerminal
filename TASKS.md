@@ -307,3 +307,21 @@ In PRD order. Reviews by Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - [x] T169 PR #79, issue #78: its author measured both terminals at 16 px, Windows Terminal's `┃` 4 device pixels at 125% against ELYTerminal's 2; the rule rounds up to a device pixel, the PR merged with its author. Cherry-picked with its author as bf10492; 13 px on Retina keeps its 4-pixel heavy line.
 - [x] T170 Release 0.2.3, which the owner asked for: the version raised, every build on the release, Windows ARM64's zip among them, the notes in English and Chinese, the cask and winget following, each issue answered. Published at c82e206, thirteen assets, Windows ARM64 the new one; #78 and #79 closed; the tap holds 0.2.3; winget: microsoft/winget-pkgs#471905.
+
+## 46. Issues and PRs after 0.2.3; 0.2.4
+
+In PRD order. Reviews by Cindy's reviewer Worker, Codex on GPT-6.1 Sol, three rounds at most.
+
+- [ ] T171 Issue #66: on Windows, under a light theme, a typed space draws a black block that stays; reproduced first, the cause fixed so the cell wears the theme's ground, logged.
+- [ ] T172 Issue #82: Clear screen, Cmd-K on macOS and Ctrl-Shift-K elsewhere, clears the screen and the history; a menu item and a listed shortcut.
+- [ ] T173 Issue #83: on Linux the right column's toggle shows at every width, so the column hides and comes back as on macOS; reproduced first.
+- [ ] T174 Issue #85: the menu beside + offers Choose folder…, which starts a session in a picked folder; a profile keeps a folder for later, which the reply says.
+- [ ] T175 PR #80: a Files row dropped on the terminal gives the terminal the focus; the PR checked, merged with its author.
+- [ ] T176 PR #81: a gradient over the background picture, its angle and two colors; the PR checked, fixed where needed, merged with its author.
+- [ ] T177 PR #58: answered once #81 landed; closed or left open for the opacity and mask.
+- [ ] T178 Every shortcut may be changed, which the owner asked for: `shortcuts` in the settings, Settings › Terminal › Shortcuts records a key for a command and resets it, applied at once in every window and the menu bar.
+- [ ] T179 Issue #76: on Plasma's Wayland a window moves without jitter while Ely shows; the reporter's log and videos read, reproduced under KWin if it can be, the cause fixed.
+- [ ] T180 Issue #86: the command line reads and types into a running ELYTerminal: `elyterminal ctl` lists sessions, prints a session's last lines, sends text and sends keys, through a local door only the user opens; off until Settings turns it on.
+- [ ] T181 Issue #87: an NSIS installer for Windows, per user, with a Start menu entry and an uninstaller, built by a script beside the zip.
+- [ ] T182 PRD, AGENTS.md, the READMEs, the guides and the acceptance table hold T171 to T181; each issue and PR answered.
+- [ ] T183 Release 0.2.4: the version raised, every build on the release, the installer among them, the notes in English and Chinese, the cask and winget following.
