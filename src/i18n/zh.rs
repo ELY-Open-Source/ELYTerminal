@@ -135,12 +135,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.mask_stops", "遮罩色标"),
     (
         "et.appearance.mask_stops_hint",
-        "逗号分隔，2 到 16 个颜色；其 alpha 即遮罩",
+        "逗号分隔，2 到 16 个颜色；其 alpha 即遮罩。遮罩盒边缘的色标不透明就会在那里形成硬边",
     ),
     ("et.appearance.mask_size", "遮罩尺寸"),
     (
         "et.appearance.mask_size_hint",
-        "遮罩在图片中的盒子：cover、contain、fill、auto，或宽高如 40% 100%",
+        "遮罩在图片中的盒子：cover、contain、fill、auto，或宽高如 40% 100%；盒外图片透明",
     ),
     ("et.appearance.mask_position", "遮罩位置"),
     (

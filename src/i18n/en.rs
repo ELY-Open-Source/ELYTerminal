@@ -141,12 +141,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.appearance.mask_stops", "Mask stops"),
     (
         "et.appearance.mask_stops_hint",
-        "Two to sixteen colors, comma separated; their alpha is the mask",
+        "Two to sixteen colors, comma separated; their alpha is the mask. A stop at the box's edge that is not transparent cuts the picture there",
     ),
     ("et.appearance.mask_size", "Mask size"),
     (
         "et.appearance.mask_size_hint",
-        "The mask's box in the picture: cover, contain, fill, auto, or a width and a height",
+        "The mask's box in the picture: cover, contain, fill, auto, or a width and a height; outside it the picture is clear",
     ),
     ("et.appearance.mask_position", "Mask position"),
     (
