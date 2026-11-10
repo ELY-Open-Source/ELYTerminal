@@ -23,6 +23,19 @@ struct Key {
 
 /// The most device pixels a side of a picture is stretched to before its mask.
 const FINEST: f32 = 4096.0;
+/// The most pixels a stretched picture holds, 64 MiB of them.
+const MOST: u64 = 4096 * 4096;
+
+/// The pixels a picture of `held` fades in when drawn `drawn` points at `scale`: more where it is drawn larger.
+fn fine(held: (u32, u32), drawn: (f32, f32), scale: f32) -> (u32, u32) {
+    let side = |held: u32, drawn: f32| held.max((drawn * scale).min(FINEST).ceil() as u32);
+    let (wide, high) = (side(held.0, drawn.0), side(held.1, drawn.1));
+    // A long strip stretched across would outgrow memory; the GPU stretches it instead.
+    if u64::from(wide) * u64::from(high) > MOST {
+        return held;
+    }
+    (wide, high)
+}
 
 /// The mask's box in the picture's box: its place, then its size.
 pub(super) fn mask_box(settings: &Settings, container: (f32, f32)) -> ((f32, f32), (f32, f32)) {
@@ -42,9 +55,7 @@ fn fade(
 ) -> Arc<RenderImage> {
     let pixels = image.size(0);
     let held = (pixels.width.0 as u32, pixels.height.0 as u32);
-    // A picture drawn larger than it is fades by the pixels it is drawn in.
-    let fine = |held: u32, drawn: f32| held.max((drawn * scale).min(FINEST).ceil() as u32);
-    let (wide, high) = (fine(held.0, drawn.0), fine(held.1, drawn.1));
+    let (wide, high) = fine(held, drawn, scale);
     let bytes = image.as_bytes(0).expect("a picture's first frame").to_vec();
     let frame = RgbaImage::from_raw(held.0, held.1, bytes).expect("as many bytes as it holds");
     let frame = if (wide, high) == held {
@@ -150,6 +161,16 @@ mod tests {
     fn faded(mask_box: ((f32, f32), (f32, f32))) -> Arc<RenderImage> {
         let mask = Mask::new(90.0, "transparent, black", mask_box.1).expect("two stops");
         fade(&picture(), &mask, mask_box, (0.0, 0.0), (2.0, 2.0), 1.0)
+    }
+
+    #[test]
+    fn a_picture_stretches_no_further_than_memory_bears() {
+        assert_eq!(fine((640, 400), (1200.0, 722.0), 2.0), (2400, 1444));
+        assert_eq!(fine((640, 400), (300.0, 200.0), 1.0), (640, 400));
+        assert_eq!(fine((8, 8), (9000.0, 10.0), 1.0), (4096, 10));
+        let strip = (1, 1_000_000);
+        assert_eq!(fine(strip, (1024.0, 768.0), 1.0), strip, "a strip stays");
+        assert_eq!(fine((8000, 8000), (9000.0, 9000.0), 1.0), (8000, 8000));
     }
 
     #[test]
