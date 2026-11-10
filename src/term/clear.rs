@@ -2,27 +2,34 @@
 
 use alacritty_terminal::{
     event::EventListener,
-    grid::{Dimensions, Scroll},
-    term::{Term, TermMode},
+    grid::{Dimensions, Row, Scroll},
+    index::Line,
+    term::{Term, TermMode, cell::Cell},
     vte::ansi::{ClearMode, Handler},
 };
 use gpui::Context;
 
 use super::{click::Shell, prompts, view::TerminalView};
 
-/// Drops the history and the screen's rows above `top`; the lines dropped, none on the alternate screen.
+/// Drops the history and the screen's rows above `top`, its images too; the lines dropped, none on the alternate screen.
 fn clear<T: EventListener>(term: &mut Term<T>, top: usize) -> Option<usize> {
     if term.mode().contains(TermMode::ALT_SCREEN) {
         return None;
     }
     let dropped = term.history_size() + top;
-    if top > 0 {
-        term.scroll_up(top);
-        term.grid_mut().cursor.point.line -= top;
-    }
+    let lines = term.screen_lines();
+    // A program's scroll region would bend a scroll, so the kept rows are carried.
+    let kept: Vec<Row<Cell>> = (top..lines)
+        .map(|line| term.grid()[Line(line as i32)].clone())
+        .collect();
+    term.clear_screen(ClearMode::All);
     term.clear_screen(ClearMode::Saved);
+    let grid = term.grid_mut();
+    for (line, row) in kept.into_iter().enumerate() {
+        grid[Line(line as i32)] = row;
+    }
+    grid.cursor.point.line -= top;
     term.scroll_display(Scroll::Bottom);
-    term.selection = None;
     Some(dropped)
 }
 
@@ -54,6 +61,9 @@ impl TerminalView {
                 self.pty.pid
             ),
         }
+        if self.finder.is_some() {
+            self.search(false, cx);
+        }
         cx.notify();
     }
 }
@@ -62,7 +72,7 @@ impl TerminalView {
 mod tests {
     use alacritty_terminal::{
         event::VoidListener,
-        index::{Column, Line},
+        index::Column,
         term::{Config, test::TermSize},
         vte::ansi::Processor,
     };
@@ -100,6 +110,18 @@ mod tests {
         );
         let cursor = term.grid().cursor.point;
         assert_eq!((cursor.line.0, cursor.column.0), (0, 3));
+    }
+
+    #[test]
+    fn a_program_s_scroll_region_bends_nothing() {
+        let mut term = parsed(b"a\r\nb\r\nc\r\nd\x1b[2;4r\x1b[4;1Hnow");
+        assert_eq!(clear(&mut term, 3), Some(3));
+        assert_eq!(
+            (row(&term, 0), row(&term, 1)),
+            ("now".into(), String::new())
+        );
+        feed(&mut term, b"\r\n1\r\n2\r\n3\r\n4");
+        assert_eq!(row(&term, 0), "now", "the region still holds the first row");
     }
 
     #[test]
