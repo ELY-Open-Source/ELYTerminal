@@ -336,7 +336,7 @@ impl Render for Workspace {
             |settings| settings.show_panel = !settings.show_panel,
             cx,
         );
-        // No menu bar off macOS: a gear opens Settings.
+        // No menu bar off macOS: a gear opens Settings. A narrow header clips its end, so the gear goes first.
         let gear = (!cfg!(target_os = "macos")).then(|| {
             IconButton::new("open-settings", IconName::Settings)
                 .variant(ButtonVariant::Ghost)
@@ -348,8 +348,8 @@ impl Render for Workspace {
             .flex()
             .items_center()
             .gap_2()
-            .children(gear)
-            .child(right);
+            .child(right)
+            .children(gear);
         let mut shell = ColumnShell::new("workspace").glass();
         let shown = self
             .sessions
