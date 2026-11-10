@@ -13,16 +13,16 @@ const CHECK: Duration = Duration::from_millis(500);
 /// KWin snaps a moving window to a popup's edge inside its snap zone, 100 points at most.
 const SKIRT: f32 = 100.0;
 
-/// Whether `points` cover whole device pixels at `scale`.
-fn whole(points: f32, scale: f32) -> bool {
-    let pixels = points * scale;
-    (pixels - pixels.round()).abs() < 0.01
+/// Whether `points` cover whole device pixels at `scale`, which Wayland counts in 120ths.
+fn whole(points: u32, scale: f32) -> bool {
+    let parts = (scale * 120.0).round() as u32;
+    (points * parts).is_multiple_of(120)
 }
 
 /// The fewest whole points, `least` or more, that cover whole device pixels: a scale counts in 120ths, so 120 points always do.
 fn up(least: f32, scale: f32) -> f32 {
     let first = least.ceil() as u32;
-    let found = (first..first + 120).find(|points| whole(*points as f32, scale));
+    let found = (first..first + 120).find(|points| whole(*points, scale));
     found.expect("120 points in a row hold a whole one") as f32
 }
 
@@ -30,7 +30,7 @@ fn up(least: f32, scale: f32) -> f32 {
 fn down(most: f32, scale: f32) -> f32 {
     let found = (0..=most.floor() as u32)
         .rev()
-        .find(|points| whole(*points as f32, scale));
+        .find(|points| whole(*points, scale));
     found.expect("no points cover no pixels") as f32
 }
 
@@ -94,19 +94,22 @@ fn edge(window: &Window) -> Edge {
 /// Reopens her once `main`'s size or state moves her anchor.
 fn reanchor(main: WindowHandle<Workspace>, shown: &Shown, cx: &mut App) -> anyhow::Result<()> {
     let at = SettingsStore::get(cx).ely_left;
-    let spot = main.update(cx, |_, window, _| spot(window, at))?;
+    let (spot, rise) = main.update(cx, |_, window, _| {
+        let spot = spot(window, at);
+        (spot, reach(spot.0, window.scale_factor()).0)
+    })?;
     let Some(pet) = *shown.borrow() else {
         return Ok(());
     };
     if pet
         .read(cx)
-        .is_ok_and(|pet| (pet.edge, pet.anchor) == (spot.0, Some(spot.1)))
+        .is_ok_and(|pet| (pet.edge, pet.anchor, pet.rise) == (spot.0, Some(spot.1), rise))
     {
         return Ok(());
     }
     close(
         pet,
-        "to stand where the window's size or state, or a drag, puts her",
+        "to stand where the window's size, state or scale, or a drag, puts her",
         cx,
     );
     *shown.borrow_mut() = open_pet(main, cx);
@@ -129,9 +132,14 @@ mod tests {
         ] {
             let (up, skirt) = reach(Edge::Top, scale);
             assert_eq!(up, rise, "at {scale}");
-            assert!(skirt >= SKIRT && whole(skirt, scale), "{skirt} at {scale}");
+            assert!(
+                skirt >= SKIRT && whole(skirt as u32, scale),
+                "{skirt} at {scale}"
+            );
             assert_eq!(reach(Edge::Bottom, scale), (rise, 0.0));
         }
+        // 121 parts of 120: only a multiple of 120 points is whole.
+        assert_eq!(reach(Edge::Top, 121.0 / 120.0), (240., 120.));
         assert_eq!(
             (down(141.0, 1.25), down(141.0, 1.0), down(3.0, 1.1)),
             (140., 141., 0.)
