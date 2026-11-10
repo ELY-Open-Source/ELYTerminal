@@ -98,10 +98,17 @@ pub fn commands() -> Vec<Command> {
             "alt-1", "alt-2", "alt-3", "alt-4", "alt-5", "alt-6", "alt-7", "alt-8", "alt-9",
         ],
     );
-    let paste = if cfg!(windows) {
-        vec!["ctrl-shift-v", "ctrl-v"]
+    // Windows' own Insert keys, as Windows Terminal binds them.
+    let (copy, paste) = if cfg!(windows) {
+        (
+            vec!["ctrl-shift-c", "ctrl-insert"],
+            vec!["ctrl-shift-v", "ctrl-v", "shift-insert"],
+        )
     } else {
-        on(&["cmd-v"], &["ctrl-shift-v"])
+        (
+            on(&["cmd-c"], &["ctrl-shift-c"]),
+            on(&["cmd-v"], &["ctrl-shift-v"]),
+        )
     };
     let mut all = vec![
         command(
@@ -157,14 +164,7 @@ pub fn commands() -> Vec<Command> {
             vec![digits[PLACES]],
             Box::new(LastSession),
         ),
-        command(
-            "copy",
-            edit,
-            "et.keys.copy",
-            term,
-            on(&["cmd-c"], &["ctrl-shift-c"]),
-            Box::new(Copy),
-        ),
+        command("copy", edit, "et.keys.copy", term, copy, Box::new(Copy)),
         command("paste", edit, "et.keys.paste", term, paste, Box::new(Paste)),
         command(
             "select_all",

@@ -168,7 +168,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 ## 12. Menus and shortcuts
 
 - macOS menu bar: ELYTerminal (Settings, Quit), Shell (New Session, Close Session), Edit (Copy, Paste, Select All, Find), View (Toggle Sessions, Toggle Right Panel, Bigger, Smaller, Reset Size), Window.
-- The same shortcuts on Windows and Linux with Ctrl-Shift for terminal-colliding keys. On Windows Ctrl-V pastes too, as in Windows Terminal.
+- The same shortcuts on Windows and Linux with Ctrl-Shift for terminal-colliding keys. On Windows Ctrl-V pastes too, Ctrl-Insert copies and Shift-Insert pastes, as in Windows Terminal.
 - Every shortcut may be changed, in Settings › Terminal › Shortcuts or in `shortcuts` in the settings; the menu bar shows the keys in force. Tab, Shift-Tab, F6 and Shift-F6 stay Ely's and the program's.
 - Edit › Clear clears the terminal.
 

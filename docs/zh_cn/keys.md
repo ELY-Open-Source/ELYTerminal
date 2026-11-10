@@ -12,7 +12,7 @@
 | 下一个、上一个会话 | Ctrl-Tab、Ctrl-Shift-Tab | Ctrl-Tab、Ctrl-Shift-Tab |
 | 会话栏 | Cmd-B | Ctrl-Shift-B |
 | 右侧栏 | Cmd-Alt-B | Ctrl-Shift-Alt-B |
-| 拷贝、粘贴 | Cmd-C、Cmd-V | Ctrl-Shift-C、Ctrl-Shift-V；在 Windows 上 Ctrl-V 也粘贴 |
+| 拷贝、粘贴 | Cmd-C、Cmd-V | Ctrl-Shift-C、Ctrl-Shift-V；在 Windows 上 Ctrl-V 也粘贴，Ctrl-Insert 拷贝、Shift-Insert 粘贴 |
 | 拷贝选中文字，没有选中时粘贴 | 右键，需打开设置 › 终端 › 右键粘贴 | 右键，需打开同一开关；Windows 上默认打开 |
 | 全选 | Cmd-A | Ctrl-Shift-A |
 | 查找 | Cmd-F | Ctrl-Shift-F |
