@@ -3,7 +3,7 @@
 use std::{cell::RefCell, sync::Arc};
 
 use gpui::{ImageId, RenderImage, Window};
-use image::{Frame, RgbaImage};
+use image::{Frame, RgbaImage, imageops};
 
 use crate::settings::{Mask, Settings};
 
@@ -18,8 +18,11 @@ struct Key {
     image: ImageId,
     angle: u32,
     stops: String,
-    lengths: [u32; 10],
+    lengths: [u32; 11],
 }
+
+/// The most device pixels a side of a picture is stretched to before its mask.
+const FINEST: f32 = 4096.0;
 
 /// The mask's box in the picture's box: its place, then its size.
 pub(super) fn mask_box(settings: &Settings, container: (f32, f32)) -> ((f32, f32), (f32, f32)) {
@@ -35,10 +38,22 @@ fn fade(
     (origin, size): ((f32, f32), (f32, f32)),
     place: (f32, f32),
     drawn: (f32, f32),
+    scale: f32,
 ) -> Arc<RenderImage> {
     let pixels = image.size(0);
-    let (width, height) = (pixels.width.0 as usize, pixels.height.0 as usize);
-    let mut bytes = image.as_bytes(0).expect("a picture's first frame").to_vec();
+    let held = (pixels.width.0 as u32, pixels.height.0 as u32);
+    // A picture drawn larger than it is fades by the pixels it is drawn in.
+    let fine = |held: u32, drawn: f32| held.max((drawn * scale).min(FINEST).ceil() as u32);
+    let (wide, high) = (fine(held.0, drawn.0), fine(held.1, drawn.1));
+    let bytes = image.as_bytes(0).expect("a picture's first frame").to_vec();
+    let frame = RgbaImage::from_raw(held.0, held.1, bytes).expect("as many bytes as it holds");
+    let frame = if (wide, high) == held {
+        frame
+    } else {
+        imageops::resize(&frame, wide, high, imageops::FilterType::Triangle)
+    };
+    let (width, height) = (wide as usize, high as usize);
+    let mut bytes = frame.into_raw();
     let inside = |at: f32| (0.0..=1.0).contains(&at);
     for y in 0..height {
         let v = (place.1 + (y as f32 + 0.5) / height as f32 * drawn.1 - origin.1) / size.1;
@@ -54,8 +69,8 @@ fn fade(
             bytes[at] = (f32::from(bytes[at]) * alpha).round() as u8;
         }
     }
-    let faded = RgbaImage::from_raw(width as u32, height as u32, bytes);
-    let frame = Frame::new(faded.expect("as many bytes as the picture held"));
+    let faded = RgbaImage::from_raw(wide, high, bytes);
+    let frame = Frame::new(faded.expect("as many bytes as before"));
     Arc::new(RenderImage::new(vec![frame]))
 }
 
@@ -70,6 +85,7 @@ pub(super) fn masked(
 ) -> Arc<RenderImage> {
     let mask_box = mask_box(settings, container);
     let (origin, size) = mask_box;
+    let scale = window.scale_factor();
     let key = Key {
         image: image.id,
         angle: settings.background_mask_angle.to_bits(),
@@ -85,6 +101,7 @@ pub(super) fn masked(
             origin.1,
             size.0,
             size.1,
+            scale,
         ]
         .map(f32::to_bits),
     };
@@ -92,12 +109,12 @@ pub(super) fn masked(
     if let Some((_, picture)) = kept.filter(|(held, _)| *held == key) {
         return picture;
     }
-    let mask = Mask::new(
+    let (angle, stops) = (
         settings.background_mask_angle,
         &settings.background_mask_stops,
-    )
-    .expect("the settings checked the mask");
-    let picture = fade(image, &mask, mask_box, place, drawn);
+    );
+    let mask = Mask::new(angle, stops, size).expect("the settings checked the mask");
+    let picture = fade(image, &mask, mask_box, place, drawn, scale);
     log::debug!(
         "background: masked {:?} for a box of {container:?}",
         image.size(0)
@@ -131,8 +148,20 @@ mod tests {
     }
 
     fn faded(mask_box: ((f32, f32), (f32, f32))) -> Arc<RenderImage> {
-        let mask = Mask::new(90.0, "transparent, black").expect("two stops");
-        fade(&picture(), &mask, mask_box, (0.0, 0.0), (2.0, 2.0))
+        let mask = Mask::new(90.0, "transparent, black", mask_box.1).expect("two stops");
+        fade(&picture(), &mask, mask_box, (0.0, 0.0), (2.0, 2.0), 1.0)
+    }
+
+    #[test]
+    fn a_picture_drawn_larger_fades_by_the_pixels_it_is_drawn_in() {
+        let dot = RgbaImage::from_raw(1, 1, vec![10, 20, 30, 255]).expect("a pixel");
+        let dot = RenderImage::new(vec![Frame::new(dot)]);
+        let mask_box = ((0.0, 0.0), (4.0, 1.0));
+        let mask = Mask::new(90.0, "transparent, black", mask_box.1).expect("two stops");
+        let faded = fade(&dot, &mask, mask_box, (0.0, 0.0), (4.0, 1.0), 1.0);
+        let bytes = faded.as_bytes(0).expect("a frame");
+        let alphas: Vec<u8> = bytes.chunks(4).map(|pixel| pixel[3]).collect();
+        assert_eq!(alphas, [32, 96, 159, 223]);
     }
 
     #[test]
@@ -148,7 +177,11 @@ mod tests {
     fn a_mask_box_leaves_the_picture_outside_it_clear() {
         let faded = faded(((0.0, 0.0), (1.0, 2.0)));
         let bytes = faded.as_bytes(0).expect("a frame");
-        assert_eq!(bytes[3], 128, "the left pixel is halfway through the box");
+        // 90 degrees' cosine is a hair off 0, so half of 255 rounds either way.
+        assert!(
+            bytes[3].abs_diff(128) <= 1,
+            "the left pixel is halfway through the box"
+        );
         assert_eq!(bytes[7], 0, "the right lies outside the mask box");
         let none = self::faded(((0.0, 0.0), (0.0, 0.0)));
         let bytes = none.as_bytes(0).expect("a frame");

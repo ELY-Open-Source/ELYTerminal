@@ -330,7 +330,8 @@ impl Settings {
         let picture = self.background_image_opacity;
         within("background_image_opacity", picture, &OPACITY)?;
         within("background_mask_angle", self.background_mask_angle, angle)?;
-        Mask::new(self.background_mask_angle, &self.background_mask_stops)
+        let stops = &self.background_mask_stops;
+        Mask::new(self.background_mask_angle, stops, (1.0, 1.0))
             .context("background_mask_stops")?;
         within("padding_x", self.padding_x, &PADDING)?;
         within("padding_y", self.padding_y, &PADDING)?;

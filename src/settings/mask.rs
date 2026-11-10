@@ -20,14 +20,20 @@ pub struct Mask {
 }
 
 impl Mask {
-    /// Reads `"transparent, black"`: two to sixteen colors, comma separated.
-    pub fn new(angle: f32, stops: &str) -> anyhow::Result<Self> {
+    /// Reads `"transparent, black"`, two to sixteen colors, comma separated, for a box of `size`.
+    pub fn new(angle: f32, stops: &str, (width, height): (f32, f32)) -> anyhow::Result<Self> {
         let alpha = |stop: &str| -> anyhow::Result<f32> {
             let color: Hsla = color(stop.trim()).with_context(|| format!("mask stop {stop:?}"))?;
             Ok(color.a)
         };
+        // A comma inside `rgba(…)` parts no stops.
+        let mut depth = 0;
+        let apart = |ch: char| {
+            depth += i32::from(ch == '(') - i32::from(ch == ')');
+            ch == ',' && depth == 0
+        };
         let stops = stops
-            .split(',')
+            .split(apart)
             .map(alpha)
             .collect::<anyhow::Result<Vec<f32>>>()?;
         ensure!(
@@ -35,12 +41,12 @@ impl Mask {
             "a mask holds {MIN_STOPS} to {MAX_STOPS} stops, not {}",
             stops.len()
         );
-        // The gradient's line spans the box, corner to corner at a slant.
+        // CSS's gradient line: through the center, as long as the box's corners reach along it.
         let (sin, cos) = angle.to_radians().sin_cos();
-        let length = sin.abs() + cos.abs();
+        let length = (width * sin).abs() + (height * cos).abs();
         Ok(Self {
-            across: sin / length,
-            down: -cos / length,
+            across: width * sin / length,
+            down: -height * cos / length,
             stops,
         })
     }
@@ -63,26 +69,29 @@ mod tests {
 
     #[test]
     fn each_stop_is_a_color() {
-        let mask = Mask::new(90.0, "transparent, black").expect("two stops");
+        let mask = Mask::new(90.0, "transparent, black", (1.0, 1.0)).expect("two stops");
         assert_eq!(mask.stops, [0.0, 1.0]);
-        assert!(Mask::new(90.0, "black").is_err(), "one stop is none");
         assert!(
-            Mask::new(90.0, "#000, #111, #222, #333, #444, #555, #666, #777, #888, #999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, #000").is_err(),
+            Mask::new(90.0, "black", (1.0, 1.0)).is_err(),
+            "one stop is none"
+        );
+        assert!(
+            Mask::new(90.0, "#000, #111, #222, #333, #444, #555, #666, #777, #888, #999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, #000", (1.0, 1.0)).is_err(),
             "seventeen stops are too many"
         );
         assert!(
-            Mask::new(90.0, "transparent, nope").is_err(),
+            Mask::new(90.0, "transparent, nope", (1.0, 1.0)).is_err(),
             "a stop reads"
         );
     }
 
     #[test]
     fn the_angle_fades_across_the_box() {
-        let mask = Mask::new(90.0, "transparent, black").expect("two stops");
+        let mask = Mask::new(90.0, "transparent, black", (1.0, 1.0)).expect("two stops");
         assert_eq!(mask.alpha(0.0, 0.5), 0.0, "the left is the first stop");
         assert_eq!(mask.alpha(1.0, 0.5), 1.0, "the right is the last");
         assert!((mask.alpha(0.5, 0.5) - 0.5).abs() < 1e-6);
-        let up = Mask::new(0.0, "transparent, black").expect("two stops");
+        let up = Mask::new(0.0, "transparent, black", (1.0, 1.0)).expect("two stops");
         assert_eq!(
             up.alpha(0.5, 1.0),
             0.0,
@@ -93,8 +102,26 @@ mod tests {
     }
 
     #[test]
+    fn a_slanted_mask_runs_as_css_s_gradient_line_does() {
+        let mask = Mask::new(45.0, "transparent, black", (200.0, 100.0)).expect("two stops");
+        assert!((mask.alpha(0.75, 0.5) - 2.0 / 3.0).abs() < 1e-6);
+        assert!(mask.alpha(0.0, 1.0).abs() < 1e-6, "the far corner is first");
+        assert!(
+            (mask.alpha(1.0, 0.0) - 1.0).abs() < 1e-6,
+            "the near one last"
+        );
+    }
+
+    #[test]
+    fn a_color_s_own_commas_part_no_stops() {
+        let stops = "rgba(0, 0, 0, 0), rgba(0, 0, 0, 1), #000";
+        let mask = Mask::new(90.0, stops, (1.0, 1.0)).expect("three stops");
+        assert_eq!(mask.stops, [0.0, 1.0, 1.0]);
+    }
+
+    #[test]
     fn the_stops_share_the_way_evenly() {
-        let mask = Mask::new(90.0, "transparent, black, black").expect("three stops");
+        let mask = Mask::new(90.0, "transparent, black, black", (1.0, 1.0)).expect("three stops");
         assert!(
             (mask.alpha(0.25, 0.5) - 0.5).abs() < 1e-6,
             "halfway to the second"
