@@ -16,7 +16,7 @@
 [GitHub 上的发行版](https://github.com/ELY-Open-Source/ELYTerminal/releases) 为每个平台提供构建。
 
 - macOS 11 或更高，Apple silicon：打开 `ELYTerminal-VERSION.dmg`，把 ELYTerminal 拖进应用程序。应用已用 Developer ID 签名并公证。用 Homebrew：`brew install --cask ely-open-source/tap/elyterminal`。
-- Windows 10 或更高，x86_64，或 ARM64 上的 Windows 11：解压 `ELYTerminal-VERSION-windows-x86_64.zip`（ARM64 用 `-windows-aarch64.zip`），运行 `elyterminal.exe`，zip 里的其他文件留在它旁边。微软的目录收录后也可用 winget：`winget install ELYOpenSource.ELYTerminal`。它未签名；SmartScreen 与 Defender 的区别见 [Windows](docs/zh_cn/install.md#windows)。
+- Windows 10 或更高，x86_64，或 ARM64 上的 Windows 11：运行安装包 `ELYTerminal-VERSION-windows-x86_64-setup.exe`（ARM64 用 `-windows-aarch64-setup.exe`），或解压 `ELYTerminal-VERSION-windows-x86_64.zip`（ARM64 用 `-windows-aarch64.zip`），运行 `elyterminal.exe`，zip 里的其他文件留在它旁边。微软的目录收录后也可用 winget：`winget install ELYOpenSource.ELYTerminal`。它未签名；SmartScreen 与 Defender 的区别见 [Windows](docs/zh_cn/install.md#windows)。
 - Linux，x86_64：[软件包](docs/zh_cn/install.md)。
 
 ## 功能
@@ -25,6 +25,7 @@
 - zsh、bash、fish 和 PowerShell 的 shell 集成，文件和 Git 跟着会话的文件夹。
 - + 旁的配置文件：你自己的命令行，以及本机的 shell，包括 WSL 发行版和 Git Bash。
 - Ely 从窗口边缘探出头，跟着会话走。
+- 所有快捷键都可以更改；在设置里打开后，`elyterminal ctl` 让脚本和 AI 代理列出、读取并操作开着的会话。
 - 通过 kitty 图形协议显示图片，包括动画；通过 kitty 的 OSC 5522 读写剪贴板，程序读取其中内容前默认先问你；本会话内允许过的程序和响应粘贴的读取除外。
 - macOS、Windows、Wayland 和 X11 上的背景不透明度（可低至 0%）和模糊，Windows 11 上还有云母；背景图片可铺在终端或整个窗口下，尺寸、位置和平铺与 CSS 相同。
 

@@ -28,3 +28,7 @@
 - Windows 上，设置 › 终端 › 资源管理器菜单 可为当前用户在文件夹的右键菜单中加入或移除“在 ELYTerminal 中打开”；Windows 11 中它位于“显示更多选项”下。`elyterminal FOLDER` 在各系统上都让第一个会话从 FOLDER 开始；cmd 不接受网络共享作为当前目录，会自行提示并进入 Windows 目录。文件夹也可以写在 `--working-directory`、`-d` 或 `--startingDirectory` 之后，与 xdg-terminal-exec 和 Windows Terminal 的写法相同。
 - 背景不透明度和模糊：macOS 上是 NSVisualEffectView，Windows 上是 acrylic，Windows 11 build 22621 起可按设置 › 外观 › 背景材质选云母或云母 Alt，Wayland 上是 `ext_background_effect_v1` 或 `org_kde_kwin_blur`，X11 上是 `_KDE_NET_WM_BLUR_BEHIND_REGION`，KWin 会读它。不透明度从 0% 到 100%，模糊只在低于 100% 时出现。Hyprland 只在自己的 `decoration:blur:enabled` 打开时模糊，而 Omarchy 4.0.4 把它关掉了；要在那里打开，把 `hl.config({ decoration = { blur = { enabled = true } } })` 加到 `~/.config/hypr/looknfeel.lua`。
 - 背景图片：在设置 › 外观 › 背景图片 选一张图，按背景不透明度显示，位置由 图片范围 决定：终端列下方，或标题栏以下的整个窗口。列头可能让终端比宽度设置更宽，图片跟着终端本身。图片保持原色：设置图片时各列的玻璃为 0，整窗图片会从列中透出。尺寸、位置和重复与 CSS 相同：`cover`、`contain`、`fill`、`auto`，或宽高如 `51% auto`；位置如 `right top` 或 `125% 100%`；重复可选不重复、横向、纵向或两者，`settings.json` 里写作 `no_repeat`、`repeat_x`、`repeat_y` 和 `repeat`。图片不会超出它的区域。渐变盖在图片上：角度以度计，0 朝上并顺时针增加，起点和终点两个颜色，可用 `#rrggbbaa`。
+- 清屏：Cmd-K 或 Ctrl-Shift-K，清空历史和提示符以上的屏幕；在 Windows 上屏幕由 ConPTY 保管，只清空历史。
+- 所有快捷键都可以在 设置 › 终端 › 快捷键 里更改，见[快捷键](keys.md)。
+- + 旁边的菜单末尾有「选择文件夹新建会话…」；在 设置 › 终端 › 配置文件 里建一个配置文件，可以把文件夹存下来以后再用。
+- 命令行控制，默认关闭，在 设置 › 终端 里打开：`elyterminal ctl sessions` 列出会话，`elyterminal ctl read 会话 [行数]` 输出某个会话最后几行，`elyterminal ctl send 会话 文本` 输入文本并回车，`elyterminal ctl key 会话 ctrl-c` 发送按键，脚本和 AI 代理可以借此读取并操作开着的终端。它通过本机回环端口与应用通信，端口和令牌写在只有你的账户能读的文件里；在 Windows 上请用管道或重定向接收输出，因为发布版是窗口程序。

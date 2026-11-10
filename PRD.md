@@ -73,6 +73,9 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - A cell's size in pixels, CSI 16 t, is answered, as 14 t and 18 t are, so image tools size images where the pty carries no pixel size, as on Windows.
 - A prompt zsh draws again on a resize keeps its rows unreflowed, as kitty keeps them, so no copy of it goes into the history.
 - A command's start clears the last command's failure, so the row and Ely are calm while ssh, cmd or a nested shell runs; a cmd session, and a bare `cmd` typed in PowerShell, mark their prompts and report their folder.
+- Clear, Cmd-K on macOS and Ctrl-Shift-K elsewhere, drops the history and, off Windows, the screen's rows above the prompt the shell reads at, else above the cursor; on Windows, where ConPTY keeps the screen, the history alone.
+- `elyterminal ctl`, while Settings › Terminal › Command line control is on, asks the running app through a local door only the user opens: `sessions` lists them, `read SESSION [LINES]` prints a session's last rows, `send SESSION TEXT` types text and Enter, `key SESSION KEY...` presses keys.
+
 
 ## 6. Main window and layout
 
@@ -86,6 +89,8 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - The title bar is transparent, as Ghostty's: the window's background, opacity and blur run under it, so it wears the terminal's color.
 - Every control in the title bar takes its own press on every platform, the window buttons Ely draws on Windows and Linux too.
 - Given a folder on the command line, `elyterminal [FOLDER]`, or after `--working-directory`, `-d` or `--startingDirectory`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
+- Off macOS the right column is no narrower than 240 px, room for its toggle, the gear and the window's buttons; the toggle leads the gear, so a window too narrow for both columns clips the gear first.
+
 
 ## 7. Sessions panel
 
@@ -100,6 +105,8 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - A row shows its session's status: working, with its progress where known; waiting on the user, for a permission, a question or a login; done; error; and a mark when the last command failed. Hover shows each record's program, title and message. A hidden session that starts waiting marks its row until it is shown.
 - The mark is 3 by 3 dots that move: work ripples, or fills by its progress; waiting dips; a settled state draws its shape, then holds still.
 - System notifications on macOS, Windows and Linux: a session that starts waiting, finishes or fails, a command that ran 5 seconds or more ending, and a program's OSC 9, 777 or 99 notification, post one while the window is not active or the session is hidden, one a session every 3 seconds at most; it names the session, and a press on it shows the window and the session. On macOS only the app bundle posts them.
+- The menu beside + ends with Choose folder for a new session…, which opens the system's folder chooser and starts the shown session's shell there.
+
 
 ## 8. Right panel: Files
 
@@ -108,6 +115,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Double press: a folder opens, a file opens in the system's default app.
 - A right press on a name opens a menu, while Files menu in Settings › Terminal is on: Open opens it in the system's default app; New session here starts the shown shell in that folder, or a file's parent, right after the shown session and shown; Copy path puts the path on the clipboard. A right press on the Files tab reveals a row between the tabs and the tree, pushing the tree down, to choose one folder through the system dialog and start a session there. A second right press, choosing the action, switching to Git, hiding the panel or disabling Files menu closes the row. Blank space opens no menu; cancellation changes nothing and a failure is shown. Off by default; off, a right press opens nothing.
 - It reloads when the session reports a new directory and at each prompt, and reads its open folders again each second while it shows, so a file another program makes, renames or deletes shows within a second, Git's marks with it.
+- A row dragged from Files onto the terminal types its path there and gives the terminal the focus.
 
 ## 9. Right panel: Git
 
@@ -146,7 +154,8 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Check for updates automatically: a switch, on by default, which checks at start and once a day.
   - Updates: what the last check found, and Check now; a newer release brings Download, which opens its page, and one an automatic check finds posts a notification.
   - Explorer menu (Windows only): adds or removes Open in ELYTerminal on a folder's and a folder background's right-click menu, for the current user, and says which copy it opens.
-  - Shortcuts: every shortcut, as this platform's keys, with a search.
+  - Command line control: a switch, off by default, that opens the door `elyterminal ctl` asks through.
+  - Shortcuts: every command with its keys, a search, Change, which takes the next key pressed for that command, and its own keys back; `shortcuts` in the settings holds the chosen keys.
 
 ## 11. Background blur
 
@@ -160,6 +169,9 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 - macOS menu bar: ELYTerminal (Settings, Quit), Shell (New Session, Close Session), Edit (Copy, Paste, Select All, Find), View (Toggle Sessions, Toggle Right Panel, Bigger, Smaller, Reset Size), Window.
 - The same shortcuts on Windows and Linux with Ctrl-Shift for terminal-colliding keys. On Windows Ctrl-V pastes too, as in Windows Terminal.
+- Every shortcut may be changed, in Settings › Terminal › Shortcuts or in `shortcuts` in the settings; the menu bar shows the keys in force. Tab, Shift-Tab, F6 and Shift-F6 stay Ely's and the program's.
+- Edit › Clear clears the terminal.
+
 
 ## 13. Acceptance
 
@@ -179,6 +191,8 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 - The Windows executable carries the icon. The Linux tarball carries the icon and a desktop entry, and the window names itself after it, `com.zacharyzhang.elyterminal`, as the macOS bundle does.
 - Each build comes from its platform's script: `scripts/mac-app.sh`, `scripts/windows-zip.ps1`, `scripts/linux-packages.sh`, which builds once on Ubuntu 22.04, glibc 2.35, and packs the tarball and the three packages. The macOS one runs on the signing runner, through the Release workflow.
 - Homebrew installs the disk image from the org's tap, `ely-open-source/tap/elyterminal`, and winget the zip as `ELYOpenSource.ELYTerminal` once Microsoft's catalog takes the manifest, both filled from each release's digests by `scripts/package-managers.sh`. The install guide tells SmartScreen's warning from a Defender detection and says how to report a false positive.
+- Windows also gets an NSIS installer, `ELYTerminal-VERSION-windows-ARCH-setup.exe`, from `scripts/windows-installer.ps1`: for one user, with a Start menu entry and an uninstaller that leaves the settings.
+
 
 ## Deferred
 
