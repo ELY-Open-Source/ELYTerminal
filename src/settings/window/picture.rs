@@ -20,7 +20,7 @@ use super::{
     terminal::{chosen, path_field},
 };
 use crate::settings::{
-    BackgroundScope, GRADIENT_ANGLE, PICTURE_OPACITY, PictureRepeat, Settings, SettingsStore,
+    BackgroundScope, GRADIENT_ANGLE, OPACITY, PictureRepeat, Settings, SettingsStore,
 };
 
 /// Each picture scope, its key and its name's key.
@@ -302,10 +302,7 @@ impl Fields {
         let to = field(Input::new(&self.to), self.refused_to.clone(), cx);
         let opacity = percent(settings.background_image_opacity);
         let slider = Slider::new("background_image_opacity", opacity)
-            .range(
-                percent(*PICTURE_OPACITY.start()),
-                percent(*PICTURE_OPACITY.end()),
-            )
+            .range(percent(*OPACITY.start()), percent(*OPACITY.end()))
             .on_change({
                 let this = this.clone();
                 move |percent, _, cx| {

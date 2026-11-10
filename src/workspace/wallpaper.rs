@@ -13,7 +13,7 @@ use gpui::{
     linear_gradient, point, px, size,
 };
 
-use crate::settings::{BackgroundScope, Mask, PictureRepeat, Settings, color};
+use crate::settings::{BackgroundScope, PictureRepeat, Settings, color};
 
 mod mask;
 
@@ -68,6 +68,9 @@ pub(super) fn paint(
     window: &mut Window,
     cx: &mut App,
 ) -> Option<AnyElement> {
+    if !masks(settings) {
+        mask::forget(window);
+    }
     if settings.background_image.is_empty() {
         return None;
     }
@@ -116,41 +119,26 @@ pub(super) fn paint(
         .top(bounds.origin.y)
         .w(bounds.size.width)
         .h(bounds.size.height);
-    let mask = settings.background_mask.then(|| {
-        Mask::new(
-            settings.background_mask_angle,
-            &settings.background_mask_stops,
-        )
-    });
-    let mask = mask.and_then(Result::ok);
-    let mask_box = mask.as_ref().map(|_| mask::mask_box(settings, container));
-    let once = settings.background_repeat == PictureRepeat::NoRepeat;
+    // A repeated picture's tiles would cut the fade, so only one drawn once is masked.
+    let picture = if masks(settings) {
+        mask::masked(&image, settings, place, drawn, container, window)
+    } else {
+        image
+    };
+    let opacity = settings.background_image_opacity;
     for (x, y) in tiles(settings.background_repeat, place, drawn, container) {
-        let masked = match (&mask, mask_box, once) {
-            (Some(mask), Some(mask_box), true) => mask::masked(
-                &image,
-                mask,
-                &settings.background_mask_stops,
-                mask_box,
-                (x, y),
-                drawn,
-                container,
-            ),
-            _ => None,
-        };
-        let picture = masked.unwrap_or_else(|| image.clone());
-        boxed = boxed.child(tile(
-            &picture,
-            x,
-            y,
-            drawn,
-            settings.background_image_opacity,
-        ));
+        boxed = boxed.child(tile(&picture, x, y, drawn, opacity));
     }
     if settings.background_gradient {
         boxed = boxed.child(gradient(settings));
     }
     Some(ground().child(boxed).into_any_element())
+}
+
+/// Whether the settings mask the picture: a mask on a picture drawn once.
+fn masks(settings: &Settings) -> bool {
+    let once = settings.background_repeat == PictureRepeat::NoRepeat;
+    settings.background_mask && once && !settings.background_image.is_empty()
 }
 
 /// The gradient over the picture, from its first color to its last at its angle.

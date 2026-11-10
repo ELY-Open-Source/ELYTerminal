@@ -10,43 +10,49 @@ pub const MIN_STOPS: usize = 2;
 /// The most stops a mask holds.
 pub const MAX_STOPS: usize = 16;
 
-/// A mask's gradient: an angle and the alpha of each stop, from 0 to 1 across the box.
+/// A mask's gradient: the way it runs and each stop's alpha, the stops even steps across the box.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mask {
-    pub angle: f32,
-    pub stops: Vec<Hsla>,
+    /// How far a step across the box, and one down it, moves along the gradient.
+    across: f32,
+    down: f32,
+    stops: Vec<f32>,
 }
 
 impl Mask {
     /// Reads `"transparent, black"`: two to sixteen colors, comma separated.
     pub fn new(angle: f32, stops: &str) -> anyhow::Result<Self> {
+        let alpha = |stop: &str| -> anyhow::Result<f32> {
+            let color: Hsla = color(stop.trim()).with_context(|| format!("mask stop {stop:?}"))?;
+            Ok(color.a)
+        };
         let stops = stops
             .split(',')
-            .map(|stop| color(stop.trim()).with_context(|| format!("mask stop {stop:?}")))
-            .collect::<anyhow::Result<Vec<Hsla>>>()?;
+            .map(alpha)
+            .collect::<anyhow::Result<Vec<f32>>>()?;
         ensure!(
             (MIN_STOPS..=MAX_STOPS).contains(&stops.len()),
             "a mask holds {MIN_STOPS} to {MAX_STOPS} stops, not {}",
             stops.len()
         );
-        Ok(Self { angle, stops })
+        // The gradient's line spans the box, corner to corner at a slant.
+        let (sin, cos) = angle.to_radians().sin_cos();
+        let length = sin.abs() + cos.abs();
+        Ok(Self {
+            across: sin / length,
+            down: -cos / length,
+            stops,
+        })
     }
 
     /// Its alpha at `u` and `v`, a point of the box from 0 at its top left to 1 at its bottom right.
     pub fn alpha(&self, u: f32, v: f32) -> f32 {
-        let radians = self.angle.to_radians();
-        let (sin, cos) = (radians.sin(), radians.cos());
-        let length = sin.abs() + cos.abs();
-        let t = if length == 0.0 {
-            0.5
-        } else {
-            0.5 + ((u - 0.5) * sin - (v - 0.5) * cos) / length
-        };
+        let t = 0.5 + (u - 0.5) * self.across + (v - 0.5) * self.down;
         let at = t.clamp(0.0, 1.0) * (self.stops.len() - 1) as f32;
         let low = at.floor() as usize;
         let high = (low + 1).min(self.stops.len() - 1);
         let mix = at - low as f32;
-        let (from, to) = (self.stops[low].a, self.stops[high].a);
+        let (from, to) = (self.stops[low], self.stops[high]);
         from + (to - from) * mix
     }
 }
@@ -58,9 +64,7 @@ mod tests {
     #[test]
     fn each_stop_is_a_color() {
         let mask = Mask::new(90.0, "transparent, black").expect("two stops");
-        assert_eq!(mask.stops.len(), 2);
-        assert_eq!(mask.stops[0].a, 0.0);
-        assert_eq!(mask.stops[1].a, 1.0);
+        assert_eq!(mask.stops, [0.0, 1.0]);
         assert!(Mask::new(90.0, "black").is_err(), "one stop is none");
         assert!(
             Mask::new(90.0, "#000, #111, #222, #333, #444, #555, #666, #777, #888, #999, #aaa, #bbb, #ccc, #ddd, #eee, #fff, #000").is_err(),

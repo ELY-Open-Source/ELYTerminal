@@ -309,8 +309,6 @@ pub const WINDOW: RangeInclusive<f32> = 100.0..=16384.0;
 pub const ELY_LEFT: RangeInclusive<f32> = 0.0..=16384.0;
 pub const PLACE: RangeInclusive<f32> = -32768.0..=32768.0;
 pub const GRADIENT_ANGLE: RangeInclusive<f32> = 0.0..=360.0;
-/// The picture's own opacity, 0 to 1.
-pub const PICTURE_OPACITY: RangeInclusive<f32> = 0.0..=1.0;
 
 impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
@@ -321,23 +319,17 @@ impl Settings {
         within("font_weight", self.font_weight, &FONT_WEIGHT)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;
         within("background_opacity", self.background_opacity, &OPACITY)?;
+        let angle = &GRADIENT_ANGLE;
         within(
             "background_gradient_angle",
             self.background_gradient_angle,
-            &GRADIENT_ANGLE,
+            angle,
         )?;
         color(&self.background_gradient_from).context("background_gradient_from")?;
         color(&self.background_gradient_to).context("background_gradient_to")?;
-        within(
-            "background_image_opacity",
-            self.background_image_opacity,
-            &PICTURE_OPACITY,
-        )?;
-        within(
-            "background_mask_angle",
-            self.background_mask_angle,
-            &GRADIENT_ANGLE,
-        )?;
+        let picture = self.background_image_opacity;
+        within("background_image_opacity", picture, &OPACITY)?;
+        within("background_mask_angle", self.background_mask_angle, angle)?;
         Mask::new(self.background_mask_angle, &self.background_mask_stops)
             .context("background_mask_stops")?;
         within("padding_x", self.padding_x, &PADDING)?;
