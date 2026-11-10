@@ -1,8 +1,9 @@
 //! The door other programs ask a running ELYTerminal through: a loopback port and a token only the user reads.
 
 use std::{
+    ffi::OsStr,
     fs,
-    io::{BufRead, BufReader, Read, Write},
+    io::{Read, Write},
     net::{Ipv4Addr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     sync::{
@@ -11,7 +12,7 @@ use std::{
         mpsc,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::{Context as _, bail, ensure};
@@ -40,7 +41,9 @@ ELYTerminal must be running with Settings › Terminal › Command line control 
 const PATIENCE: Duration = Duration::from_secs(5);
 const ANSWERING: Duration = Duration::from_secs(10);
 /// The longest request or answer, in bytes.
-const LONGEST: u64 = 1 << 20;
+const LONGEST: usize = 1 << 20;
+/// What a request hears once its door shut.
+const SHUT: &str = "the door has shut";
 
 #[derive(Serialize, Deserialize)]
 struct Request {
@@ -66,19 +69,37 @@ struct Door {
     open: Arc<AtomicBool>,
     port: u16,
     file: PathBuf,
+    /// What the file held as this door opened.
+    named: String,
 }
 
 impl Drop for Door {
     fn drop(&mut self) {
         self.open.store(false, Ordering::SeqCst);
-        if let Err(error) = fs::remove_file(&self.file) {
-            log::error!("control: {} stays: {error}", self.file.display());
-        }
+        leave(&self.file, &self.named);
         // A last caller wakes the listener, which then ends.
         if let Err(error) = TcpStream::connect((Ipv4Addr::LOCALHOST, self.port)) {
             log::debug!("control: the listener had gone: {error}");
         }
         log::info!("control: the door on port {} shut", self.port);
+    }
+}
+
+/// Removes the door's file unless another copy named its own door there since.
+fn leave(file: &Path, named: &str) {
+    match fs::read_to_string(file) {
+        Ok(held) if held != named => {
+            log::info!(
+                "control: {} names another copy's door and stays",
+                file.display()
+            );
+        }
+        Ok(_) => {
+            if let Err(error) = fs::remove_file(file) {
+                log::error!("control: {} stays: {error}", file.display());
+            }
+        }
+        Err(error) => log::error!("control: {} did not read: {error}", file.display()),
     }
 }
 
@@ -129,19 +150,25 @@ fn open(cx: &mut App) -> anyhow::Result<Door> {
     getrandom::fill(&mut token).map_err(|error| anyhow::anyhow!("no random token: {error}"))?;
     let token: String = token.iter().map(|byte| format!("{byte:02x}")).collect();
     let file = folder()?.join(FILE);
-    write_private(&file, &format!("{port} {token}\n"))?;
+    let named = format!("{port} {token}\n");
+    write_private(&file, &named)?;
     let open = Arc::new(AtomicBool::new(true));
     let (asks, mut asked) = unbounded::<Ask>();
-    let serving = open.clone();
+    let (serving, answering) = (open.clone(), open.clone());
     thread::Builder::new()
         .name("control door".into())
         .spawn(move || serve(listener, &token, &serving, &asks))
         .context("no thread for the door")?;
     cx.spawn(async move |cx| {
         while let Some(ask) = asked.next().await {
-            let reply = match cx.update(|cx| answer(&ask.words, cx)) {
-                Ok(text) => Reply::Ok(text),
-                Err(error) => Reply::Error(format!("{error:#}")),
+            // A request that waited while the door shut runs nothing.
+            let reply = if !answering.load(Ordering::SeqCst) {
+                Reply::Error(SHUT.into())
+            } else {
+                match cx.update(|cx| answer(&ask.words, cx)) {
+                    Ok(text) => Reply::Ok(text),
+                    Err(error) => Reply::Error(format!("{error:#}")),
+                }
             };
             if ask.answer.send(reply).is_err() {
                 log::warn!("control: a caller left before its answer");
@@ -153,7 +180,12 @@ fn open(cx: &mut App) -> anyhow::Result<Door> {
         "control: the door is open on port {port}, named in {}",
         file.display()
     );
-    Ok(Door { open, port, file })
+    Ok(Door {
+        open,
+        port,
+        file,
+        named,
+    })
 }
 
 /// Writes `text` where only the user reads it, whole or not at all.
@@ -184,18 +216,25 @@ fn serve(listener: TcpListener, token: &str, open: &AtomicBool, asks: &Unbounded
         }
         let served = stream
             .context("a caller did not connect")
-            .and_then(|stream| serve_one(&stream, token, asks));
+            .and_then(|stream| serve_one(&stream, token, open, asks));
         if let Err(error) = served {
             log::warn!("control: a request failed: {error:#}");
         }
     }
 }
 
-fn serve_one(stream: &TcpStream, token: &str, asks: &UnboundedSender<Ask>) -> anyhow::Result<()> {
-    stream.set_read_timeout(Some(PATIENCE))?;
+fn serve_one(
+    stream: &TcpStream,
+    token: &str,
+    open: &AtomicBool,
+    asks: &UnboundedSender<Ask>,
+) -> anyhow::Result<()> {
     stream.set_write_timeout(Some(PATIENCE))?;
-    let request: Request = read_line(stream)?;
-    let reply = if same(request.token.as_bytes(), token.as_bytes()) {
+    let request: Request = read_line(stream, PATIENCE)?;
+    let reply = if !open.load(Ordering::SeqCst) {
+        log::warn!("control: a request came as the door shut and runs nothing");
+        Reply::Error(SHUT.into())
+    } else if same(request.token.as_bytes(), token.as_bytes()) {
         let verb = request.words.first().map_or("nothing", String::as_str);
         log::info!("control: asked to {verb}, {} words", request.words.len());
         let (answer, answered) = mpsc::channel();
@@ -224,16 +263,28 @@ fn same(given: &[u8], held: &[u8]) -> bool {
             == 0
 }
 
-fn read_line<T: serde::de::DeserializeOwned>(stream: &TcpStream) -> anyhow::Result<T> {
-    let mut line = String::new();
-    BufReader::new(stream.take(LONGEST))
-        .read_line(&mut line)
-        .context("the line did not arrive")?;
-    ensure!(
-        line.ends_with('\n'),
-        "the line is cut or over {LONGEST} bytes"
-    );
-    serde_json::from_str(&line).context("the line is not what the door speaks")
+/// Reads one line, whole within `within` however slowly its bytes come.
+fn read_line<T: serde::de::DeserializeOwned>(
+    mut stream: &TcpStream,
+    within: Duration,
+) -> anyhow::Result<T> {
+    let deadline = Instant::now() + within;
+    let (mut line, mut chunk) = (Vec::new(), [0; 4096]);
+    let end = loop {
+        if let Some(end) = line.iter().position(|byte| *byte == b'\n') {
+            break end;
+        }
+        ensure!(line.len() <= LONGEST, "the line is over {LONGEST} bytes");
+        let left = deadline
+            .checked_duration_since(Instant::now())
+            .filter(|left| !left.is_zero())
+            .with_context(|| format!("the line took over {within:?}"))?;
+        stream.set_read_timeout(Some(left))?;
+        let read = stream.read(&mut chunk).context("the line did not arrive")?;
+        ensure!(read > 0, "the line is cut");
+        line.extend_from_slice(&chunk[..read]);
+    };
+    serde_json::from_slice(&line[..end]).context("the line is not what the door speaks")
 }
 
 fn write_line(mut stream: &TcpStream, value: &impl Serialize) -> anyhow::Result<()> {
@@ -256,14 +307,19 @@ fn answer(words: &[String], cx: &mut App) -> anyhow::Result<String> {
 
 /// `elyterminal ctl …` asks the running copy and prints its answer; the exit code, none for any other command line.
 pub fn command_line() -> Option<i32> {
-    let mut args = std::env::args().skip(1);
-    if args.next().as_deref() != Some("ctl") {
+    // A folder's name may hold any bytes, so only `ctl`'s words must be text.
+    let mut args = std::env::args_os().skip(1);
+    if args.next().as_deref() != Some(OsStr::new("ctl")) {
         return None;
     }
-    let words: Vec<String> = args.collect();
     #[cfg(windows)]
     console();
-    Some(match ask(&words) {
+    let words: Result<Vec<String>, _> = args.map(|word| word.into_string()).collect();
+    let asked = match words {
+        Ok(words) => ask(&words),
+        Err(word) => Err(anyhow::anyhow!("{word:?} is not UTF-8")),
+    };
+    Some(match asked {
         Ok(text) => {
             print!("{text}");
             0
@@ -309,13 +365,12 @@ fn ask(words: &[String]) -> anyhow::Result<String> {
         .with_context(|| format!("{} names no port", file.display()))?;
     let stream = TcpStream::connect((Ipv4Addr::LOCALHOST, port))
         .with_context(|| format!("nothing listens on port {port}; is ELYTerminal running?"))?;
-    stream.set_read_timeout(Some(ANSWERING + PATIENCE))?;
     let request = Request {
         token: token.to_string(),
         words: words.to_vec(),
     };
     write_line(&stream, &request)?;
-    match read_line(&stream)? {
+    match read_line(&stream, ANSWERING + PATIENCE)? {
         Reply::Ok(text) => Ok(text),
         Reply::Error(why) => bail!("{why}"),
     }
