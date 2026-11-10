@@ -16,6 +16,7 @@ fn ely(mood: Mood, since: Instant) -> Pet {
         last: None,
         eased: None,
         edge: Edge::Top,
+        rise: HEAD + ROOM,
         anchor: None,
         at: 140.0,
         drag: None,

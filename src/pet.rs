@@ -15,10 +15,10 @@ mod x11;
 use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use gpui::{
-    App, AppContext as _, Bounds, Context, DispatchPhase, InteractiveElement, IntoElement,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels, Point,
-    Render, Styled, Subscription, Window, WindowBackgroundAppearance, WindowBounds, WindowHandle,
-    WindowKind, WindowOptions, canvas, div, point, popup, px, size,
+    App, AppContext as _, Bounds, ContentMask, Context, DispatchPhase, InteractiveElement,
+    IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels,
+    Point, Render, Styled, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
+    WindowHandle, WindowKind, WindowOptions, canvas, div, point, popup, px, size,
 };
 
 #[cfg(target_os = "macos")]
@@ -59,8 +59,9 @@ pub struct Pet {
     act: Act,
     last: Option<Pose>,
     eased: Option<(Pose, Instant)>,
-    /// The edge she stands on, and on Wayland the anchor her popup opened at, from the pane's top left, which never moves.
+    /// The edge she stands on, how far above it her window's top lies, and on Wayland the anchor her popup opened at, from the pane's top left, which never moves.
     edge: Edge,
+    rise: f32,
     anchor: Option<Point<Pixels>>,
     /// How far in from the pane's left edge she stands, and a drag under way: the pointer's x where it began and where she stood then.
     at: f32,
@@ -147,16 +148,22 @@ fn edge(room: f32) -> Edge {
 /// Opens her window on `main`'s pane: a popup Wayland's compositor places, else a window kept there.
 fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHandle<Pet>> {
     let kept = SettingsStore::get(cx).ely_left;
-    let (bounds, pane, wayland, (edge, spot)) = main.update(cx, |_, window, _| {
+    let (bounds, pane, wayland, (edge, spot), scale) = main.update(cx, |_, window, _| {
         (
             window.bounds(),
             pane(window),
             wayland(window),
             wayland::spot(window, kept),
+            window.scale_factor(),
         )
     })?;
     let at = left(pane.size.width, kept);
-    let room = size(px(WIDTH), px(HEAD + ROOM));
+    let (rise, skirt) = if wayland {
+        wayland::reach(edge, scale)
+    } else {
+        (HEAD + ROOM, 0.0)
+    };
+    let room = size(px(WIDTH), px(rise + skirt));
     let (edge, kind) = if wayland {
         let anchor = match edge {
             Edge::Top => popup::PopupAnchor::TopLeft,
@@ -198,7 +205,12 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
         )
     };
     let start = feeling(workspace.read(cx), cx);
-    let pet = cx.open_window(options, |_, cx| {
+    let pet = cx.open_window(options, |window, cx| {
+        if skirt > 0.0 {
+            // Presses on the skirt go to the main window under it.
+            let box_ = Bounds::new(point(px(0.), px(0.)), size(px(WIDTH), px(rise)));
+            window.set_input_region(Some(&[box_]));
+        }
         cx.new(|cx| {
             let feel = cx.observe(&workspace, move |pet: &mut Pet, workspace, cx| {
                 let mood = feeling(workspace.read(cx), cx);
@@ -217,6 +229,7 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
                 last: None,
                 eased: None,
                 edge,
+                rise,
                 anchor: wayland.then_some(spot),
                 at: kept,
                 drag: None,
@@ -421,12 +434,17 @@ impl Render for Pet {
         // gpui gives a hidden window no frames, so she rests while unseen.
         window.request_animation_frame();
         let rig = self.rig.clone();
+        let (rise, above) = (px(self.rise), px(self.rise - HEAD));
         let this = cx.entity();
         let drawn = canvas(
             |_, _, _| {},
             move |bounds, _, window, cx| {
-                let head = point(bounds.origin.x, bounds.origin.y + px(ROOM));
-                rig.paint(head, &pose, window, cx);
+                let head = point(bounds.origin.x, bounds.origin.y + above);
+                // What runs on below the edge she holds stays unseen on a skirt.
+                let over = Bounds::new(bounds.origin, size(bounds.size.width, rise));
+                window.with_content_mask(Some(ContentMask { bounds: over }), |window| {
+                    rig.paint(head, &pose, window, cx)
+                });
                 // Her window keeps the pointer while the button is held, inside it or not.
                 let held = this.clone();
                 window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
