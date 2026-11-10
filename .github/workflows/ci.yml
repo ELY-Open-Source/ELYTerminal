@@ -37,6 +37,12 @@ jobs:
       - name: Build Windows ARM64 package
         shell: pwsh
         run: ./scripts/windows-zip.ps1
+      - name: Build Windows ARM64 installer
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "NSIS did not install" }
+          ./scripts/windows-installer.ps1
       - name: Keep Windows ARM64 package
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -44,10 +50,13 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
-          path: target/release/ELYTerminal-*-windows-aarch64.zip
+          path: |
+            target/release/ELYTerminal-*-windows-aarch64.zip
+            target/release/ELYTerminal-*-windows-aarch64-setup.exe
 
   windows:
-    runs-on: [self-hosted, ely-windows]
+    # Either of the owner's Windows PCs.
+    runs-on: [self-hosted, windows-amd64]
     env:
       CARGO_PROFILE_DEV_DEBUG: 0
     steps:

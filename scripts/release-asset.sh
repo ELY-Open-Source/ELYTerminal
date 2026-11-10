@@ -16,6 +16,7 @@ name=${file##*/}
 case $name in
   ELYTerminal-[0-9]*.dmg) alias=ELYTerminal-macos-arm64.dmg ;;
   ELYTerminal-[0-9]*-windows-x86_64.zip) alias=ELYTerminal-windows-x86_64.zip ;;
+  ELYTerminal-[0-9]*-windows-x86_64-setup.exe) alias=ELYTerminal-windows-x86_64-setup.exe ;;
   ELYTerminal-[0-9]*-linux-x86_64.AppImage) alias=ELYTerminal-linux-x86_64.AppImage ;;
   elyterminal_[0-9]*_amd64.deb) alias=elyterminal_amd64.deb ;;
   elyterminal-[0-9]*-1.x86_64.rpm) alias=elyterminal.x86_64.rpm ;;
