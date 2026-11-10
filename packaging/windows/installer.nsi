@@ -37,6 +37,24 @@ AllowSkipFiles off
 
 LangString Busy ${LANG_ENGLISH} "ELYTerminal is running, so its files cannot be replaced. Close it and try again."
 LangString Busy ${LANG_SIMPCHINESE} "ELYTerminal 正在运行，无法替换它的文件。请关闭后重试。"
+LangString Unwritten ${LANG_ENGLISH} "Setup stopped: it could not write"
+LangString Unwritten ${LANG_SIMPCHINESE} "安装已停止：无法写入"
+LangString Unremoved ${LANG_ENGLISH} "Uninstall stopped, and can be run again: it could not remove"
+LangString Unremoved ${LANG_SIMPCHINESE} "卸载已停止，可再次运行：无法删除"
+
+; Stops, naming WHAT, when the step before it failed.
+!macro ElyDone WHY WHAT
+  IfErrors 0 +3
+    MessageBox MB_ICONSTOP "$(${WHY}) ${WHAT}" /SD IDOK
+    Abort
+!macroend
+
+; Deletes one of the program's files, or stops with the uninstaller kept.
+!macro ElyGone FILE
+  ClearErrors
+  Delete "$INSTDIR\${FILE}"
+  !insertmacro ElyDone Unremoved "$INSTDIR\${FILE}"
+!macroend
 
 ; Stops while a running copy holds the program's file.
 !macro ElyFree UN
@@ -68,8 +86,11 @@ Section "Install"
   File "${STAGE}\conpty.dll"
   File "${STAGE}\OpenConsole.exe"
   File "${STAGE}\LICENSE-conpty"
+  ClearErrors
   WriteUninstaller "$INSTDIR\uninstall.exe"
+  !insertmacro ElyDone Unwritten "$INSTDIR\uninstall.exe"
   CreateShortcut "$SMPROGRAMS\ELYTerminal.lnk" "$INSTDIR\elyterminal.exe"
+  !insertmacro ElyDone Unwritten "$SMPROGRAMS\ELYTerminal.lnk"
   WriteRegStr HKCU "${UNINSTALL}" "DisplayName" "ELYTerminal"
   WriteRegStr HKCU "${UNINSTALL}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINSTALL}" "Publisher" "ELY Open Source"
@@ -80,18 +101,22 @@ Section "Install"
   WriteRegStr HKCU "${UNINSTALL}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
   WriteRegDWORD HKCU "${UNINSTALL}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINSTALL}" "NoRepair" 1
+  !insertmacro ElyDone Unwritten "HKCU\${UNINSTALL}"
 SectionEnd
 
 Section "Uninstall"
   Call un.ElyFree
-  Delete "$INSTDIR\elyterminal.exe"
-  Delete "$INSTDIR\conpty.dll"
-  Delete "$INSTDIR\OpenConsole.exe"
-  Delete "$INSTDIR\LICENSE-conpty"
+  !insertmacro ElyGone "elyterminal.exe"
+  !insertmacro ElyGone "conpty.dll"
+  !insertmacro ElyGone "OpenConsole.exe"
+  !insertmacro ElyGone "LICENSE-conpty"
+  ; One install writes the shortcut and the key, so the key says whose both are.
+  ReadRegStr $0 HKCU "${UNINSTALL}" "InstallLocation"
+  StrCmp $0 "$INSTDIR" 0 +3
+    Delete "$SMPROGRAMS\ELYTerminal.lnk"
+    DeleteRegKey HKCU "${UNINSTALL}"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
-  Delete "$SMPROGRAMS\ELYTerminal.lnk"
-  DeleteRegKey HKCU "${UNINSTALL}"
   ; Explorer's entries go when they name this copy; the settings stay.
   !insertmacro ElyMenu "${CLASSES}\shell\ELYTerminal"
   !insertmacro ElyMenu "${CLASSES}\Background\shell\ELYTerminal"
