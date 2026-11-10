@@ -1,6 +1,6 @@
 [package]
 name = "elyterminal"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT"
