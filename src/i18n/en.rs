@@ -196,6 +196,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Check for updates automatically",
     ),
     ("et.terminal.auto_updates_hint", "At start and once a day"),
+    ("et.terminal.control", "Command line control"),
+    (
+        "et.terminal.control_hint",
+        "Lets `elyterminal ctl` list sessions, read them and type into them, through a local door only your account opens",
+    ),
     ("et.explorer.title", "Explorer menu"),
     ("et.explorer.open", "Open in ELYTerminal"),
     (

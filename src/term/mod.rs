@@ -2,6 +2,7 @@ mod boxes;
 mod clear;
 mod click;
 mod clipboard;
+mod control;
 mod drop;
 #[cfg(windows)]
 pub(crate) mod env;

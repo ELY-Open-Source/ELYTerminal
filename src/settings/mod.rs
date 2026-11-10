@@ -184,6 +184,8 @@ pub struct Settings {
     pub ely_left: f32,
     /// A check for a newer release at start and once a day.
     pub check_updates: bool,
+    /// Whether `elyterminal ctl` may read and type into sessions.
+    pub control: bool,
     pub show_sessions: bool,
     /// A drag moves a session's row in the list.
     pub drag_sessions: bool,
@@ -259,6 +261,7 @@ impl Default for Settings {
             ely: true,
             ely_left: 140.0,
             check_updates: true,
+            control: false,
             show_sessions: true,
             drag_sessions: true,
             session_menu: true,

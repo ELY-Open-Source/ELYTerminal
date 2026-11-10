@@ -159,7 +159,17 @@ impl SettingsWindow {
                     .description(word("et.terminal.auto_updates_hint"))
                     .control(auto_check(&this, settings.check_updates)),
             )
-            .row(updates_row(cx));
+            .row(updates_row(cx))
+            .row(
+                SettingsRow::new(word("et.terminal.control"))
+                    .description(word("et.terminal.control_hint"))
+                    .control(switch(
+                        &this,
+                        "control",
+                        settings.control,
+                        |settings, on| settings.control = on,
+                    )),
+            );
         #[cfg(windows)]
         let section = section.row(super::explorer::row(&cx.entity(), cx));
         let keys = self.shortcuts(cx);

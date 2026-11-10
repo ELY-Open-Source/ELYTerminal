@@ -24,6 +24,7 @@ use crate::{
     term::{Events, Launch, Pty, TerminalView},
 };
 
+mod control;
 mod events;
 mod folder;
 mod panel;

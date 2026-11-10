@@ -42,6 +42,9 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
 }
 
 fn main() {
+    if let Some(code) = elyterminal::control::command_line() {
+        std::process::exit(code);
+    }
     env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or("elyterminal=info,ely_gpui_component=info"),
     )

@@ -55,6 +55,7 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     settings::window::init(cx);
     menus::init(cx);
     keymap::init(cx);
+    crate::control::start(cx);
     cx.set_app_identity(APP_ID, TITLE);
     // A press on a notification goes to the window whose session posted it, or to a newer release's page.
     cx.on_system_notification_response(|response, cx| {

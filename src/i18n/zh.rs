@@ -184,6 +184,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.terminal.ely_hint", "她从窗口上方探出头，表情随会话变化"),
     ("et.terminal.auto_updates", "自动检查更新"),
     ("et.terminal.auto_updates_hint", "启动时及每天一次"),
+    ("et.terminal.control", "命令行控制"),
+    (
+        "et.terminal.control_hint",
+        "允许 `elyterminal ctl` 列出会话、读取会话内容并向其输入，经由只有你的账户能打开的本机入口",
+    ),
     ("et.explorer.title", "资源管理器菜单"),
     ("et.explorer.open", "在 ELYTerminal 中打开"),
     (

@@ -92,15 +92,17 @@ impl TerminalView {
             key: name.into(),
             key_char: None,
         };
+        self.press(&keystroke, cx);
+    }
+
+    /// Presses and lets go of `keystroke`, as the keyboard would; false when it is text, which goes nowhere.
+    pub(super) fn press(&mut self, keystroke: &Keystroke, cx: &mut Context<Self>) -> bool {
         let facts = Facts::default();
-        let went = self.send(&keystroke, Action::Press, facts, None, cx);
-        self.send(
-            &keystroke,
-            Action::Release,
-            facts,
-            Some(went.unwrap_or(Went::Bytes)),
-            cx,
-        );
+        let Some(went) = self.send(keystroke, Action::Press, facts, None, cx) else {
+            return false;
+        };
+        self.send(keystroke, Action::Release, facts, Some(went), cx);
+        true
     }
 
     /// Sends what `keystroke` means to the program: none when it is text the input method types, else how it went; `prior` is how a held key's press went.
