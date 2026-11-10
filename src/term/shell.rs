@@ -247,7 +247,9 @@ pub fn launch(
             }
             launch.program = Some((path.clone(), args));
             let shared = super::env::fresh()?.get("WSLENV").map(str::to_string);
-            let shared = shared.map_or("ELY_WSL/p".into(), |list| format!("{list}:ELY_WSL/p"));
+            // The terminal's name crosses into the distribution too.
+            let ours = "ELY_WSL/p:TERM_PROGRAM:TERM_PROGRAM_VERSION";
+            let shared = shared.map_or(ours.into(), |list| format!("{list}:{ours}"));
             launch
                 .env
                 .push(("ELY_WSL".into(), dir.display().to_string()));

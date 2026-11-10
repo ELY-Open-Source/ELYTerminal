@@ -121,6 +121,14 @@ pub fn config(settings: &Settings) -> Config {
     }
 }
 
+/// What every session's environment says of the terminal.
+const NAMES: [(&str, &str); 4] = [
+    ("TERM", "xterm-256color"),
+    ("COLORTERM", "truecolor"),
+    ("TERM_PROGRAM", "elyterminal"),
+    ("TERM_PROGRAM_VERSION", env!("CARGO_PKG_VERSION")),
+];
+
 /// Starts `launch` on a pty of `columns` by `lines` cells, each `cell` pixels.
 pub fn spawn(
     launch: &Launch,
@@ -132,8 +140,9 @@ pub fn spawn(
     #[cfg(windows)]
     let env = {
         let mut env = super::env::fresh()?;
-        env.set("TERM", "xterm-256color".into());
-        env.set("COLORTERM", "truecolor".into());
+        for (name, value) in NAMES {
+            env.set(name, value.into());
+        }
         if env.get("LANG").is_none() {
             env.set("LANG", "en_US.UTF-8".into());
         }
@@ -144,10 +153,8 @@ pub fn spawn(
     };
     #[cfg(not(windows))]
     let env = {
-        let mut env = HashMap::from([
-            ("TERM".to_string(), "xterm-256color".to_string()),
-            ("COLORTERM".to_string(), "truecolor".to_string()),
-        ]);
+        let mut env: HashMap<String, String> =
+            HashMap::from(NAMES.map(|(name, value)| (name.into(), value.into())));
         if std::env::var_os("LANG").is_none() {
             env.insert("LANG".into(), "en_US.UTF-8".into());
         }

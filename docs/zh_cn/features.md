@@ -32,3 +32,4 @@
 - 所有快捷键都可以在 设置 › 终端 › 快捷键 里更改，见[快捷键](keys.md)。
 - + 旁边的菜单末尾有「选择文件夹新建会话…」；在 设置 › 终端 › 配置文件 里建一个配置文件，可以把文件夹存下来以后再用。
 - 命令行控制，默认关闭，在 设置 › 终端 里打开：`elyterminal ctl sessions` 列出会话，`elyterminal ctl read 会话 [行数]` 输出某个会话最后几行，`elyterminal ctl send 会话 文本` 输入文本并回车，`elyterminal ctl key 会话 ctrl-c` 发送按键，脚本和 AI 代理可以借此读取并操作开着的终端。它通过本机回环端口与应用通信，端口和令牌写在只有你的账户能读的文件里；在 Windows 上请用管道或重定向接收输出，因为发布版是窗口程序。
+- 程序可以通过 `TERM_PROGRAM=elyterminal` 和 `TERM_PROGRAM_VERSION` 认出本终端；kitty 图形协议会应答协议自身的查询；不设置 `KITTY_WINDOW_ID`，因为它表示终端就是 kitty。

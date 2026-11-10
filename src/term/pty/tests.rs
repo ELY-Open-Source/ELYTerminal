@@ -104,6 +104,16 @@ fn a_program_prints_into_the_grid_with_its_variables_and_id() {
 }
 
 #[test]
+fn a_program_reads_the_terminal_s_name_and_version() {
+    let ran = run(
+        "printf '%s %s' \"$TERM_PROGRAM\" \"$TERM_PROGRAM_VERSION\"",
+        (40, 4),
+    );
+    let version = env!("CARGO_PKG_VERSION");
+    assert_eq!(ran.text, format!("elyterminal {version}"));
+}
+
+#[test]
 fn a_kitty_graphics_command_reaches_its_handler_at_the_cursor() {
     let ran = run(r"printf 'ab\033_Gi=1,a=q,q=2;AAAA\033\\cd'", (24, 4));
     assert_eq!(ran.text, "abcd", "the command prints nothing");
