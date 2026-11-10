@@ -6,7 +6,10 @@ use gpui::{App, InteractiveElement, KeyBinding, Menu, MenuItem, OsAction, action
 
 use crate::{
     settings::window::OpenSettings,
-    term::{input::Find, zoom},
+    term::{
+        input::{Clear, Find},
+        zoom,
+    },
     workspace::{CloseSession, NewSession, TogglePanel, ToggleSessions},
 };
 
@@ -47,6 +50,7 @@ pub fn menus(cx: &App) -> Vec<Menu> {
                 MenuItem::os_action(word("et.menu.select_all"), SelectAll, OsAction::SelectAll),
                 MenuItem::separator(),
                 MenuItem::action(word("et.menu.find"), Find),
+                MenuItem::action(word("et.menu.clear"), Clear),
             ],
         ),
         menu(

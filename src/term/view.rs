@@ -32,7 +32,7 @@ use super::{
     frame::frame,
     graphics::{Pictures, runs},
     ink::Ink,
-    input::{self, Find, Held, NextPrompt, PreviousPrompt, Went},
+    input::{self, Clear, Find, Held, NextPrompt, PreviousPrompt, Went},
     marks::Mark,
     mouse::MouseMode,
     paint,
@@ -411,6 +411,7 @@ impl Render for TerminalView {
             .on_action(cx.listener(|view, _: &Paste, _, cx| view.paste(cx)))
             .on_action(cx.listener(|view, _: &SelectAll, _, cx| view.select_all(cx)))
             .on_action(cx.listener(|view, _: &Find, window, cx| view.find(window, cx)))
+            .on_action(cx.listener(|view, _: &Clear, _, cx| view.clear(cx)))
             .on_action(
                 cx.listener(|view, _: &PreviousPrompt, _, cx| view.scroll_to_prompt(true, cx)),
             )

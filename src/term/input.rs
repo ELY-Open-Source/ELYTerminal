@@ -12,7 +12,10 @@ use super::{
     view::TerminalView,
 };
 
-actions!(elyterminal, [Find, FindNewer, PreviousPrompt, NextPrompt]);
+actions!(
+    elyterminal,
+    [Find, FindNewer, PreviousPrompt, NextPrompt, Clear]
+);
 
 /// The key context a terminal's root sets.
 pub const CONTEXT: &str = "Terminal";
@@ -22,14 +25,15 @@ pub const FIND: &str = "TerminalFind";
 
 /// The terminal's keys; Ely's focus keys reach its listeners.
 pub fn bind_keys(cx: &mut App) {
-    let (copy, paste, all, find) = if cfg!(target_os = "macos") {
-        ("cmd-c", "cmd-v", "cmd-a", "cmd-f")
+    let (copy, paste, all, find, clear) = if cfg!(target_os = "macos") {
+        ("cmd-c", "cmd-v", "cmd-a", "cmd-f", "cmd-k")
     } else {
         (
             "ctrl-shift-c",
             "ctrl-shift-v",
             "ctrl-shift-a",
             "ctrl-shift-f",
+            "ctrl-shift-k",
         )
     };
     // Ghostty's jumps: Cmd with or without Shift on macOS, Ctrl-Shift elsewhere.
@@ -51,6 +55,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new(paste, Paste, Some(CONTEXT)),
         KeyBinding::new(all, SelectAll, Some(CONTEXT)),
         KeyBinding::new(find, Find, Some(CONTEXT)),
+        KeyBinding::new(clear, Clear, Some(CONTEXT)),
         KeyBinding::new(
             "shift-enter",
             FindNewer,

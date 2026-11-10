@@ -17,7 +17,7 @@ use super::{OpenSettings, SettingsWindow, choice, set, switch};
 use crate::{
     menus::{Bigger, Minimize, Quit, ResetSize, Smaller},
     settings::{OptionAsAlt, SCROLLBACK, SettingsStore, StartIn},
-    term::input::{self, Find, NextPrompt, PreviousPrompt},
+    term::input::{self, Clear, Find, NextPrompt, PreviousPrompt},
     updates::{self, Updates, VERSION},
     workspace::{
         self, CloseSession, LastSession, NewSession, NextSession, PreviousSession, SelectSession,
@@ -319,7 +319,8 @@ fn listed(cx: &App) -> Vec<(SharedString, SharedString, Box<dyn Action>)> {
             word("et.keys.select_all"),
             SelectAll.boxed_clone(),
         ),
-        (edit, word("et.keys.find"), Find.boxed_clone()),
+        (edit.clone(), word("et.keys.find"), Find.boxed_clone()),
+        (edit, word("et.keys.clear"), Clear.boxed_clone()),
         (
             view.clone(),
             word("et.keys.previous_prompt"),

@@ -1,4 +1,5 @@
 mod boxes;
+mod clear;
 mod click;
 mod clipboard;
 mod drop;
