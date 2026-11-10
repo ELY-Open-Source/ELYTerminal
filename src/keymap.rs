@@ -28,6 +28,9 @@ pub const PLACES: usize = 8;
 /// What gpui names a modifier pressed alone.
 pub const MODIFIERS: [&str; 5] = ["shift", "control", "alt", "platform", "function"];
 
+/// Ely's focus keys, which the terminal hands its program: bound deeper than any command, so none takes them.
+const FOCUS_KEYS: [&str; 4] = ["tab", "shift-tab", "f6", "shift-f6"];
+
 /// The keys the user chose, by command; a command it leaves out keeps its own.
 pub type Shortcuts = BTreeMap<String, Vec<String>>;
 
@@ -307,6 +310,11 @@ pub fn check(shortcuts: &Shortcuts) -> anyhow::Result<()> {
                 && !MODIFIERS.contains(&stroke.key.as_str());
             ensure!(named, "shortcuts: {}'s {key:?} names no key", command.name);
             let stroke = stroke.unparse();
+            ensure!(
+                !FOCUS_KEYS.contains(&stroke.as_str()),
+                "shortcuts: {key} moves the focus and goes to the terminal's program, so {} cannot take it",
+                command.name
+            );
             let taken = held
                 .iter()
                 .find(|(other, holder)| *other == stroke && holder.meets(command));
@@ -349,10 +357,7 @@ pub fn apply(cx: &mut App) {
     let shortcuts = SettingsStore::get(cx).shortcuts.clone();
     let mut bindings = cx.global::<Base>().0.clone();
     // Ely's focus keys reach the terminal's listeners.
-    bindings.extend(
-        ["tab", "shift-tab", "f6", "shift-f6"]
-            .map(|key| KeyBinding::new(key, NoAction, Some(input::CONTEXT))),
-    );
+    bindings.extend(FOCUS_KEYS.map(|key| KeyBinding::new(key, NoAction, Some(input::CONTEXT))));
     for command in commands() {
         let context = command.context.map(|context| {
             KeyBindingContextPredicate::parse(context)
@@ -450,7 +455,15 @@ mod tests {
     #[test]
     fn what_is_no_command_or_no_key_is_refused() {
         assert!(check(&chosen(&[("fly", &["ctrl-alt-f"])])).is_err());
-        for key in ["", "ctrl-", "ctrl-shift", "ctrl-a b", "hyper-c"] {
+        for key in [
+            "",
+            "ctrl-",
+            "ctrl-shift",
+            "ctrl-a b",
+            "hyper-c",
+            "f6",
+            "shift-tab",
+        ] {
             assert!(check(&chosen(&[("copy", &[key])])).is_err(), "{key:?}");
         }
     }
