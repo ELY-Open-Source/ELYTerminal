@@ -3,13 +3,13 @@
 use alacritty_terminal::{
     event::EventListener,
     grid::{Dimensions, Row, Scroll},
-    index::Line,
+    index::{Column, Line},
     term::{Term, TermMode, cell::Cell},
     vte::ansi::{ClearMode, Handler},
 };
 use gpui::Context;
 
-use super::{click::Shell, prompts, view::TerminalView};
+use super::{click::Shell, graphics::PLACEHOLDER, prompts, view::TerminalView};
 
 /// Drops the history and the screen's rows above `top`, its images too; the lines dropped, none on the alternate screen.
 fn clear<T: EventListener>(term: &mut Term<T>, top: usize) -> Option<usize> {
@@ -20,7 +20,7 @@ fn clear<T: EventListener>(term: &mut Term<T>, top: usize) -> Option<usize> {
     let lines = term.screen_lines();
     // A program's scroll region would bend a scroll, so the kept rows are carried.
     let kept: Vec<Row<Cell>> = (top..lines)
-        .map(|line| term.grid()[Line(line as i32)].clone())
+        .map(|line| imageless(term.grid()[Line(line as i32)].clone()))
         .collect();
     term.clear_screen(ClearMode::All);
     term.clear_screen(ClearMode::Saved);
@@ -31,6 +31,16 @@ fn clear<T: EventListener>(term: &mut Term<T>, top: usize) -> Option<usize> {
     grid.cursor.point.line -= top;
     term.scroll_display(Scroll::Bottom);
     Some(dropped)
+}
+
+/// `row` with its image placeholders blank, as ED 2 would leave them.
+fn imageless(mut row: Row<Cell>) -> Row<Cell> {
+    for column in 0..row.len() {
+        if row[Column(column)].c == PLACEHOLDER {
+            row[Column(column)] = Cell::default();
+        }
+    }
+    row
 }
 
 /// The screen row Clear keeps first: the prompt the shell reads at, else the cursor's.
@@ -72,7 +82,6 @@ impl TerminalView {
 mod tests {
     use alacritty_terminal::{
         event::VoidListener,
-        index::Column,
         term::{Config, test::TermSize},
         vte::ansi::Processor,
     };
@@ -100,7 +109,7 @@ mod tests {
 
     #[test]
     fn a_running_program_keeps_the_cursor_s_row_alone() {
-        let mut term = parsed(b"1\r\n2\r\n3\r\n4\r\n5\r\n6\r\nnow");
+        let mut term = parsed("1\r\n2\r\n3\r\n4\r\n5\r\n6\r\nnow\u{10EEEE}\x08".as_bytes());
         assert_eq!((term.history_size(), top(&term, false)), (3, 3));
         assert_eq!(clear(&mut term, 3), Some(6));
         assert_eq!(term.history_size(), 0);
