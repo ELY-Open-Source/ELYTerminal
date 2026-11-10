@@ -3,26 +3,18 @@ use std::path::PathBuf;
 use ely_gpui_component::{
     buttons::{Button, SegmentedControl},
     feedback::InlineMessage,
-    forms::{Copy, NumberInput, Paste, PathInput, SelectAll, Switch},
+    forms::{NumberInput, PathInput, Switch},
     i18n::text,
     primitives::Severity,
-    settings::{KeyboardShortcutsList, SettingsRow, SettingsSection, Shortcut},
+    settings::{SettingsRow, SettingsSection},
     theme::{ActiveTheme, ControlSize},
 };
-use gpui::{
-    Action, App, Context, Div, Entity, KeyContext, ParentElement, SharedString, Styled, Window, div,
-};
+use gpui::{App, Context, Div, Entity, ParentElement, SharedString, Styled, Window, div};
 
-use super::{OpenSettings, SettingsWindow, choice, set, switch};
+use super::{SettingsWindow, choice, set, switch};
 use crate::{
-    menus::{Bigger, Minimize, Quit, ResetSize, Smaller},
     settings::{OptionAsAlt, SCROLLBACK, SettingsStore, StartIn},
-    term::input::{self, Clear, Find, NextPrompt, PreviousPrompt},
     updates::{self, Updates, VERSION},
-    workspace::{
-        self, CloseSession, LastSession, NewSession, NextSession, PreviousSession, SelectSession,
-        TogglePanel, ToggleSessions,
-    },
 };
 
 pub(super) mod profiles;
@@ -34,9 +26,6 @@ const OPTIONS: [(OptionAsAlt, &str, &str); 4] = [
     (OptionAsAlt::Right, "right", "et.option.right"),
     (OptionAsAlt::Both, "both", "et.option.both"),
 ];
-
-/// The sessions a digit shows, Cmd-1 to Cmd-8.
-const PLACES: usize = 8;
 
 impl SettingsWindow {
     /// The terminal's settings in order, then the shortcuts.
@@ -173,8 +162,7 @@ impl SettingsWindow {
             .row(updates_row(cx));
         #[cfg(windows)]
         let section = section.row(super::explorer::row(&cx.entity(), cx));
-        let keys = SettingsSection::new(word("et.terminal.shortcuts"))
-            .row(KeyboardShortcutsList::new(shortcuts(cx), &self.search));
+        let keys = self.shortcuts(cx);
         let profiles = self.profiles_section(cx);
         div()
             .flex()
@@ -269,122 +257,4 @@ fn start_in(this: &Entity<SettingsWindow>, value: &SharedString, cx: &mut App) {
         cx,
         |settings| settings.start_in = start,
     );
-}
-
-/// The listed commands, in order: group, name and action.
-fn listed(cx: &App) -> Vec<(SharedString, SharedString, Box<dyn Action>)> {
-    let word = |key: &str| text(cx, key, &[]);
-    let sessions = word("et.keys.sessions");
-    let mut listed = vec![
-        (
-            sessions.clone(),
-            word("et.session.new"),
-            NewSession.boxed_clone(),
-        ),
-        (
-            sessions.clone(),
-            word("et.session.close"),
-            CloseSession.boxed_clone(),
-        ),
-        (
-            sessions.clone(),
-            word("et.keys.next_session"),
-            NextSession.boxed_clone(),
-        ),
-        (
-            sessions.clone(),
-            word("et.keys.previous_session"),
-            PreviousSession.boxed_clone(),
-        ),
-    ];
-    listed.extend((0..PLACES).map(|ix| {
-        let name = text(cx, "et.keys.session", &[("number", &(ix + 1).to_string())]);
-        (sessions.clone(), name, SelectSession(ix).boxed_clone())
-    }));
-    let (edit, view, app) = (
-        word("et.keys.edit"),
-        word("et.keys.view"),
-        word("et.keys.app"),
-    );
-    listed.extend([
-        (
-            sessions,
-            word("et.keys.last_session"),
-            LastSession.boxed_clone(),
-        ),
-        (edit.clone(), word("et.keys.copy"), Copy.boxed_clone()),
-        (edit.clone(), word("et.keys.paste"), Paste.boxed_clone()),
-        (
-            edit.clone(),
-            word("et.keys.select_all"),
-            SelectAll.boxed_clone(),
-        ),
-        (edit.clone(), word("et.keys.find"), Find.boxed_clone()),
-        (edit, word("et.keys.clear"), Clear.boxed_clone()),
-        (
-            view.clone(),
-            word("et.keys.previous_prompt"),
-            PreviousPrompt.boxed_clone(),
-        ),
-        (
-            view.clone(),
-            word("et.keys.next_prompt"),
-            NextPrompt.boxed_clone(),
-        ),
-        (
-            view.clone(),
-            word("et.keys.toggle_sessions"),
-            ToggleSessions.boxed_clone(),
-        ),
-        (
-            view.clone(),
-            word("et.keys.toggle_panel"),
-            TogglePanel.boxed_clone(),
-        ),
-        (view.clone(), word("et.keys.bigger"), Bigger.boxed_clone()),
-        (view.clone(), word("et.keys.smaller"), Smaller.boxed_clone()),
-        (view, word("et.keys.reset_size"), ResetSize.boxed_clone()),
-        (
-            app.clone(),
-            word("et.settings.title"),
-            OpenSettings.boxed_clone(),
-        ),
-        (
-            app.clone(),
-            word("et.keys.minimize"),
-            Minimize.boxed_clone(),
-        ),
-        (app, word("et.keys.quit"), Quit.boxed_clone()),
-    ]);
-    listed
-}
-
-/// Each listed command's keys in the main window's terminal, a line per binding, from the keymap.
-fn shortcuts(cx: &App) -> Vec<Shortcut> {
-    let stack = [workspace::CONTEXT, input::CONTEXT]
-        .map(|name| KeyContext::parse(name).expect("a context name parses"));
-    let keymap = cx.key_bindings();
-    let keymap = keymap.borrow();
-    let mut shortcuts = Vec::new();
-    for (group, name, action) in listed(cx) {
-        for binding in keymap.bindings_for_action(action.as_ref()) {
-            // gpui matches a binding at any depth of the context stack.
-            let applies = binding.predicate().is_none_or(|predicate| {
-                (1..=stack.len()).any(|depth| predicate.eval(&stack[..depth]))
-            });
-            if applies {
-                let strokes: Vec<String> = binding
-                    .keystrokes()
-                    .iter()
-                    .map(|key| key.unparse())
-                    .collect();
-                shortcuts.push(Shortcut {
-                    group: group.clone(),
-                    name: name.clone(),
-                    keys: strokes.join(" ").into(),
-                });
-            }
-        }
-    }
-    shortcuts
 }

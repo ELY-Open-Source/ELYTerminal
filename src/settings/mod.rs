@@ -124,6 +124,8 @@ pub struct Settings {
     pub start_folder: String,
     /// What the new-session menu offers before the detected shells.
     pub profiles: Vec<Profile>,
+    /// The keys the user chose, by command; a command left out keeps its own.
+    pub shortcuts: crate::keymap::Shortcuts,
     pub theme: String,
     /// The theme while the system is dark; none keeps `theme`.
     pub dark_theme: Option<String>,
@@ -220,6 +222,7 @@ impl Default for Settings {
             start_in: StartIn::Home,
             start_folder: String::new(),
             profiles: Vec::new(),
+            shortcuts: crate::keymap::Shortcuts::new(),
             theme: themes::default_id().into(),
             dark_theme: None,
             custom_themes: Vec::new(),
@@ -288,6 +291,7 @@ impl Settings {
     /// Every value inside its range, every theme built in; the error names the field.
     pub fn validate(&self) -> anyhow::Result<()> {
         within("interface_size", self.interface_size, &INTERFACE_SIZE)?;
+        crate::keymap::check(&self.shortcuts)?;
         within("font_size", self.font_size, &FONT_SIZE)?;
         within("font_weight", self.font_weight, &FONT_WEIGHT)?;
         within("line_height", self.line_height, &LINE_HEIGHT)?;

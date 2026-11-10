@@ -12,9 +12,9 @@ use ely_gpui_component::{
 };
 use gpui::{
     App, AppContext, Bounds, Context, Entity, FocusHandle, InteractiveElement, IntoElement,
-    KeyBinding, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    Subscription, Task, TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions,
-    actions, div, prelude::FluentBuilder, px, size,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Subscription, Task,
+    TitlebarOptions, Window, WindowBounds, WindowDecorations, WindowOptions, actions, div,
+    prelude::FluentBuilder, px, size,
 };
 
 use super::{Settings, SettingsStore};
@@ -24,12 +24,13 @@ mod appearance;
 #[cfg(windows)]
 mod explorer;
 mod picture;
+mod shortcuts;
 mod terminal;
 
 actions!(elyterminal, [OpenSettings, CloseSettings]);
 
 /// The key context of the settings window's content.
-const CONTEXT: &str = "Settings";
+pub const CONTEXT: &str = "Settings";
 
 /// Each category's key, its name's key and its icon.
 const SECTIONS: [(&str, &str, IconName); 2] = [
@@ -37,17 +38,8 @@ const SECTIONS: [(&str, &str, IconName); 2] = [
     ("terminal", "et.settings.terminal", IconName::Terminal),
 ];
 
-/// Cmd-, opens the settings, Cmd-W closes them; off macOS Ctrl-, and Ctrl-Shift-W, as Ghostty's.
-pub fn bind_keys(cx: &mut App) {
-    let (open, close) = if cfg!(target_os = "macos") {
-        ("cmd-,", "cmd-w")
-    } else {
-        ("ctrl-,", "ctrl-shift-w")
-    };
-    cx.bind_keys([
-        KeyBinding::new(open, OpenSettings, None),
-        KeyBinding::new(close, CloseSettings, Some(CONTEXT)),
-    ]);
+/// Answers Open Settings from any window.
+pub fn init(cx: &mut App) {
     cx.on_action(|_: &OpenSettings, cx| open_window(cx));
 }
 
@@ -93,8 +85,11 @@ pub struct SettingsWindow {
     shell: Entity<TextInput>,
     /// Start in's own folder, typed or browsed.
     folder: Entity<TextInput>,
-    /// The shortcut list's search.
+    /// The shortcut list's search, and the command whose key is being recorded.
     search: Entity<TextInput>,
+    recording: Option<shortcuts::Recording>,
+    /// The command whose recorded key the settings refused, and why.
+    key_refused: Option<(String, SharedString)>,
     /// Why the typed shell and folder are not saved.
     refused: Option<SharedString>,
     refused_folder: Option<SharedString>,
@@ -174,6 +169,8 @@ impl SettingsWindow {
             shell,
             folder,
             search,
+            recording: None,
+            key_refused: None,
             refused: None,
             refused_folder: None,
             picture,

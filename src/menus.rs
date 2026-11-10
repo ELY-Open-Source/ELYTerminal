@@ -2,7 +2,7 @@ use ely_gpui_component::{
     forms::{Copy, Paste, SelectAll},
     i18n::text,
 };
-use gpui::{App, InteractiveElement, KeyBinding, Menu, MenuItem, OsAction, actions};
+use gpui::{App, InteractiveElement, Menu, MenuItem, OsAction, actions};
 
 use crate::{
     settings::window::OpenSettings,
@@ -75,23 +75,8 @@ pub fn menus(cx: &App) -> Vec<Menu> {
     ]
 }
 
-/// Binds app commands before building their menus.
+/// Answers the app's commands; the keymap sets the menu bar.
 pub fn init(cx: &mut App) {
-    let (quit, modifier) = if cfg!(target_os = "macos") {
-        ("cmd-q", "cmd")
-    } else {
-        ("ctrl-shift-q", "ctrl")
-    };
-    cx.bind_keys([
-        KeyBinding::new(quit, Quit, None),
-        KeyBinding::new(&format!("{modifier}-="), Bigger, None),
-        KeyBinding::new(&format!("{modifier}-+"), Bigger, None),
-        KeyBinding::new(&format!("{modifier}--"), Smaller, None),
-        KeyBinding::new(&format!("{modifier}-0"), ResetSize, None),
-    ]);
-    if cfg!(target_os = "macos") {
-        cx.bind_keys([KeyBinding::new("cmd-m", Minimize, None)]);
-    }
     cx.set_global(zoom::Enlarged::default());
     cx.on_action(|_: &Quit, cx| {
         log::info!("app: quit asked");
@@ -100,7 +85,6 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &Bigger, cx| zoom::step(Some(1.0), cx));
     cx.on_action(|_: &Smaller, cx| zoom::step(Some(-1.0), cx));
     cx.on_action(|_: &ResetSize, cx| zoom::step(None, cx));
-    cx.set_menus(menus(cx));
 }
 
 /// Minimize and Zoom, which only a window answers.

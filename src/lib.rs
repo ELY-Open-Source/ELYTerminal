@@ -6,6 +6,7 @@ pub mod files;
 pub mod git;
 pub mod i18n;
 pub mod interface;
+pub mod keymap;
 pub mod menus;
 pub mod pet;
 pub mod profiles;

@@ -1,10 +1,9 @@
 use std::ops::Range;
 
 use alacritty_terminal::{grid::Scroll, term::TermMode};
-use ely_gpui_component::forms::{Copy, Paste, SelectAll};
 use gpui::{
-    App, Bounds, Context, EntityInputHandler, KeyBinding, KeyDownEvent, KeyUpEvent, Keystroke,
-    NoAction, Pixels, Point, UTF16Selection, Window, actions,
+    App, Bounds, Context, EntityInputHandler, KeyDownEvent, KeyUpEvent, Keystroke, Pixels, Point,
+    UTF16Selection, Window, actions,
 };
 
 use super::{
@@ -23,54 +22,8 @@ pub const CONTEXT: &str = "Terminal";
 /// The key context of a terminal's find box.
 pub const FIND: &str = "TerminalFind";
 
-/// The terminal's keys; Ely's focus keys reach its listeners.
-pub fn bind_keys(cx: &mut App) {
-    let (copy, paste, all, find, clear) = if cfg!(target_os = "macos") {
-        ("cmd-c", "cmd-v", "cmd-a", "cmd-f", "cmd-k")
-    } else {
-        (
-            "ctrl-shift-c",
-            "ctrl-shift-v",
-            "ctrl-shift-a",
-            "ctrl-shift-f",
-            "ctrl-shift-k",
-        )
-    };
-    // Ghostty's jumps: Cmd with or without Shift on macOS, Ctrl-Shift elsewhere.
-    let (up, down): (&[&str], &[&str]) = if cfg!(target_os = "macos") {
-        (&["cmd-up", "cmd-shift-up"], &["cmd-down", "cmd-shift-down"])
-    } else {
-        (&["ctrl-shift-up"], &["ctrl-shift-down"])
-    };
-    cx.bind_keys(
-        up.iter()
-            .map(|key| KeyBinding::new(key, PreviousPrompt, Some(CONTEXT))),
-    );
-    cx.bind_keys(
-        down.iter()
-            .map(|key| KeyBinding::new(key, NextPrompt, Some(CONTEXT))),
-    );
-    cx.bind_keys([
-        KeyBinding::new(copy, Copy, Some(CONTEXT)),
-        KeyBinding::new(paste, Paste, Some(CONTEXT)),
-        KeyBinding::new(all, SelectAll, Some(CONTEXT)),
-        KeyBinding::new(find, Find, Some(CONTEXT)),
-        KeyBinding::new(clear, Clear, Some(CONTEXT)),
-        KeyBinding::new(
-            "shift-enter",
-            FindNewer,
-            Some(&format!("{FIND} > ElyInput")),
-        ),
-    ]);
-    cx.bind_keys(
-        ["tab", "shift-tab", "f6", "shift-f6"]
-            .map(|key| KeyBinding::new(key, NoAction, Some(CONTEXT))),
-    );
-    // Windows pastes on Ctrl-V too, as Windows Terminal does.
-    if cfg!(windows) {
-        cx.bind_keys([KeyBinding::new("ctrl-v", Paste, Some(CONTEXT))]);
-    }
-}
+/// The key context of the find box's field, where Shift-Enter steps newer.
+pub const FIND_INPUT: &str = "TerminalFind > ElyInput";
 
 impl TerminalView {
     /// Bytes from the keyboard: back to the newest line, no selection, then to the program, which sees done and error records.

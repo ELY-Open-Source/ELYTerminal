@@ -11,11 +11,11 @@ use gpui::{
 #[cfg(target_os = "macos")]
 use crate::term::mac;
 use crate::{
-    blur, i18n, menus,
+    blur, i18n, keymap, menus,
     settings::{self, Place, SettingsStore},
-    term::{ICONS, Launch, MONO, config, input, shell::ShellIntegration, spawn},
+    term::{ICONS, Launch, MONO, config, shell::ShellIntegration, spawn},
     themes, updates,
-    workspace::{self, TITLE, Workspace},
+    workspace::{TITLE, Workspace},
 };
 
 pub mod args;
@@ -52,10 +52,9 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     crate::interface::init(cx);
     updates::start(cx);
     ShellIntegration::init(cx)?;
-    input::bind_keys(cx);
-    workspace::bind_keys(cx);
-    settings::window::bind_keys(cx);
+    settings::window::init(cx);
     menus::init(cx);
+    keymap::init(cx);
     cx.set_app_identity(APP_ID, TITLE);
     // A press on a notification goes to the window whose session posted it, or to a newer release's page.
     cx.on_system_notification_response(|response, cx| {
