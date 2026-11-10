@@ -271,10 +271,15 @@ fn read_line<T: serde::de::DeserializeOwned>(
     let deadline = Instant::now() + within;
     let (mut line, mut chunk) = (Vec::new(), [0; 4096]);
     let end = loop {
-        if let Some(end) = line.iter().position(|byte| *byte == b'\n') {
+        let end = line.iter().position(|byte| *byte == b'\n');
+        // The bound counts the line with its newline.
+        ensure!(
+            end.unwrap_or(line.len()) < LONGEST,
+            "the line is over {LONGEST} bytes"
+        );
+        if let Some(end) = end {
             break end;
         }
-        ensure!(line.len() <= LONGEST, "the line is over {LONGEST} bytes");
         let left = deadline
             .checked_duration_since(Instant::now())
             .filter(|left| !left.is_zero())

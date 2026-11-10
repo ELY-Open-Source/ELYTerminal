@@ -116,3 +116,26 @@ fn a_door_leaves_another_copy_s_file() {
     assert!(!file.exists(), "its own file goes");
     fs::remove_dir_all(&dir).expect("removed");
 }
+
+#[test]
+fn a_line_holds_the_longest_and_no_byte_more() {
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a port");
+    let port = listener.local_addr().expect("its address").port();
+    // A JSON string of `bytes` bytes, then the newline.
+    let read = |bytes: usize| {
+        let writer = thread::spawn(move || {
+            let mut stream = TcpStream::connect((Ipv4Addr::LOCALHOST, port)).expect("the door");
+            let line = format!("\"{}\"\n", "x".repeat(bytes - 2));
+            // The reader may hang up before the line is through.
+            let _ = stream.write_all(line.as_bytes());
+        });
+        let (stream, _) = listener.accept().expect("a caller");
+        let read = read_line::<String>(&stream, PATIENCE);
+        drop(stream);
+        writer.join().expect("the writer ends");
+        read
+    };
+    assert_eq!(read(LONGEST - 1).expect("it fits").len(), LONGEST - 3);
+    let over = read(LONGEST).expect_err("a byte too long");
+    assert!(format!("{over:#}").contains("over"), "{over:#}");
+}
