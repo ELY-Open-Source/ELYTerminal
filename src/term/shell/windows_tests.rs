@@ -9,6 +9,15 @@ use crate::{
     term::{Events, PtyEvent, config, marks::Mark, spawn},
 };
 
+/// A test's script is a file, which a machine's policy may refuse; the app's own goes in as a command.
+const POWERSHELL: [&str; 5] = [
+    "-NoProfile",
+    "-NonInteractive",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+];
+
 #[test]
 fn the_scripts_wsl_runs_end_lines_as_unix_shells_read_them() {
     // PowerShell reads a carriage return; WSL's shells do not.
@@ -106,7 +115,8 @@ fn cd_takes_git_bash_s_drive_paths() {
         script.display()
     );
     let out = std::process::Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &body])
+        .args(POWERSHELL)
+        .arg(&body)
         .output()
         .expect("powershell runs");
     std::fs::remove_file(&script).expect("cleanup");
@@ -386,7 +396,8 @@ fn only_a_bare_cmd_typed_takes_the_marked_prompt() {
         script.display()
     );
     let out = std::process::Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &body])
+        .args(POWERSHELL)
+        .arg(&body)
         .output()
         .expect("powershell runs");
     std::fs::remove_file(&script).expect("cleanup");
