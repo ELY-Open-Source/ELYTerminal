@@ -9,6 +9,9 @@ use crate::settings::{COLUMN, SettingsStore};
 /// How long a dragged border rests before its width is saved.
 const SETTLE: Duration = Duration::from_millis(500);
 
+/// The right column's least width where Ely draws the window's buttons: room for them, the gear and the toggle.
+const PANEL_LEAST: f32 = 240.0;
+
 /// A side column, whose border toward the terminal drags its width.
 #[derive(Clone, Copy, Debug)]
 pub(super) enum Side {
@@ -32,10 +35,14 @@ impl Workspace {
             Side::Sessions => ("sessions", self.dragged.sessions, settings.sessions_width),
             Side::Panel => ("panel", self.dragged.panel, settings.panel_width),
         };
+        let least = match side {
+            Side::Panel if !cfg!(target_os = "macos") => PANEL_LEAST,
+            _ => *COLUMN.start(),
+        };
         let workspace = cx.entity();
         ShellColumn::new(id).resizable(
-            px(dragged.unwrap_or(saved)),
-            px(*COLUMN.start()),
+            px(dragged.unwrap_or(saved).max(least)),
+            px(least),
             px(*COLUMN.end()),
             move |width, _, cx| workspace.update(cx, |this, cx| this.drag(side, width, cx)),
         )
