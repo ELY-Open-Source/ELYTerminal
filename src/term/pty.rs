@@ -234,10 +234,31 @@ fn start(launch: &Launch, env: HashMap<String, String>, size: WindowSize) -> std
         env,
         escape_args: true,
     };
+    #[cfg(test)]
+    beside_test()?;
     let pty = tty::new(&options, size, 0)?;
     let dll = conpty()?;
     log::info!("pty: ConPTY is {}", dll.display());
     Ok(pty)
+}
+
+/// A test runs from a folder of its own; ConPTY goes beside it once.
+#[cfg(all(windows, test))]
+fn beside_test() -> std::io::Result<()> {
+    static COPIED: std::sync::OnceLock<Result<(), String>> = std::sync::OnceLock::new();
+    COPIED
+        .get_or_init(|| {
+            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+            for file in ["conpty.dll", "OpenConsole.exe"] {
+                let from = std::path::Path::new(env!("ELY_CONPTY")).join(file);
+                std::fs::copy(&from, exe.with_file_name(file)).map_err(|e| {
+                    format!("pty: {} not copied beside the test: {e}", from.display())
+                })?;
+            }
+            Ok(())
+        })
+        .clone()
+        .map_err(std::io::Error::other)
 }
 
 /// The `conpty.dll` alacritty loaded; it must be the bundled one.

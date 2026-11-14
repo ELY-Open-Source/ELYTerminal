@@ -20,7 +20,7 @@ use ely_gpui_component::{
 use futures::StreamExt;
 use gpui::{
     Bounds, Context, EventEmitter, ExternalPaths, FocusHandle, Focusable, IntoElement, MouseButton,
-    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Task, Window, div,
+    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Task, Window, canvas, div,
     prelude::*, px,
 };
 
@@ -312,6 +312,10 @@ impl TerminalView {
     /// Tells a program that asked, by mode 1004, when the terminal gains or loses focus.
     fn refocus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.active = window.is_window_active();
+        // Its release may land in another app.
+        if !self.active {
+            self.end_selection(cx);
+        }
         let focused = self.focus.is_focused(window) && window.is_window_active();
         if focused != self.focused {
             self.focused = focused;
@@ -470,11 +474,16 @@ impl Render for TerminalView {
                 root.text_color(ink.fg).child(format!("{error:#}"))
             }
         };
+        let this = cx.entity();
         div()
             .relative()
             .size_full()
             .child(root)
             .children(scrollbar::bar(span, window, cx))
+            .child(canvas(
+                |_, _, _| {},
+                move |_, _, window, cx| super::pointer::follow_drag(&this, window, cx),
+            ))
             .children(
                 self.find_box(cx)
                     .map(|found| div().absolute().top_2().right_4().child(found)),
