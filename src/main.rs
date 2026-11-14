@@ -1,11 +1,12 @@
 // A release build on Windows opens no console window.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use anyhow::Context as _;
 use ely_gpui_component::Assets;
 use elyterminal::{
     app,
     settings::{self, SettingsStore, StartIn},
-    term::shell::{ShellIntegration, Start, launch},
+    term::shell::{ShellIntegration, Start, command, launch},
 };
 use gpui::App;
 
@@ -21,21 +22,29 @@ fn application() -> gpui::Application {
 }
 
 fn run(cx: &mut App) -> anyhow::Result<()> {
-    let named = app::args::folder(std::env::args_os().skip(1))?;
+    let asked = app::args::parse(std::env::args_os().skip(1))?;
     app::start(cx)?;
     let settings = SettingsStore::get(cx);
-    // No session shows yet, so Session's folder means home.
-    let start = match (named, settings.start_in) {
-        (Some(folder), _) => Start::In(folder),
-        (None, StartIn::Folder) => Start::In(settings::start_folder(&settings.start_folder)?),
-        (None, StartIn::Home | StartIn::Session) => Start::Home,
+    let launch = if let Some((program, args)) = asked.command {
+        let folder = match asked.folder {
+            Some(folder) => folder,
+            None => std::env::current_dir().context("app: no current folder for -e")?,
+        };
+        command(&program, &args, folder)?
+    } else {
+        // No session shows yet, so Session's folder means home.
+        let start = match (asked.folder, settings.start_in) {
+            (Some(folder), _) => Start::In(folder),
+            (None, StartIn::Folder) => Start::In(settings::start_folder(&settings.start_folder)?),
+            (None, StartIn::Home | StartIn::Session) => Start::Home,
+        };
+        launch(
+            &settings.shell,
+            &[],
+            start,
+            &cx.global::<ShellIntegration>().0,
+        )?
     };
-    let launch = launch(
-        &settings.shell,
-        &[],
-        start,
-        &cx.global::<ShellIntegration>().0,
-    )?;
     app::open(launch, cx)?;
     cx.activate(true);
     Ok(())

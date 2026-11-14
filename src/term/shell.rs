@@ -98,6 +98,50 @@ fn name(path: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// How a dropped path is typed for the shell `name` names.
+fn quote(name: &str) -> Quote {
+    match name {
+        "pwsh" | "powershell" => Quote::PowerShell,
+        "cmd" => Quote::Cmd,
+        _ => Quote::Posix,
+    }
+}
+
+/// `program` with `args` in `folder`, as written: no integration, as `-e` asks.
+pub fn command(program: &str, args: &[String], folder: PathBuf) -> anyhow::Result<Launch> {
+    anyhow::ensure!(
+        !program.is_empty(),
+        "shell integration: -e names an empty program"
+    );
+    // Unix's child finds it after entering the folder, as a shell would.
+    #[cfg(unix)]
+    let program = program.to_string();
+    // Windows finds it in the parent, so as the session would: its folder, then its PATH.
+    #[cfg(windows)]
+    let program = {
+        let named = Path::new(program);
+        let program = if named.is_relative() && named.components().count() > 1 {
+            folder.join(named).display().to_string()
+        } else {
+            program.to_string()
+        };
+        // Relative PATH entries, as the session reads them.
+        let path = super::env::path()?;
+        let folders = std::iter::once(folder.clone())
+            .chain(env::split_paths(&path).map(|entry| folder.join(entry)));
+        let folders = env::join_paths(folders).context("shell integration: -e's PATH")?;
+        crate::settings::program_path_in(&program, &folders).context("shell integration: -e")?
+    };
+    log::info!("shell integration: none for {program}, which -e runs as written");
+    Ok(Launch {
+        quote: quote(&name(Path::new(&program))),
+        program: Some((program, args.to_vec())),
+        cwd: folder,
+        env: Vec::new(),
+        reports: false,
+    })
+}
+
 /// Whether `folder` lies on a share, `\\server\share`.
 #[cfg(windows)]
 fn unc(folder: &Path) -> bool {
@@ -147,11 +191,7 @@ pub fn launch(
         cwd,
         env: Vec::new(),
         reports: true,
-        quote: match name.as_str() {
-            "pwsh" | "powershell" => Quote::PowerShell,
-            "cmd" => Quote::Cmd,
-            _ => Quote::Posix,
-        },
+        quote: quote(&name),
     };
     if !args.is_empty() && (distro.is_none() || !cfg!(windows)) {
         launch.reports = false;

@@ -13,6 +13,13 @@ elyterminal \- terminal on GPUI and Ely
 .br
 .B elyterminal
 .BI --startingDirectory " folder"
+.br
+.B elyterminal
+.RB [ -d
+.IR folder ]
+.B -e
+.I program
+.RI [ argument ...]
 .SH DESCRIPTION
 ELYTerminal is a graphical terminal for X11 and Wayland.
 Sessions sit on the left, the terminal in the middle, and Git or Files on the right.
@@ -21,6 +28,13 @@ Settings lists the keyboard shortcuts available on the current platform.
 Given a folder, the first session starts there.
 The directory options accept the forms used by Linux xdg-terminal-exec and
 Windows Terminal.
+With
+.BR -e ,
+the first session runs the program and its arguments as written, in the
+folder given or the current one, without shell integration, and closes
+when the program ends.
+.B -e
+comes last: every word after it belongs to the program.
 .SH FILES
 .I $XDG_CONFIG_HOME/ELYTerminal/settings.json
 .br

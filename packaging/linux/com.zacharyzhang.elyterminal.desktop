@@ -4,6 +4,7 @@ Name=ELYTerminal
 Comment=A terminal on GPUI and Ely
 Exec=elyterminal
 X-TerminalArgDir=--working-directory
+X-TerminalArgExec=-e
 Icon=com.zacharyzhang.elyterminal
 Terminal=false
 Categories=System;TerminalEmulator;

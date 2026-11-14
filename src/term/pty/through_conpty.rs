@@ -92,3 +92,88 @@ fn a_cell_size_query_is_answered_through_conpty() {
         .collect();
     assert!(titles.contains(&"got ^[6;16;8t"), "{titles:?}");
 }
+
+#[test]
+fn e_runs_its_program_as_written_and_the_session_ends_with_it() {
+    crate::testlog::init();
+    for (code, well) in [("0", true), ("3", false)] {
+        let args = ["/c".to_string(), format!("exit {code}")];
+        let launch = crate::term::shell::command("cmd", &args, std::env::temp_dir()).expect("cmd");
+        assert!(!launch.reports, "no integration");
+        let (pty, mut events) =
+            spawn(&launch, (80, 24), (8, 16), config(&Settings::default())).expect("cmd starts");
+        let ended = futures::executor::block_on(async {
+            let mut ended = None;
+            while let Some(event) = events.next().await {
+                match event {
+                    PtyEvent::Term(Event::ChildExit(status)) => ended = Some(status.success()),
+                    PtyEvent::Term(Event::PtyWrite(reply)) => pty.write(reply.into_bytes()),
+                    PtyEvent::Term(Event::Exit) => break,
+                    _ => {}
+                }
+            }
+            ended
+        });
+        assert_eq!(ended, Some(well), "exit {code}");
+    }
+}
+
+#[test]
+fn e_finds_a_relative_program_in_the_session_s_folder() {
+    crate::testlog::init();
+    // A semicolon in the folder must not split it.
+    let folder = std::env::temp_dir().join(format!("ely-e;{}", std::process::id()));
+    std::fs::create_dir_all(&folder).expect("a folder");
+    let cmd = std::path::Path::new(&std::env::var("SystemRoot").expect("Windows"))
+        .join(r"System32\cmd.exe");
+    std::fs::copy(cmd, folder.join("tool.exe")).expect("a copy");
+    let args = ["/c".to_string(), "exit 0".to_string()];
+    // A bare name finds the session's folder first, as cmd would.
+    for named in [r".\tool.exe", "tool.exe", "tool"] {
+        let launch = crate::term::shell::command(named, &args, folder.clone()).expect(named);
+        let program = &launch.program.as_ref().expect("a program").0;
+        assert!(
+            program.starts_with(&*folder.to_string_lossy()),
+            "{named}: {program}"
+        );
+    }
+    let launch = crate::term::shell::command("tool", &args, folder.clone()).expect("found");
+    let (pty, mut events) =
+        spawn(&launch, (80, 24), (8, 16), config(&Settings::default())).expect("it starts");
+    let ended = futures::executor::block_on(async {
+        let mut ended = None;
+        while let Some(event) = events.next().await {
+            match event {
+                PtyEvent::Term(Event::ChildExit(status)) => ended = Some(status.success()),
+                PtyEvent::Term(Event::PtyWrite(reply)) => pty.write(reply.into_bytes()),
+                PtyEvent::Term(Event::Exit) => break,
+                _ => {}
+            }
+        }
+        ended
+    });
+    assert_eq!(ended, Some(true));
+    drop(pty);
+}
+
+#[test]
+fn e_finds_a_bare_program_on_a_relative_path_entry() {
+    crate::testlog::init();
+    let folder = std::env::temp_dir().join(format!("ely-e-path-{}", std::process::id()));
+    std::fs::create_dir_all(folder.join("bin")).expect("a folder");
+    let cmd = std::path::Path::new(&std::env::var("SystemRoot").expect("Windows"))
+        .join(r"System32\cmd.exe");
+    std::fs::copy(cmd, folder.join(r"bin\relative-tool.exe")).expect("a copy");
+    // The session's PATH holds `bin`, read in its folder.
+    unsafe {
+        std::env::set_var(
+            "PATH",
+            format!("bin;{}", std::env::var("PATH").expect("PATH")),
+        )
+    };
+    let args = ["/c".to_string(), "exit 0".to_string()];
+    let launch =
+        crate::term::shell::command("relative-tool", &args, folder.clone()).expect("found");
+    let program = &launch.program.as_ref().expect("a program").0;
+    assert!(program.ends_with(r"bin\relative-tool.exe"), "{program}");
+}
