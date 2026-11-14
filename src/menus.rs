@@ -10,7 +10,7 @@ use crate::{
         input::{Clear, Find},
         zoom,
     },
-    workspace::{CloseSession, NewSession, TogglePanel, ToggleSessions},
+    workspace::{CloseSession, Leave, NewSession, TogglePanel, ToggleSessions, Workspace},
 };
 
 actions!(
@@ -90,6 +90,21 @@ pub fn init(cx: &mut App) {
     cx.set_global(zoom::Enlarged::default());
     cx.on_action(|_: &Quit, cx| {
         log::info!("app: quit asked");
+        for handle in cx.windows() {
+            let Some(workspace) = handle.downcast::<Workspace>() else {
+                continue;
+            };
+            let asked = workspace.update(cx, |this, window, cx| {
+                let asked = this.asks(Leave::Quit, cx);
+                if asked {
+                    window.activate_window();
+                }
+                asked
+            });
+            if asked.expect("a listed window updates") {
+                return;
+            }
+        }
         cx.quit();
     });
     cx.on_action(|_: &Bigger, cx| zoom::step(Some(1.0), cx));

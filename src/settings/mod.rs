@@ -192,6 +192,8 @@ pub struct Settings {
     pub right_click_paste: bool,
     /// A paste a shell would run at once asks first.
     pub paste_protection: bool,
+    /// Closing a window or quitting asks first while a session runs a program.
+    pub confirm_quit: bool,
     /// Ely peeks over the main window's top edge.
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
@@ -279,6 +281,7 @@ impl Default for Settings {
             copy_on_select: false,
             right_click_paste: cfg!(windows),
             paste_protection: true,
+            confirm_quit: true,
             ely: true,
             ely_left: 140.0,
             check_updates: true,

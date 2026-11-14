@@ -154,7 +154,7 @@ pub fn row(
                 .tooltip(text(cx, "et.session.close", &[]))
                 .on_click(move |_, window, cx| {
                     cx.stop_propagation();
-                    close.update(cx, |this, cx| this.close(index, window, cx))
+                    close.update(cx, |this, cx| this.close_asked(index, None, window, cx))
                 }),
         );
     let item = match &session.editing {

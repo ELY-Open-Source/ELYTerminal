@@ -203,6 +203,14 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.paste_protection_hint",
         "A paste with line breaks that the program would run at once asks first.",
     ),
+    (
+        "et.terminal.confirm_quit",
+        "Ask before closing running sessions",
+    ),
+    (
+        "et.terminal.confirm_quit_hint",
+        "Quitting, closing the window or closing the last session asks first while a session runs a program.",
+    ),
     ("et.terminal.drag_sessions", "Drag sessions to reorder"),
     (
         "et.terminal.drag_sessions_hint",
@@ -381,4 +389,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.paste.more", "and {count} more lines"),
     ("et.paste.cancel", "Cancel"),
     ("et.paste.go", "Paste"),
+    ("et.leave.title", "{count} running"),
+    (
+        "et.leave.detail",
+        "Closing ends these programs. Each line names the session and what it runs.",
+    ),
+    ("et.leave.cancel", "Cancel"),
+    ("et.leave.go", "Close anyway"),
 ];

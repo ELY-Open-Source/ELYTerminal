@@ -194,6 +194,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.paste_protection_hint",
         "粘贴含换行、程序会立即执行的文字时先询问。",
     ),
+    ("et.terminal.confirm_quit", "关闭运行中的会话前确认"),
+    (
+        "et.terminal.confirm_quit_hint",
+        "会话仍在运行程序时，退出、关闭窗口或关闭最后一个会话先询问。",
+    ),
     ("et.terminal.drag_sessions", "拖动会话以排序"),
     (
         "et.terminal.drag_sessions_hint",
@@ -351,4 +356,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.paste.more", "另有 {count} 行"),
     ("et.paste.cancel", "取消"),
     ("et.paste.go", "粘贴"),
+    ("et.leave.title", "{count} 个程序在运行"),
+    (
+        "et.leave.detail",
+        "关闭会结束这些程序。每行写着会话序号和它运行的程序。",
+    ),
+    ("et.leave.cancel", "取消"),
+    ("et.leave.go", "仍要关闭"),
 ];

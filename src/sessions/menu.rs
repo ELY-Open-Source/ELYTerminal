@@ -26,7 +26,7 @@ pub fn row(workspace: &Entity<Workspace>, id: EntityId, cx: &App) -> Menu {
                     close.update(cx, |this, cx| {
                         let found = this.sessions().iter().position(|session| session.id == id);
                         if let Some(index) = found {
-                            this.close(index, window, cx);
+                            this.close_asked(index, None, window, cx);
                         }
                     })
                 }),

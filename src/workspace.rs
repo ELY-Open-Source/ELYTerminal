@@ -27,6 +27,7 @@ use crate::{
 mod control;
 mod events;
 mod folder;
+mod leave;
 mod panel;
 mod panes;
 mod rename;
@@ -36,6 +37,7 @@ mod toggles;
 mod wallpaper;
 mod widths;
 
+pub use leave::Leave;
 use toggles::column_toggle;
 use widths::{Dragged, Side};
 
@@ -85,6 +87,8 @@ pub struct Workspace {
     found: Vec<crate::profiles::Found>,
     choosing_folder: bool,
     folder_actions: bool,
+    /// A close that waits for the user's word, and the programs it would end.
+    leaving: Option<(Leave, Vec<String>)>,
     _settings: Subscription,
     _acted: Subscription,
     _here: Subscription,
@@ -126,6 +130,7 @@ impl Workspace {
             found: crate::profiles::detected(),
             choosing_folder: false,
             folder_actions: false,
+            leaving: None,
             _settings: cx.observe_global_in::<SettingsStore>(window, |this, window, cx| {
                 this.background.follow(window, SettingsStore::get(cx));
                 let settings = SettingsStore::get(cx);
@@ -316,7 +321,14 @@ impl Render for Workspace {
             .gap_2()
             .child(right)
             .children(gear);
-        let mut shell = ColumnShell::new("workspace").glass();
+        let this = cx.entity();
+        let mut shell = ColumnShell::new("workspace")
+            .glass()
+            .on_close(move |window, cx| {
+                if !this.update(cx, |this, cx| this.asks(Leave::Window, cx)) {
+                    window.remove_window();
+                }
+            });
         let shown = self
             .sessions
             .get(self.active)
@@ -409,7 +421,7 @@ impl Render for Workspace {
             .on_action(cx.listener(|this, _: &NewSession, window, cx| this.new_session(window, cx)))
             .on_action(cx.listener(|this, _: &CloseSession, window, cx| {
                 let focused = this.sessions[this.active].focused;
-                this.close_pane(this.active, focused, window, cx)
+                this.close_asked(this.active, Some(focused), window, cx)
             }))
             .on_action(cx.listener(|this, _: &NextSession, window, cx| this.step(true, window, cx)))
             .on_action(
@@ -446,7 +458,8 @@ impl Render for Workspace {
                                 .relative()
                                 .size_full()
                                 .children(wallpaper::paint(&settings, base, window, cx))
-                                .child(shell),
+                                .child(shell)
+                                .children(self.leave_prompt(cx)),
                         ),
                     ),
             )

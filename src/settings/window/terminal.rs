@@ -117,6 +117,12 @@ impl SettingsWindow {
             settings.paste_protection,
             |settings, on| settings.paste_protection = on,
         );
+        let quit = switch(
+            &this,
+            "confirm_quit",
+            settings.confirm_quit,
+            |settings, on| settings.confirm_quit = on,
+        );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
         let drag = switch(
             &this,
@@ -144,6 +150,11 @@ impl SettingsWindow {
                 SettingsRow::new(word("et.terminal.paste_protection"))
                     .description(word("et.terminal.paste_protection_hint"))
                     .control(guard),
+            )
+            .row(
+                SettingsRow::new(word("et.terminal.confirm_quit"))
+                    .description(word("et.terminal.confirm_quit_hint"))
+                    .control(quit),
             )
             .row(
                 SettingsRow::new(word("et.terminal.drag_sessions"))
