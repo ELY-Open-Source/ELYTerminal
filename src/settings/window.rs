@@ -22,6 +22,8 @@ use crate::{app::APP_ID, menus, term::BLINK, updates::Updates};
 
 mod appearance;
 #[cfg(windows)]
+mod defterm;
+#[cfg(windows)]
 mod explorer;
 mod picture;
 mod shortcuts;

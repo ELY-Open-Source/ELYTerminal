@@ -47,6 +47,14 @@ pub(super) fn running(pty: &Pty) -> io::Result<Option<String>> {
 /// The program the terminal runs, or the first its shell started: Windows has no foreground group.
 #[cfg(windows)]
 pub(super) fn running(pty: &Pty) -> io::Result<Option<String>> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::{Foundation::WAIT_OBJECT_0, System::Threading::WaitForSingleObject};
+    // SAFETY: the pty owns the launcher; a handed console may outlive it.
+    if let Some(launcher) = &pty.launcher
+        && unsafe { WaitForSingleObject(launcher.as_raw_handle() as _, 0) } == WAIT_OBJECT_0
+    {
+        return Ok(Some(format!("process {}'s console", pty.pid)));
+    }
     let processes = super::procs::processes()?;
     let root = processes
         .iter()

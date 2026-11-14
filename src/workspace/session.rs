@@ -115,6 +115,18 @@ impl Workspace {
         self.open(program, Start::In(folder), at, window, cx)
     }
 
+    /// Shows a session Windows handed over, last.
+    #[cfg(windows)]
+    pub fn adopt(
+        &mut self,
+        started: (Pty, Events, Launch),
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.add(started, Program::default(), window, cx);
+        self.select(self.sessions.len() - 1, window, cx);
+    }
+
     /// Starts `program` from `start`, its pty sized as the first layout will fit it.
     pub(super) fn started(
         &self,

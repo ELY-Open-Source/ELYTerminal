@@ -18,6 +18,13 @@ pub struct Args {
     pub command: Option<(String, Vec<String>)>,
 }
 
+/// Whether COM started this copy, `-Embedding` alone, to take a console session Windows hands over.
+#[cfg(windows)]
+pub fn embedded(args: impl Iterator<Item = OsString>) -> bool {
+    let args: Vec<_> = args.collect();
+    args.len() == 1 && args[0].eq_ignore_ascii_case("-Embedding")
+}
+
 /// Reads `args`: a folder, bare or after an option, then `-e` and a program with its arguments.
 pub fn parse(mut args: impl Iterator<Item = OsString>) -> anyhow::Result<Args> {
     let mut folder = None;
@@ -174,6 +181,15 @@ mod tests {
         let error = parse(args(&["-e"])).expect_err("no program");
         assert!(error.to_string().contains("names no program"), "{error}");
         assert!(error.to_string().contains("-e PROGRAM"), "{error}");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn com_s_embedding_alone_starts_a_copy_for_a_handoff() {
+        assert!(embedded(args(&["-Embedding"])));
+        assert!(embedded(args(&["-embedding"])));
+        assert!(!embedded(args(&[])));
+        assert!(!embedded(args(&["-Embedding", "C:\\"])));
     }
 
     #[test]

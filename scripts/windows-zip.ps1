@@ -10,6 +10,6 @@ $target = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { 'target' }
 $out = Join-Path $target 'release'
 $zip = Join-Path $out "ELYTerminal-$version-windows-$arch.zip"
 Copy-Item 'vendor/conpty/LICENSE' (Join-Path $out 'LICENSE-conpty') -ErrorAction Stop
-$files = 'elyterminal.exe', 'conpty.dll', 'OpenConsole.exe', 'LICENSE-conpty' | ForEach-Object { Join-Path $out $_ }
+$files = 'elyterminal.exe', 'conpty.dll', 'OpenConsole.exe', 'OpenConsoleProxy.dll', 'LICENSE-conpty' | ForEach-Object { Join-Path $out $_ }
 Compress-Archive -Force -Path $files -DestinationPath $zip -ErrorAction Stop
 Write-Output "windows-zip: $zip"

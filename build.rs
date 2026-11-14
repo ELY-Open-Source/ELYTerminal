@@ -16,7 +16,7 @@ fn main() {
     }
 }
 
-/// Copies the target's `conpty.dll` and `OpenConsole.exe` where its executables land.
+/// Copies the target's ConPTY files where its executables land.
 fn conpty() {
     let arch = env::var("CARGO_CFG_TARGET_ARCH").expect("build: cargo names no target arch");
     let from = PathBuf::from("vendor/conpty").join(&arch);
@@ -56,7 +56,7 @@ fn conpty() {
     for dir in dirs {
         fs::create_dir_all(&dir)
             .unwrap_or_else(|e| panic!("build: {} not made: {e}", dir.display()));
-        for file in ["conpty.dll", "OpenConsole.exe"] {
+        for file in ["conpty.dll", "OpenConsole.exe", "OpenConsoleProxy.dll"] {
             fs::copy(from.join(file), dir.join(file)).unwrap_or_else(|e| {
                 panic!(
                     "build: {file} for {arch} not copied to {}: {e}",

@@ -2,6 +2,8 @@ pub mod app;
 pub mod blur;
 pub mod control;
 #[cfg(windows)]
+pub mod defterm;
+#[cfg(windows)]
 pub mod explorer;
 pub mod files;
 pub mod git;
@@ -11,6 +13,8 @@ pub mod keymap;
 pub mod menus;
 pub mod pet;
 pub mod profiles;
+#[cfg(windows)]
+pub mod registry;
 pub mod sessions;
 pub mod settings;
 pub mod term;

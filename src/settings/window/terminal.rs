@@ -193,7 +193,9 @@ impl SettingsWindow {
                     )),
             );
         #[cfg(windows)]
-        let section = section.row(super::explorer::row(&cx.entity(), cx));
+        let section = section
+            .row(super::explorer::row(&cx.entity(), cx))
+            .row(super::defterm::row(&cx.entity(), cx));
         let keys = self.shortcuts(cx);
         let profiles = self.profiles_section(cx);
         div()

@@ -258,6 +258,18 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.explorer.add", "Add"),
     ("et.explorer.remove", "Remove"),
     ("et.explorer.replace", "Use this copy"),
+    ("et.defterm.title", "Default terminal"),
+    (
+        "et.defterm.ours",
+        "Console programs started without a terminal open here.",
+    ),
+    (
+        "et.defterm.elsewhere",
+        "Opens console programs started without a terminal, as Run and other apps start them.",
+    ),
+    ("et.defterm.other", "Another copy opens them: {command}"),
+    ("et.defterm.make", "Make default"),
+    ("et.defterm.restore", "Restore"),
     ("et.updates.title", "Updates"),
     ("et.updates.unchecked", "ELYTerminal {version}"),
     ("et.updates.checking", "Checking for a newer release…"),

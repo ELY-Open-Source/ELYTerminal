@@ -98,6 +98,12 @@ fn name(path: &Path) -> String {
         .unwrap_or_default()
 }
 
+/// How a dropped path is typed for the program at `path`.
+#[cfg(windows)]
+pub(crate) fn quote_for(path: &Path) -> Quote {
+    quote(&name(path))
+}
+
 /// How a dropped path is typed for the shell `name` names.
 fn quote(name: &str) -> Quote {
     match name {

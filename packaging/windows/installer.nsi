@@ -7,7 +7,7 @@ ManifestDPIAware true
   !error "pass /DVERSION"
 !endif
 !ifndef STAGE
-  !error "pass /DSTAGE, the folder holding elyterminal.exe, conpty.dll, OpenConsole.exe and LICENSE-conpty"
+  !error "pass /DSTAGE, the folder holding elyterminal.exe, conpty.dll, OpenConsole.exe, OpenConsoleProxy.dll and LICENSE-conpty"
 !endif
 !ifndef OUTFILE
   !error "pass /DOUTFILE"
@@ -17,6 +17,7 @@ ManifestDPIAware true
 !endif
 !define UNINSTALL "Software\Microsoft\Windows\CurrentVersion\Uninstall\ELYTerminal"
 !define CLASSES "Software\Classes\Directory"
+!define TERMINAL "{79B54338-A0FA-474F-B304-4932B36B6F55}"
 
 !define MUI_ICON "${ICON}"
 !define MUI_UNICON "${ICON}"
@@ -85,6 +86,7 @@ Section "Install"
   File "${STAGE}\elyterminal.exe"
   File "${STAGE}\conpty.dll"
   File "${STAGE}\OpenConsole.exe"
+  File "${STAGE}\OpenConsoleProxy.dll"
   File "${STAGE}\LICENSE-conpty"
   ClearErrors
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -109,6 +111,7 @@ Section "Uninstall"
   !insertmacro ElyGone "elyterminal.exe"
   !insertmacro ElyGone "conpty.dll"
   !insertmacro ElyGone "OpenConsole.exe"
+  !insertmacro ElyGone "OpenConsoleProxy.dll"
   !insertmacro ElyGone "LICENSE-conpty"
   ; One install writes the shortcut and the key, so the key says whose both are.
   ReadRegStr $0 HKCU "${UNINSTALL}" "InstallLocation"
@@ -120,4 +123,21 @@ Section "Uninstall"
   ; Explorer's entries go when they name this copy; the settings stay.
   !insertmacro ElyMenu "${CLASSES}\shell\ELYTerminal"
   !insertmacro ElyMenu "${CLASSES}\Background\shell\ELYTerminal"
+  ; The default terminal goes when it is this copy, as Settings' Restore takes it.
+  ; A 32-bit installer sees COM's classes through WOW64 unless told.
+  SetRegView 64
+  ReadRegStr $0 HKCU "Software\Classes\CLSID\${TERMINAL}\LocalServer32" ""
+  StrCmp $0 '"$INSTDIR\elyterminal.exe"' 0 ElyKept
+    ReadRegStr $1 HKCU "Console\%%Startup" "DelegationTerminal"
+    StrCmp $1 "${TERMINAL}" 0 +3
+      DeleteRegValue HKCU "Console\%%Startup" "DelegationConsole"
+      DeleteRegValue HKCU "Console\%%Startup" "DelegationTerminal"
+    DeleteRegKey HKCU "Software\Classes\CLSID\${TERMINAL}"
+    DeleteRegKey HKCU "Software\Classes\CLSID\{2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}"
+    DeleteRegKey HKCU "Software\Classes\CLSID\{3171DE52-6EFA-4AEF-8A9F-D02BD67E7A4F}"
+    DeleteRegKey HKCU "Software\Classes\Interface\{E686C757-9A35-4A1C-B3CE-0BCC8B5C69F4}"
+    DeleteRegKey HKCU "Software\Classes\Interface\{6F23DA90-15C5-4203-9DB0-64E73F1B1B00}"
+    DeleteRegKey HKCU "Software\Classes\Interface\{746E6BC0-AB05-4E38-AB14-71E86763141F}"
+  ElyKept:
+  SetRegView default
 SectionEnd

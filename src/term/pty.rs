@@ -92,6 +92,9 @@ pub struct Pty {
     notifier: Notifier,
     #[cfg(unix)]
     master: std::fs::File,
+    /// A handed session's launcher, which may exit while the console lives on.
+    #[cfg(windows)]
+    pub(super) launcher: Option<std::os::windows::io::OwnedHandle>,
 }
 
 /// What a pty reports, in order.
@@ -100,7 +103,7 @@ pub type Events = UnboundedReceiver<PtyEvent>;
 #[cfg(unix)]
 type Raw = super::unix::Pty;
 #[cfg(windows)]
-type Raw = tty::Pty;
+pub type Raw = tty::Pty;
 
 /// The grid's options from the settings: scrollback, the cursor programs start from, kitty keys.
 pub fn config(settings: &Settings) -> Config {
@@ -170,15 +173,67 @@ pub fn spawn(
         )
     })?;
     let pid = child_id(&raw)?;
-    #[cfg(unix)]
-    let master = raw
-        .master()
-        .map_err(|error| anyhow::anyhow!("pty {pid}: no copy of the master: {error}"))?;
     log::info!(
         "pty {pid}: started {:?} in {}",
         launch.program,
         launch.cwd.display()
     );
+    run(raw, pid, launch.quote, size, cell, config)
+}
+
+/// A session Windows handed over: its program and its folder unknown, home stands for both.
+#[cfg(windows)]
+pub fn adopt(
+    handoff: crate::defterm::Handoff,
+    config: Config,
+) -> anyhow::Result<(Pty, Events, Launch)> {
+    let crate::defterm::Handoff {
+        pty: raw,
+        launcher,
+        pid,
+        name,
+        ..
+    } = handoff;
+    let quote = match &name {
+        Some(name) => super::shell::quote_for(name.as_ref()),
+        None => {
+            log::warn!("pty {pid}: the handed program is unnamed; paths drop as cmd reads them");
+            Quote::Cmd
+        }
+    };
+    let launch = Launch {
+        program: None,
+        cwd: dirs::home_dir().ok_or_else(|| anyhow::anyhow!("pty {pid}: no home folder"))?,
+        env: Vec::new(),
+        reports: false,
+        quote,
+    };
+    log::info!("pty {pid}: Windows handed over {name:?}");
+    let (mut pty, events) = run(
+        raw,
+        pid,
+        launch.quote,
+        fit(80, 24, (8, 16)),
+        (8, 16),
+        config,
+    )?;
+    pty.launcher = Some(launcher);
+    Ok((pty, events, launch))
+}
+
+/// Runs the grid and its event loop on a started pty.
+fn run(
+    raw: Raw,
+    pid: u32,
+    quote: Quote,
+    size: WindowSize,
+    cell: (u16, u16),
+    config: Config,
+) -> anyhow::Result<(Pty, Events)> {
+    #[cfg(unix)]
+    let master = raw
+        .master()
+        .map_err(|error| anyhow::anyhow!("pty {pid}: no copy of the master: {error}"))?;
     let (sender, events) = unbounded();
     let listener = Listener {
         sender: sender.clone(),
@@ -202,11 +257,13 @@ pub fn spawn(
         Pty {
             term,
             pid,
-            quote: launch.quote,
+            quote,
             graphics: shared,
             notifier,
             #[cfg(unix)]
             master,
+            #[cfg(windows)]
+            launcher: None,
         },
         events,
     ))
@@ -244,12 +301,12 @@ fn start(launch: &Launch, env: HashMap<String, String>, size: WindowSize) -> std
 
 /// A test runs from a folder of its own; ConPTY goes beside it once.
 #[cfg(all(windows, test))]
-fn beside_test() -> std::io::Result<()> {
+pub(crate) fn beside_test() -> std::io::Result<()> {
     static COPIED: std::sync::OnceLock<Result<(), String>> = std::sync::OnceLock::new();
     COPIED
         .get_or_init(|| {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            for file in ["conpty.dll", "OpenConsole.exe"] {
+            for file in ["conpty.dll", "OpenConsole.exe", "OpenConsoleProxy.dll"] {
                 let from = std::path::Path::new(env!("ELY_CONPTY")).join(file);
                 std::fs::copy(&from, exe.with_file_name(file)).map_err(|e| {
                     format!("pty: {} not copied beside the test: {e}", from.display())

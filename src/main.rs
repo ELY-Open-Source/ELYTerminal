@@ -23,8 +23,19 @@ fn application() -> gpui::Application {
 }
 
 fn run(cx: &mut App) -> anyhow::Result<()> {
+    #[cfg(windows)]
+    if app::args::embedded(std::env::args_os().skip(1)) {
+        log::info!("app: COM started this copy for a console session");
+        app::start(cx)?;
+        elyterminal::defterm::listen(cx)?;
+        return wait_for_handoff(cx);
+    }
     let asked = app::args::parse(std::env::args_os().skip(1))?;
     app::start(cx)?;
+    #[cfg(windows)]
+    if let Err(error) = elyterminal::defterm::listen(cx) {
+        log::error!("{error:#}");
+    }
     let settings = SettingsStore::get(cx);
     let (launch, program) = if let Some((shell, args)) = asked.command {
         let folder = match asked.folder {
@@ -59,6 +70,22 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
     };
     app::open(launch, program, cx)?;
     cx.activate(true);
+    Ok(())
+}
+
+/// A copy COM started that gets no session in 30 seconds stops.
+#[cfg(windows)]
+fn wait_for_handoff(cx: &mut App) -> anyhow::Result<()> {
+    cx.spawn(async |cx| {
+        cx.background_executor()
+            .timer(std::time::Duration::from_secs(30))
+            .await;
+        if cx.update(|cx| cx.windows().is_empty()) {
+            log::error!("app: COM started this copy, and no console session came in 30 seconds");
+            std::process::exit(1);
+        }
+    })
+    .detach();
     Ok(())
 }
 

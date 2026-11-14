@@ -136,6 +136,39 @@ pub fn open(
     program: Program,
     cx: &mut App,
 ) -> anyhow::Result<WindowHandle<Workspace>> {
+    let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(SettingsStore::get(cx)))?;
+    open_started((pty, events, launch), program, cx)
+}
+
+/// A session Windows handed over: a new row in the main window, else the first one.
+#[cfg(windows)]
+pub fn adopt(handoff: crate::defterm::Handoff, cx: &mut App) -> anyhow::Result<()> {
+    let title = handoff.title.clone();
+    let started = crate::term::adopt(handoff, config(SettingsStore::get(cx)))?;
+    let main = cx
+        .windows()
+        .into_iter()
+        .find_map(|window| window.downcast::<Workspace>());
+    log::info!("app: a handed session, titled {title:?}, opens");
+    match main {
+        Some(main) => main.update(cx, |workspace, window, cx| {
+            workspace.adopt(started, window, cx);
+            window.activate_window();
+        })?,
+        None => {
+            open_started(started, Program::default(), cx)?;
+        }
+    }
+    cx.activate(true);
+    Ok(())
+}
+
+/// Opens the main window on a started session.
+fn open_started(
+    (pty, events, launch): (crate::term::Pty, crate::term::Events, Launch),
+    program: Program,
+    cx: &mut App,
+) -> anyhow::Result<WindowHandle<Workspace>> {
     let (bounds, display_id) = opening_bounds(cx);
     let background = blur::appearance(SettingsStore::get(cx));
     let least = px(*settings::WINDOW.start());
@@ -154,7 +187,6 @@ pub fn open(
         window_background: background,
         ..Default::default()
     };
-    let (pty, events) = spawn(&launch, (80, 24), (8, 16), config(SettingsStore::get(cx)))?;
     // Windows' wheel settings, read where gpui reads its own.
     #[cfg(windows)]
     crate::term::keep_wheel()?;
