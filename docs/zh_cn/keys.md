@@ -7,7 +7,9 @@
 | | macOS | Windows 和 Linux |
 |---|---|---|
 | 新建会话 | Cmd-T | Ctrl-Shift-T |
-| 关闭会话 | Cmd-W | Ctrl-Shift-W |
+| 关闭窗格，最后一个窗格关闭会话 | Cmd-W | Ctrl-Shift-W |
+| 向右拆分、向下拆分 | Cmd-D、Cmd-Shift-D | Ctrl-Shift-E、Ctrl-Shift-O |
+| 下一个、上一个窗格 | Cmd-]、Cmd-[ | Ctrl-Shift-N、Ctrl-Shift-P |
 | 会话 1 到 8、最后一个 | Cmd-1 到 Cmd-8、Cmd-9 | Alt-1 到 Alt-8、Alt-9 |
 | 下一个、上一个会话 | Ctrl-Tab、Ctrl-Shift-Tab | Ctrl-Tab、Ctrl-Shift-Tab |
 | 会话栏 | Cmd-B | Ctrl-Shift-B |
@@ -19,6 +21,7 @@
 | 清空历史和提示符以上的屏幕 | Cmd-K | Ctrl-Shift-K；在 Windows 上只清空历史 |
 | 放大、缩小、重置大小 | Cmd-=、Cmd-minus、Cmd-0 | Ctrl-=、Ctrl-minus、Ctrl-0 |
 | 打开链接（指针在上面时显示下划线） | Cmd-点按 | Ctrl-点按 |
+| 全屏 | Ctrl-Cmd-F | F11 |
 | 设置 | Cmd-, | Ctrl-, |
 | 最小化 | Cmd-M | |
 | 退出 | Cmd-Q | Ctrl-Shift-Q |

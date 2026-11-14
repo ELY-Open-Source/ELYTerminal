@@ -2,7 +2,7 @@
 
 English / [中文](../zh_cn/develop.md)
 
-Each platform's script builds its release in `target/release`: on macOS, `scripts/mac-app.sh` builds `ELYTerminal.app`, with its icon, and a disk image of it; on Windows, `scripts/windows-zip.ps1` zips `elyterminal.exe`, its icon inside, with Microsoft's `conpty.dll`, `OpenConsole.exe` and their license; on Linux, `scripts/linux-packages.sh` builds once in Docker on Ubuntu 22.04 and packs the same binary as tar.gz, DEB, AppImage and RPM. `scripts/linux-tar.sh` still builds the tarball on its own. [Linux packaging](../../packaging/linux/README.md) covers individual scripts, validation and release uploads.
+Each platform's script builds its release in `target/release`: on macOS, `scripts/mac-app.sh` builds `ELYTerminal.app`, with its icon, and a disk image of it; on Windows, `scripts/windows-zip.ps1` zips `elyterminal.exe`, its icon inside, with Microsoft's `conpty.dll`, `OpenConsole.exe`, `OpenConsoleProxy.dll` and their license; on Linux, `scripts/linux-packages.sh` builds once in Docker on Ubuntu 22.04 and packs the same binary as tar.gz, DEB, AppImage and RPM. `scripts/linux-tar.sh` still builds the tarball on its own. [Linux packaging](../../packaging/linux/README.md) covers individual scripts, validation and release uploads.
 
 On Linux, install the libraries gpui links first. On Debian and Ubuntu:
 

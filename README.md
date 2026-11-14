@@ -23,6 +23,7 @@ A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) c
 
 - Sessions sit on the left, the terminal in the middle, Git or Files on the right.
 - Shell integration for zsh, bash, fish and PowerShell, so Files and Git follow the session's folder.
+- A session splits into panes, right or down, each its own terminal.
 - Profiles beside +: your own command lines, and the shells this system holds, WSL distributions and Git Bash among them.
 - Ely peeks over the window's edge and follows the sessions.
 - Every shortcut can be changed, and `elyterminal ctl` lets scripts and agents list, read and type into the running sessions, once Settings turns it on.

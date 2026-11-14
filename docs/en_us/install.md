@@ -60,7 +60,7 @@ the four installed files; settings stay in the config folder.
 Windows 10 or later, x86_64, or Windows 11 on ARM64. Run
 `ELYTerminal-VERSION-windows-x86_64-setup.exe`, or `-windows-aarch64-setup.exe`: it installs for your account alone, under
 `%LOCALAPPDATA%\Programs\ELYTerminal` unless you choose elsewhere, adds a Start menu entry, and uninstalls from Settings › Apps, your settings kept. Or unzip
-`ELYTerminal-VERSION-windows-x86_64.zip`, or `-windows-aarch64.zip`, anywhere and run `elyterminal.exe`; keep `conpty.dll` and `OpenConsole.exe`
+`ELYTerminal-VERSION-windows-x86_64.zip`, or `-windows-aarch64.zip`, anywhere and run `elyterminal.exe`; keep `conpty.dll`, `OpenConsole.exe` and `OpenConsoleProxy.dll`
 beside it. Settings › Terminal › Explorer menu adds Open in ELYTerminal to a
 folder's right-click menu. With winget, once Microsoft's catalog holds it:
 
@@ -85,4 +85,5 @@ The build is not code-signed, so two different Windows guards may speak:
 
 The zip holds only `elyterminal.exe`, `LICENSE-conpty`, and Microsoft's signed
 `conpty.dll` and `OpenConsole.exe` from NuGet's
-`Microsoft.Windows.Console.ConPTY`.
+`Microsoft.Windows.Console.ConPTY`, and `OpenConsoleProxy.dll` from Windows
+Terminal 1.25.3131.0's MIT zips.

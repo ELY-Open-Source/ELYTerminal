@@ -58,8 +58,10 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - Keys: xterm encoding with modifiers, application cursor mode, Option as Alt on macOS, with an input method selected too, and natural text editing there when the setting is on: Option-Left and Option-Right go as ESC b and ESC f, Option-Backspace and Option-Delete as ESC DEL and ESC d, Command-Left and Command-Right as Ctrl-A and Ctrl-E, Command-Backspace and Command-Delete as Ctrl-U and Ctrl-K, as iTerm2's preset; the kitty keyboard protocol as the program sets its flags, so Shift+Enter makes a new line in codex and Claude Code on macOS, Windows and Linux; a key Shift makes a symbol of goes as its own key with Shift, the symbol its alternate, as Ghostty sends it, on macOS and Windows. On Windows keys go as win32-input-mode records while ConPTY asks, as Windows Terminal sends them. Keypad keys type their characters, as Ghostty's do with mode 1035 on by default.
 - IME: marked text drawn at the cursor, on one line, a control in it as its picture; committed text sent to the program. A dead key waits for the key after it, as the keyboard layout asks and as Windows' console waits: under US-International a quote then `a` types `á`. On X11 the input method's compound text composes and commits in every set libX11 writes, Simplified and Traditional Chinese among them. On Wayland a modifier's key an input method forwards without its mask still counts, so Shift and Ctrl+Shift bindings hold under fcitx5.
 - Mouse: select by character, word (double press) and line (triple press); Shift extends; mouse reporting (X10, normal, button, any; SGR and UTF-8); wheel scrolls back, or reports, or sends arrows on the alternate screen; on Windows a notch moves the lines Windows sets, a screen under one screen at a time, and elsewhere 3, while a program that tracks the mouse on Windows hears one report a notch; with Shift, which takes the wheel back from a program that tracks the mouse, a notch does what it does where nothing tracks it.
+- A selection dragged past the grid's top or bottom scrolls the history and keeps selecting, faster the farther the pointer goes, as Ghostty and Windows Terminal do.
 - Click to move: while the shell reads a line, as its OSC 133 marks say, a plain click on that line, past its prompt, moves the shell's cursor there, as Ghostty's `cursor-click-to-move`: a shell that takes clicks, as fish does, hears the click; others get arrow keys.
 - Clipboard: copy, paste (bracketed when asked; on Windows a clipboard with no text sends an empty bracketed paste, so a program reads an image itself), copy on select per setting, a right press that copies or pastes per setting, OSC 52 writes.
+- A paste holding a line break, while the program has not asked for bracketed paste, asks first, showing its first 8 lines; Settings › Terminal › Ask before a risky paste, on by default.
 - Kitty's clipboard protocol, OSC 5522, as Ghostty 1.4 takes it: writes up to 64 MiB allowed; each read asks first, showing what it would read, with a choice to allow a program's password for the session; text, images and file lists, written and read alike on every system; under mode 5522 a paste lists the clipboard's types with a password for one read.
 - Kitty graphics, as Ghostty 1.4 takes them: images sent direct, from a file, a temporary file or shared memory, RGB, RGBA or PNG, zlib, in chunks, within a session's quota; placed at the cursor under the ground, between it and the text or over the text, cut and sized as asked, moving with scrolls, clears and resizes; Unicode placeholders and relative placements; animation, its frames composed and played on their clock, paused while its session is hidden. Payloads decode through SIMD. A hidden session gives its images' GPU textures back.
 - Each session's environment names the terminal: `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=elyterminal` and `TERM_PROGRAM_VERSION`, in a WSL distribution too. It sets no `KITTY_WINDOW_ID`; a program asks for kitty graphics by the protocol's query.
@@ -75,7 +77,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - A prompt zsh draws again on a resize keeps its rows unreflowed, as kitty keeps them, so no copy of it goes into the history.
 - A command's start clears the last command's failure, so the row and Ely are calm while ssh, cmd or a nested shell runs; a cmd session, and a bare `cmd` typed in PowerShell, mark their prompts and report their folder.
 - Clear, Cmd-K on macOS and Ctrl-Shift-K elsewhere, drops the history and, off Windows, the screen's rows above the prompt the shell reads at, else above the cursor; on Windows, where ConPTY keeps the screen, the history alone.
-- `elyterminal ctl`, while Settings › Terminal › Command line control is on, asks the running app through a local door only the user opens: `sessions` lists them, `read SESSION [LINES]` prints a session's last rows, `send SESSION TEXT` types text and Enter, `key SESSION KEY...` presses keys.
+- `elyterminal ctl`, while Settings › Terminal › Command line control is on, asks the running app through a local door only the user opens: `sessions` lists each pane by its pty's process id, `read SESSION [LINES]` prints that pane's last rows, `send SESSION TEXT` types text and Enter, `key SESSION KEY...` presses keys.
 
 
 ## 6. Main window and layout
@@ -90,6 +92,10 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - The title bar is transparent, as Ghostty's: the window's background, opacity and blur run under it, so it wears the terminal's color.
 - Every control in the title bar takes its own press on every platform, the window buttons Ely draws on Windows and Linux too.
 - Given a folder on the command line, `elyterminal [FOLDER]`, or after `--working-directory`, `-d` or `--startingDirectory`, the first session starts there; a `wsl` session in a distribution's share starts that distribution there. cmd refuses a share as its folder, says so, and starts in the Windows folder.
+- `elyterminal [-d FOLDER] -e PROGRAM [ARG...]` runs PROGRAM as the first session, without shell integration; its exit closes its pane, the last pane its session, and the last session the window.
+- Quit, closing the window and closing the last session or pane ask first while a pane runs a program past its shell or reports work; Settings › Terminal › Ask before closing running sessions, on by default.
+- Toggle Full Screen: Ctrl-Cmd-F on macOS, F11 elsewhere.
+- On Windows, Settings › Terminal › Default terminal makes ELYTerminal open console programs started without a terminal, through the console delegation interfaces, for the current user; Restore gives the choice back.
 - Off macOS the right column draws at 240 px or more, and a drag takes it no narrower, room for its toggle, the gear and the window's buttons; a window too narrow for both columns still squeezes it, and the toggle leads the gear, so the gear clips first.
 
 
@@ -97,11 +103,12 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 
 - A list of sessions. Each row: title, then the working directory, home as `~`.
 - New session (+ and Cmd-T), close (row's ×, Cmd-W), select (press, Cmd-1…9, Ctrl-Tab and Ctrl-Shift-Tab).
+- Panes: a session splits right or down, each pane its own terminal running the pane's program again in its folder, a handed Windows session's the default shell; Cmd-D and Cmd-Shift-D split, Cmd-] and Cmd-[ step, Cmd-W closes the focused pane and its last closes the session; off macOS Ctrl-Shift-E, Ctrl-Shift-O, Ctrl-Shift-N, Ctrl-Shift-P and Ctrl-Shift-W. The pane holding the keys has the stronger border; the row's mark, the title, Files, Git and Duplicate session follow it.
 - Profiles, as Windows Terminal's: the arrow beside + opens a menu of the user's profiles, each a name, a command line and a folder, kept in Settings › Terminal › Profiles, then the shells this system holds: on Windows pwsh, powershell, cmd, Git Bash and each WSL distribution, elsewhere each shell `/etc/shells` lists. A command line that names a program alone, or wsl with `-d` alone, runs with the shell's integration; any other arguments run as written, and the session reports no folder.
 - A right press on a row opens a menu at the pointer, while Session menu in Settings › Terminal is on: Duplicate session opens a session of the shell that row runs, in the folder it last reported, right after it and shown; Close session closes the row. A shell that reports no folder, as cmd does, duplicates into the folder it started in.
 - A drag on a row moves it to another place in the list, and the session shown stays shown; Drag sessions to reorder in Settings › Terminal turns the drag off.
 - Rename: a double press on a row's title opens a field in its place; Enter keeps the name, Escape drops it. The name shows in the row, the terminal's header and the window's title over the program's own until renamed again; an empty name gives the title back to the program.
-- A session whose program ends closes its row. The last row closing closes the window.
+- A pane whose program ends closes; a session's last pane closing closes its row, and the last row closing closes the window.
 - A bell in a hidden session marks its row.
 - A row shows its session's status: working, with its progress where known; waiting on the user, for a permission, a question or a login; done; error; and a mark when the last command failed. Hover shows each record's program, title and message. A hidden session that starts waiting marks its row until it is shown.
 - The mark is 3 by 3 dots that move: work ripples, or fills by its progress; waiting dips; a settled state draws its shape, then holds still.
@@ -168,7 +175,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 ## 12. Menus and shortcuts
 
-- macOS menu bar: ELYTerminal (Settings, Quit), Shell (New Session, Close Session), Edit (Copy, Paste, Select All, Find), View (Toggle Sessions, Toggle Right Panel, Bigger, Smaller, Reset Size), Window.
+- macOS menu bar: ELYTerminal (Settings, Quit), Shell (New Session, Close Session), Edit (Copy, Paste, Select All, Find, Clear), View (Toggle Sessions, Toggle Right Panel, Bigger, Smaller, Reset Size, Toggle Full Screen), Window.
 - The same shortcuts on Windows and Linux with Ctrl-Shift for terminal-colliding keys. On Windows Ctrl-V pastes too, Ctrl-Insert copies and Shift-Insert pastes, as in Windows Terminal.
 - Every shortcut may be changed, in Settings › Terminal › Shortcuts or in `shortcuts` in the settings; the menu bar shows the keys in force. Tab, Shift-Tab, F6 and Shift-F6 stay Ely's and the program's.
 - Edit › Clear clears the terminal.
@@ -197,4 +204,4 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
 
 ## Deferred
 
-Splits, tabs inside a session, profiles, key rebinding, sixel, session restore, push and pull, quick terminal.
+Tabs inside a session, sixel, session restore, push and pull, quick terminal.
