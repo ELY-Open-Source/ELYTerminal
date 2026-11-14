@@ -198,6 +198,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.right_click_paste_hint",
         "A right press copies the selection, or pastes when nothing is selected.",
     ),
+    ("et.terminal.paste_protection", "Ask before a risky paste"),
+    (
+        "et.terminal.paste_protection_hint",
+        "A paste with line breaks that the program would run at once asks first.",
+    ),
     ("et.terminal.drag_sessions", "Drag sessions to reorder"),
     (
         "et.terminal.drag_sessions_hint",
@@ -364,4 +369,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.clipboard.deny", "Deny"),
     ("et.clipboard.always", "Allow for this session"),
     ("et.clipboard.allow", "Allow"),
+    ("et.paste.title", "Paste {count} lines?"),
+    (
+        "et.paste.detail",
+        "The text holds line breaks, and the program did not ask for a bracketed paste, so a shell may run each line at once.",
+    ),
+    ("et.paste.more", "and {count} more lines"),
+    ("et.paste.cancel", "Cancel"),
+    ("et.paste.go", "Paste"),
 ];

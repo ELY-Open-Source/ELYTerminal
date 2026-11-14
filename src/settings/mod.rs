@@ -6,8 +6,6 @@ mod store;
 pub mod window;
 
 use std::{
-    env,
-    ffi::OsStr,
     ops::RangeInclusive,
     path::{Path, PathBuf},
 };
@@ -192,6 +190,8 @@ pub struct Settings {
     pub copy_on_select: bool,
     /// A right press copies a selection, else pastes, as Windows Terminal does.
     pub right_click_paste: bool,
+    /// A paste a shell would run at once asks first.
+    pub paste_protection: bool,
     /// Ely peeks over the main window's top edge.
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
@@ -278,6 +278,7 @@ impl Default for Settings {
             natural_text_editing: false,
             copy_on_select: false,
             right_click_paste: cfg!(windows),
+            paste_protection: true,
             ely: true,
             ely_left: 140.0,
             check_updates: true,
@@ -428,60 +429,6 @@ pub fn start_folder(folder: &str) -> anyhow::Result<PathBuf> {
     Ok(path.to_path_buf())
 }
 
-/// The program `shell` names, as a session starts it: a file at a full path, or the first in `PATH`'s full folders.
-pub fn program_path(shell: &str) -> anyhow::Result<String> {
-    program_path_in(shell, &env::var_os("PATH").unwrap_or_default())
-}
-
-/// The program `shell` names, in `folders` as `PATH` lists them.
-pub fn program_path_in(shell: &str, folders: &impl AsRef<OsStr>) -> anyhow::Result<String> {
-    find(shell, folders.as_ref(), cfg!(windows))
-}
-
-/// `shell`'s program, or the first one named so in `folders`, listed as `PATH` lists them; with `exe`, as on Windows, a name without an extension means name.exe.
-fn find(shell: &str, folders: &OsStr, exe: bool) -> anyhow::Result<String> {
-    let path = Path::new(shell);
-    // A relative path, or a relative folder, would hang on each session's own folder.
-    let found = if path.is_absolute() {
-        program(path).then(|| path.to_path_buf())
-    } else if path.components().count() == 1 {
-        let name = if exe && !shell.contains('.') {
-            format!("{shell}.exe")
-        } else {
-            shell.to_string()
-        };
-        env::split_paths(folders)
-            .filter(|folder| folder.is_absolute())
-            .map(|folder| folder.join(&name))
-            .find(|file| program(file))
-    } else {
-        None
-    };
-    let found = found.with_context(|| format!("shell is {shell:?}, which names no program"))?;
-    let text = found.to_str().with_context(|| {
-        format!(
-            "shell is {shell:?}, found at {}, which is not UTF-8",
-            found.display()
-        )
-    })?;
-    Ok(text.to_string())
-}
-
-/// Whether `path` is a file the running user may run, as the system answers, ACLs too.
-#[cfg(unix)]
-fn program(path: &Path) -> bool {
-    use std::{ffi::CString, os::unix::ffi::OsStrExt};
-    let Ok(name) = CString::new(path.as_os_str().as_bytes()) else {
-        return false;
-    };
-    path.is_file() && unsafe { libc::access(name.as_ptr(), libc::X_OK) } == 0
-}
-
-#[cfg(not(unix))]
-fn program(path: &Path) -> bool {
-    path.is_file()
-}
-
 fn within<T: PartialOrd + std::fmt::Display>(
     field: &str,
     value: T,
@@ -495,6 +442,12 @@ fn within<T: PartialOrd + std::fmt::Display>(
     );
     Ok(())
 }
+
+mod program;
+
+#[cfg(test)]
+use program::{find, program};
+pub use program::{program_path, program_path_in};
 
 #[cfg(test)]
 mod tests;

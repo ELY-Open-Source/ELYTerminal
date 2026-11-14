@@ -106,6 +106,8 @@ pub struct TerminalView {
     pub(super) notices: Notices,
     /// kitty's clipboard protocol: its write, grants and read asking.
     pub(super) clips: clipboard::Session,
+    /// A paste that waits for the user's word.
+    pub(super) pasting: Option<String>,
     /// The program's title; empty while it names none.
     pub(super) title: String,
     /// It is the session shown.
@@ -181,6 +183,7 @@ impl TerminalView {
             shell: Shell::Busy,
             notices: Notices::default(),
             clips: clipboard::Session::default(),
+            pasting: None,
             title: String::new(),
             front: true,
             active: false,
@@ -489,6 +492,7 @@ impl Render for TerminalView {
                     .map(|found| div().absolute().top_2().right_4().child(found)),
             )
             .children(self.clipboard_prompt(cx))
+            .children(self.paste_prompt(cx))
     }
 }
 

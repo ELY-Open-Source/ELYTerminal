@@ -84,7 +84,7 @@ impl TerminalView {
             return self.paste_event(cx);
         }
         match cx.read_from_clipboard().and_then(|item| item.text()) {
-            Some(text) => self.paste_text(&text, cx),
+            Some(text) => self.guard(text, cx),
             None if cfg!(windows)
                 && self
                     .pty
@@ -107,6 +107,11 @@ impl TerminalView {
             .lock()
             .mode()
             .contains(TermMode::BRACKETED_PASTE);
+        self.paste_as(text, bracketed, cx);
+    }
+
+    /// `text` to the program as a paste, bracketed or not as `bracketed` says.
+    pub(super) fn paste_as(&mut self, text: &str, bracketed: bool, cx: &mut Context<Self>) {
         log::info!(
             "terminal {}: pastes {} characters{}",
             self.pty.pid,

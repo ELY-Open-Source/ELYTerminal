@@ -189,6 +189,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.right_click_paste_hint",
         "右键拷贝选中的文字；没有选中时粘贴。",
     ),
+    ("et.terminal.paste_protection", "危险粘贴前确认"),
+    (
+        "et.terminal.paste_protection_hint",
+        "粘贴含换行、程序会立即执行的文字时先询问。",
+    ),
     ("et.terminal.drag_sessions", "拖动会话以排序"),
     (
         "et.terminal.drag_sessions_hint",
@@ -334,4 +339,12 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.clipboard.deny", "拒绝"),
     ("et.clipboard.always", "本会话内允许"),
     ("et.clipboard.allow", "允许"),
+    ("et.paste.title", "粘贴 {count} 行？"),
+    (
+        "et.paste.detail",
+        "这段文字含有换行，程序没有开启括号粘贴，shell 可能立即逐行执行。",
+    ),
+    ("et.paste.more", "另有 {count} 行"),
+    ("et.paste.cancel", "取消"),
+    ("et.paste.go", "粘贴"),
 ];

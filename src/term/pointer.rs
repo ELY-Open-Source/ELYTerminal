@@ -462,3 +462,5 @@ mod hover_tests;
 mod edge_tests;
 
 mod copy;
+
+mod guard;

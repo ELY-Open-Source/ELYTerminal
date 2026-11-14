@@ -111,6 +111,12 @@ impl SettingsWindow {
             settings.right_click_paste,
             |settings, on| settings.right_click_paste = on,
         );
+        let guard = switch(
+            &this,
+            "paste_protection",
+            settings.paste_protection,
+            |settings, on| settings.paste_protection = on,
+        );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
         let drag = switch(
             &this,
@@ -133,6 +139,11 @@ impl SettingsWindow {
                 SettingsRow::new(word("et.terminal.right_click_paste"))
                     .description(word("et.terminal.right_click_paste_hint"))
                     .control(right),
+            )
+            .row(
+                SettingsRow::new(word("et.terminal.paste_protection"))
+                    .description(word("et.terminal.paste_protection_hint"))
+                    .control(guard),
             )
             .row(
                 SettingsRow::new(word("et.terminal.drag_sessions"))
