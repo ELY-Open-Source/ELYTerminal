@@ -1,5 +1,5 @@
 use std::{
-    path::{MAIN_SEPARATOR, Path, PathBuf},
+    path::{MAIN_SEPARATOR, Path},
     time::Instant,
 };
 
@@ -13,8 +13,8 @@ use ely_gpui_component::{
     theme::{ActiveTheme, ControlSize, IconSize},
 };
 use gpui::{
-    AnyElement, App, Entity, IntoElement, MouseButton, SharedString, Subscription, div, prelude::*,
-    rems,
+    AnyElement, App, Entity, EntityId, IntoElement, MouseButton, SharedString, Subscription, div,
+    prelude::*, rems,
 };
 
 use crate::{
@@ -25,39 +25,46 @@ use crate::{
 
 mod menu;
 pub mod orb;
+mod panes;
+
+pub use panes::{Layout, Pane, Program};
 
 use orb::Look;
 
-/// A program on its own terminal, as the sessions column lists it.
+/// A row of the sessions column: one or more panes, one of them focused.
 pub struct Session {
-    pub terminal: Entity<TerminalView>,
-    /// The program's title; empty while it names none.
-    pub title: String,
+    /// It, whichever pane comes or goes.
+    pub id: EntityId,
+    pub panes: Vec<Pane>,
+    pub layout: Layout,
+    /// The pane that takes the keys, as its place in `panes`.
+    pub focused: usize,
     /// The name the user gave it; empty leaves the title to its program.
     pub name: String,
     /// The field its row shows while the user renames it.
     pub editing: Option<(Entity<TextInput>, Subscription)>,
-    /// The folder it reports, else the one it started in.
-    pub folder: PathBuf,
-    /// The program it runs, as its path; empty for the login shell.
-    pub shell: String,
-    /// The arguments its profile gave the program.
-    pub args: Vec<String>,
-    /// Its shell has integration, or it reported a folder anyway.
-    pub reports: bool,
     /// A bell rang while it was hidden.
     pub bell: bool,
     /// It started waiting on the user while hidden.
     pub waiting: bool,
     /// The look its mark shows, and since when.
     pub look: Option<(Look, Instant)>,
-    pub _events: Subscription,
 }
 
 impl Session {
-    /// What it is called: the user's name, else its program's title, else the app's name.
+    /// The focused pane.
+    pub fn pane(&self) -> &Pane {
+        &self.panes[self.focused]
+    }
+
+    /// The focused pane's terminal.
+    pub fn terminal(&self) -> &Entity<TerminalView> {
+        &self.pane().terminal
+    }
+
+    /// What it is called: the user's name, else its focused program's title, else the app's name.
     pub fn named(&self) -> &str {
-        [self.name.as_str(), self.title.as_str()]
+        [self.name.as_str(), self.pane().title.as_str()]
             .into_iter()
             .find(|title| !title.is_empty())
             .unwrap_or(TITLE)
@@ -65,7 +72,7 @@ impl Session {
 
     /// The look its mark takes from its terminal now.
     pub fn looks(&self, cx: &App) -> Option<Look> {
-        let view = self.terminal.read(cx);
+        let view = self.terminal().read(cx);
         let failed = view.ended().is_some_and(|code| code != 0);
         look(view.records().shown().map(|(_, record)| record), failed)
     }
@@ -125,12 +132,11 @@ pub fn row(
     now: Instant,
     cx: &App,
 ) -> impl IntoElement {
-    let terminal = session.terminal.read(cx);
-    let pid = terminal.pid() as usize;
+    let pid = session.id.as_u64() as usize;
     let (select, close) = (workspace.clone(), workspace.clone());
     let editing = session.editing.is_some();
     let item = ListItem::new(("session", pid), session.named().to_string())
-        .description(shown(&session.folder, home))
+        .description(shown(&session.pane().folder, home))
         .selected(active)
         .strong(session.bell || session.waiting)
         // A press in the field it renames with stays the field's.
@@ -174,8 +180,7 @@ pub fn row(
     if !SettingsStore::get(cx).session_menu {
         return item.into_any_element();
     }
-    let id = session.terminal.entity_id();
-    ContextMenu::new(("session-menu", pid), menu::row(workspace, id, cx))
+    ContextMenu::new(("session-menu", pid), menu::row(workspace, session.id, cx))
         .w_full()
         .child(item)
         .into_any_element()
@@ -187,7 +192,7 @@ fn editor(
     session: &Session,
     input: &Entity<TextInput>,
 ) -> impl IntoElement {
-    let (workspace, id) = (workspace.clone(), session.terminal.entity_id());
+    let (workspace, id) = (workspace.clone(), session.id);
     div()
         // A press selecting text stays the field's: the row would lift it for a drag.
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -227,9 +232,9 @@ fn mark(session: &Session, now: Instant, cx: &App) -> Option<AnyElement> {
         Look::Done => colors.success,
         Look::Idle => colors.fg_muted,
     };
-    let pid = session.terminal.read(cx).pid() as usize;
+    let pid = session.id.as_u64() as usize;
     // Hover reads the records as they stand, so an open one follows them, and scrolls within the window.
-    let watched = session.terminal.downgrade();
+    let watched = session.terminal().downgrade();
     let tip = Tooltip::rich(move |window, cx| {
         let lines = watched.upgrade().map_or_else(Vec::new, |terminal| {
             let view = terminal.read(cx);

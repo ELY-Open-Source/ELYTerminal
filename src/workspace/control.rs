@@ -22,7 +22,8 @@ impl Workspace {
         let terminal = self
             .sessions
             .iter()
-            .map(|session| &session.terminal)
+            .flat_map(|session| &session.panes)
+            .map(|pane| &pane.terminal)
             .find(|terminal| terminal.read(cx).pid() == pid)
             .with_context(|| format!("no session {pid}; `elyterminal ctl sessions` lists them"))?
             .clone();
@@ -46,14 +47,21 @@ impl Workspace {
         }
     }
 
-    /// Each session on a line: its number, * for the one shown, its title and its folder, tabs between.
+    /// Each pane on a line: its number, * for the one shown, its session's name and its folder, tabs between.
     fn listed(&self, cx: &Context<Self>) -> String {
-        let line = |(index, session): (usize, &crate::sessions::Session)| {
-            let shown = if index == self.active { "*" } else { "" };
-            let pid = session.terminal.read(cx).pid();
-            let folder = session.folder.display();
-            format!("{pid}\t{shown}\t{}\t{folder}\n", session.named())
-        };
-        self.sessions.iter().enumerate().map(line).collect()
+        let mut lines = String::new();
+        for (index, session) in self.sessions.iter().enumerate() {
+            for (at, pane) in session.panes.iter().enumerate() {
+                let shown = if index == self.active && at == session.focused {
+                    "*"
+                } else {
+                    ""
+                };
+                let pid = pane.terminal.read(cx).pid();
+                let folder = pane.folder.display();
+                lines += &format!("{pid}\t{shown}\t{}\t{folder}\n", session.named());
+            }
+        }
+        lines
     }
 }

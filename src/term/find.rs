@@ -20,7 +20,7 @@ use gpui::{
 
 use super::{
     input::{FIND, FindNewer},
-    view::TerminalView,
+    view::{TerminalEvent, TerminalView},
 };
 
 /// An open find: its query and options, the matches oldest first, the one stepped to.
@@ -261,7 +261,9 @@ impl TerminalView {
                 let input = cx.subscribe_in(&query, window, |view, _, event, _, cx| match event {
                     InputEvent::Changed => view.search(true, cx),
                     InputEvent::Submit => view.step(false, cx),
-                    InputEvent::Focus | InputEvent::Blur => {}
+                    // It may draw past a narrow pane.
+                    InputEvent::Focus => cx.emit(TerminalEvent::Focused),
+                    InputEvent::Blur => {}
                 });
                 log::debug!("terminal {}: find opens", self.pty.pid);
                 self.finder = Some(Finder {

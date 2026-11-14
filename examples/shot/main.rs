@@ -24,8 +24,14 @@ fn main() {
     };
     let out = args.next().expect("a png path");
     let program = args.next().expect("a program");
+    let args: Vec<String> = args.collect();
+    let written = elyterminal::sessions::Program {
+        shell: program.clone(),
+        args: args.clone(),
+        written: true,
+    };
     let launch = Launch {
-        program: Some((program, args.collect())),
+        program: Some((program, args)),
         cwd: std::env::current_dir().expect("a current folder"),
         env: Vec::new(),
         reports: false,
@@ -36,7 +42,9 @@ fn main() {
         .run(move |cx: &mut gpui::App| {
             ely_gpui_component::init(cx).expect("Ely starts");
             app::start(cx).expect("the app starts");
-            let main: AnyWindowHandle = app::open(launch, cx).expect("the window opens").into();
+            let main: AnyWindowHandle = app::open(launch, written, cx)
+                .expect("the window opens")
+                .into();
             cx.spawn(async move |cx| {
                 let number = |aim: AnyWindowHandle, cx: &mut gpui::AsyncApp| {
                     let number = aim.update(cx, |_, window, _| capture::number(window));

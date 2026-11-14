@@ -36,10 +36,9 @@ impl Workspace {
             .enumerate()
             .map(|(index, session)| {
                 let active = index == self.active;
-                let pid = session.terminal.read(cx).pid();
                 let row =
                     sessions::row(&workspace, index, session, active, home.as_deref(), now, cx);
-                (pid.to_string(), row.into_any_element())
+                (session.id.to_string(), row.into_any_element())
             })
             .collect();
         if drag {

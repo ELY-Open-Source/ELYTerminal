@@ -12,6 +12,7 @@ use gpui::{
 use crate::term::mac;
 use crate::{
     blur, i18n, keymap, menus,
+    sessions::Program,
     settings::{self, Place, SettingsStore},
     term::{ICONS, Launch, MONO, config, shell::ShellIntegration, spawn},
     themes, updates,
@@ -129,8 +130,12 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Opens the main window running `launch`.
-pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspace>> {
+/// Opens the main window running `launch`, started for `program`.
+pub fn open(
+    launch: Launch,
+    program: Program,
+    cx: &mut App,
+) -> anyhow::Result<WindowHandle<Workspace>> {
     let (bounds, display_id) = opening_bounds(cx);
     let background = blur::appearance(SettingsStore::get(cx));
     let least = px(*settings::WINDOW.start());
@@ -160,7 +165,7 @@ pub fn open(launch: Launch, cx: &mut App) -> anyhow::Result<WindowHandle<Workspa
             .detach();
         cx.new(|cx| {
             keep_bounds(window, cx);
-            Workspace::new(pty, events, launch, window, cx)
+            Workspace::new((pty, events, launch), program, window, cx)
         })
     })?;
     crate::pet::follow(window, cx);

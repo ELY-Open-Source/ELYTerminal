@@ -9,7 +9,8 @@ use alacritty_terminal::{
 use ely_gpui_component::theme::ActiveTheme;
 use gpui::{
     AnyElement, AppContext as _, Context, DragMoveEvent, EmptyView, EntityId, InteractiveElement,
-    IntoElement, ParentElement, Pixels, StatefulInteractiveElement, Styled, Window, div, relative,
+    IntoElement, MouseButton, ParentElement, Pixels, StatefulInteractiveElement, Styled, Window,
+    div, relative,
 };
 
 use super::view::TerminalView;
@@ -95,6 +96,11 @@ pub(super) fn bar(span: Span, window: &Window, cx: &Context<TerminalView>) -> Op
         .flex()
         .flex_col()
         .occlude()
+        // It covers the grid, so it gives its terminal the keys.
+        .on_mouse_down(
+            MouseButton::Left,
+            cx.listener(|view, _, window, cx| window.focus(&view.focus, cx)),
+        )
         .on_drag_move(cx.listener(TerminalView::drag_thumb))
         .child(above)
         .child(thumb)

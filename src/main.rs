@@ -5,6 +5,7 @@ use anyhow::Context as _;
 use ely_gpui_component::Assets;
 use elyterminal::{
     app,
+    sessions::Program,
     settings::{self, SettingsStore, StartIn},
     term::shell::{ShellIntegration, Start, command, launch},
 };
@@ -25,12 +26,18 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
     let asked = app::args::parse(std::env::args_os().skip(1))?;
     app::start(cx)?;
     let settings = SettingsStore::get(cx);
-    let launch = if let Some((program, args)) = asked.command {
+    let (launch, program) = if let Some((shell, args)) = asked.command {
         let folder = match asked.folder {
             Some(folder) => folder,
             None => std::env::current_dir().context("app: no current folder for -e")?,
         };
-        command(&program, &args, folder)?
+        let launch = command(&shell, &args, folder)?;
+        let program = Program {
+            shell,
+            args,
+            written: true,
+        };
+        (launch, program)
     } else {
         // No session shows yet, so Session's folder means home.
         let start = match (asked.folder, settings.start_in) {
@@ -38,14 +45,19 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
             (None, StartIn::Folder) => Start::In(settings::start_folder(&settings.start_folder)?),
             (None, StartIn::Home | StartIn::Session) => Start::Home,
         };
-        launch(
+        let launch = launch(
             &settings.shell,
             &[],
             start,
             &cx.global::<ShellIntegration>().0,
-        )?
+        )?;
+        let program = Program {
+            shell: settings.shell.clone(),
+            ..Program::default()
+        };
+        (launch, program)
     };
-    app::open(launch, cx)?;
+    app::open(launch, program, cx)?;
     cx.activate(true);
     Ok(())
 }

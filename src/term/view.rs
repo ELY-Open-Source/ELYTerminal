@@ -64,6 +64,7 @@ pub enum TerminalEvent {
     Exited(ExitStatus),
     /// A Files node's drag landed on it: the node's tree key.
     Dragged(SharedString),
+    Focused,
 }
 
 /// A program on a pseudo-terminal, drawn cell by cell in the theme and font the settings choose.

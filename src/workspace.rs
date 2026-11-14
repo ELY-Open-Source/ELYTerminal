@@ -19,15 +19,16 @@ use crate::{
     files::{Files, Here},
     git::panel::{Acted, GitPanel},
     menus,
-    sessions::{self, Session, orb},
+    sessions::{self, Layout, Program, Session, orb},
     settings::{PanelTab, SettingsStore, window::OpenSettings},
-    term::{Events, Launch, Pty, TerminalView},
+    term::{Events, Launch, Pty},
 };
 
 mod control;
 mod events;
 mod folder;
 mod panel;
+mod panes;
 mod rename;
 mod reorder;
 mod session;
@@ -47,7 +48,11 @@ actions!(
         CloseSession,
         NextSession,
         PreviousSession,
-        LastSession
+        LastSession,
+        SplitRight,
+        SplitDown,
+        NextPane,
+        PreviousPane
     ]
 );
 
@@ -86,18 +91,17 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    /// The window's content with its first session, `pty` started from `launch`.
+    /// The window's content with its first session, `pty` started from `launch` to run `program`.
     pub fn new(
-        pty: Pty,
-        events: Events,
-        launch: Launch,
+        (pty, events, launch): (Pty, Events, Launch),
+        program: Program,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let git = cx.new(|cx| GitPanel::new(launch.cwd.clone(), window, cx));
         // A change the Git panel made shows in Files' marks too.
         let acted = cx.subscribe(&git, |this, _, _: &Acted, cx| {
-            let folder = this.sessions[this.active].folder.clone();
+            let folder = this.sessions[this.active].pane().folder.clone();
             this.files.update(cx, |files, cx| files.show(&folder, cx));
         });
         let files = cx.new(|cx| {
@@ -134,44 +138,31 @@ impl Workspace {
             _acted: acted,
             _here: here,
         };
-        workspace.add(pty, events, launch, Vec::new(), window, cx);
+        workspace.add((pty, events, launch), program, window, cx);
         workspace.select(0, window, cx);
         workspace
     }
 
     fn add(
         &mut self,
-        pty: Pty,
-        events: Events,
-        launch: Launch,
-        args: Vec<String>,
+        started: (Pty, Events, Launch),
+        program: Program,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let terminal = cx.new(|cx| TerminalView::new(pty, events, window, cx));
-        let id = terminal.entity_id();
-        let events = cx.subscribe_in(&terminal, window, move |this, _, event, window, cx| {
-            this.session_event(id, event, window, cx)
-        });
-        let shell = launch
-            .program
-            .as_ref()
-            .map_or_else(String::new, |(program, _)| program.clone());
-        let pid = terminal.read(cx).pid();
-        log::info!("app: session {pid} opens in {}", launch.cwd.display());
+        let pane = self.pane(started, program, window, cx);
+        let id = pane.id();
+        log::info!("app: session {} opens", self.sessions.len() + 1);
         self.sessions.push(Session {
-            terminal,
-            title: String::new(),
+            id,
+            panes: vec![pane],
+            layout: Layout::Pane(id),
+            focused: 0,
             name: String::new(),
             editing: None,
-            folder: launch.cwd,
-            shell,
-            args,
-            reports: launch.reports,
             bell: false,
             waiting: false,
             look: None,
-            _events: events,
         });
     }
 
@@ -208,22 +199,23 @@ impl Workspace {
         if index != self.active
             && let Some(hidden) = self.sessions.get(self.active)
         {
-            hidden.terminal.update(cx, |view, cx| {
-                view.let_go(cx);
-                view.set_front(false, window);
-            });
+            for pane in &hidden.panes {
+                pane.terminal.update(cx, |view, cx| {
+                    view.let_go(cx);
+                    view.set_front(false, window);
+                });
+            }
         }
         let session = &mut self.sessions[index];
         session.bell = false;
         session.waiting = false;
-        session
-            .terminal
-            .update(cx, |view, _| view.set_front(true, window));
-        window.focus(&session.terminal.focus_handle(cx), cx);
-        let folder = session.folder.clone();
-        self.files.update(cx, |files, cx| files.show(&folder, cx));
-        self.git.update(cx, |git, cx| git.show(&folder, cx));
+        for pane in &session.panes {
+            pane.terminal
+                .update(cx, |view, _| view.set_front(true, window));
+        }
+        window.focus(&session.terminal().focus_handle(cx), cx);
         self.active = index;
+        self.show_folder(cx);
         log::debug!("app: session {} shown", index + 1);
         self.retitle(window);
         cx.notify();
@@ -235,11 +227,12 @@ impl Workspace {
             return;
         }
         let session = self.sessions.remove(index);
-        log::info!("app: session {} closes", session.terminal.read(cx).pid());
+        log::info!("app: session {} closes", index + 1);
         // Its textures leave the window's atlas with it.
-        session
-            .terminal
-            .update(cx, |view, _| view.set_front(false, window));
+        for pane in &session.panes {
+            pane.terminal
+                .update(cx, |view, _| view.set_front(false, window));
+        }
         if self.sessions.is_empty() {
             log::info!("app: no session left; the window closes");
             window.remove_window();
@@ -327,7 +320,7 @@ impl Render for Workspace {
         let shown = self
             .sessions
             .get(self.active)
-            .map(|session| session.terminal.clone());
+            .map(|session| panes::draw(&session.layout, session, cx));
         let mut terminal = ShellColumn::new("terminal")
             .title(self.title().to_string())
             .child(
@@ -370,7 +363,7 @@ impl Render for Workspace {
             let quiet = self
                 .sessions
                 .get(self.active)
-                .is_some_and(|session| !session.reports);
+                .is_some_and(|session| !session.pane().reports);
             let caption = || {
                 Caption::new(text(cx, "et.panel.no_folder", &[]))
                     .px_3()
@@ -414,14 +407,25 @@ impl Render for Workspace {
                 this.toggle(|settings| settings.show_panel = !settings.show_panel, cx)
             }))
             .on_action(cx.listener(|this, _: &NewSession, window, cx| this.new_session(window, cx)))
-            .on_action(
-                cx.listener(|this, _: &CloseSession, window, cx| {
-                    this.close(this.active, window, cx)
-                }),
-            )
+            .on_action(cx.listener(|this, _: &CloseSession, window, cx| {
+                let focused = this.sessions[this.active].focused;
+                this.close_pane(this.active, focused, window, cx)
+            }))
             .on_action(cx.listener(|this, _: &NextSession, window, cx| this.step(true, window, cx)))
             .on_action(
                 cx.listener(|this, _: &PreviousSession, window, cx| this.step(false, window, cx)),
+            )
+            .on_action(cx.listener(|this, _: &SplitRight, window, cx| {
+                this.split(gpui::Axis::Horizontal, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SplitDown, window, cx| {
+                this.split(gpui::Axis::Vertical, window, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &NextPane, window, cx| this.step_pane(true, window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &PreviousPane, window, cx| this.step_pane(false, window, cx)),
             )
             .on_action(cx.listener(|this, _: &LastSession, window, cx| {
                 this.select(this.sessions.len().saturating_sub(1), window, cx)
