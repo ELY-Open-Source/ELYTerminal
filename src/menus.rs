@@ -15,7 +15,15 @@ use crate::{
 
 actions!(
     elyterminal,
-    [Quit, Bigger, Smaller, ResetSize, Minimize, Zoom]
+    [
+        Quit,
+        Bigger,
+        Smaller,
+        ResetSize,
+        Minimize,
+        Zoom,
+        ToggleFullScreen
+    ]
 );
 
 /// The PRD's menu bar, in the interface's language.
@@ -62,6 +70,8 @@ pub fn menus(cx: &App) -> Vec<Menu> {
                 MenuItem::action(word("et.menu.bigger"), Bigger),
                 MenuItem::action(word("et.menu.smaller"), Smaller),
                 MenuItem::action(word("et.menu.reset_size"), ResetSize),
+                MenuItem::separator(),
+                MenuItem::action(word("et.menu.full_screen"), ToggleFullScreen),
             ],
         ),
         // macOS lists the open windows here itself.
@@ -87,7 +97,7 @@ pub fn init(cx: &mut App) {
     cx.on_action(|_: &ResetSize, cx| zoom::step(None, cx));
 }
 
-/// Minimize and Zoom, which only a window answers.
+/// Minimize, Zoom and full screen, which only a window answers.
 pub fn window_actions<E: InteractiveElement>(root: E) -> E {
     root.on_action(|_: &Minimize, window, _| {
         log::info!("window: minimized");
@@ -96,5 +106,9 @@ pub fn window_actions<E: InteractiveElement>(root: E) -> E {
     .on_action(|_: &Zoom, window, _| {
         log::info!("window: zoomed");
         window.zoom_window();
+    })
+    .on_action(|_: &ToggleFullScreen, window, _| {
+        log::info!("window: full screen {}", !window.is_fullscreen());
+        window.toggle_fullscreen();
     })
 }

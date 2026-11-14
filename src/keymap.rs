@@ -10,7 +10,7 @@ use gpui::{
 };
 
 use crate::{
-    menus::{self, Bigger, Minimize, Quit, ResetSize, Smaller},
+    menus::{self, Bigger, Minimize, Quit, ResetSize, Smaller, ToggleFullScreen},
     settings::{
         SettingsStore,
         window::{self, CloseSettings, OpenSettings},
@@ -271,6 +271,14 @@ pub fn commands() -> Vec<Command> {
             Box::new(CloseSettings),
         ),
         command(
+            "full_screen",
+            app,
+            "et.keys.full_screen",
+            None,
+            on(&["ctrl-cmd-f"], &["f11"]),
+            Box::new(ToggleFullScreen),
+        ),
+        command(
             "minimize",
             app,
             "et.keys.minimize",
@@ -410,6 +418,20 @@ mod tests {
         names.sort();
         names.dedup();
         assert_eq!(names.len(), commands.len(), "each name once");
+    }
+
+    #[test]
+    fn full_screen_is_ctrl_cmd_f_on_macos_and_f11_elsewhere() {
+        let full = commands()
+            .into_iter()
+            .find(|command| command.name == "full_screen")
+            .expect("full_screen");
+        let own = if cfg!(target_os = "macos") {
+            "ctrl-cmd-f"
+        } else {
+            "f11"
+        };
+        assert_eq!(full.keys(&Shortcuts::new()), [own]);
     }
 
     #[test]
