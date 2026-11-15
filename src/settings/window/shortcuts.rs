@@ -57,8 +57,14 @@ impl SettingsWindow {
         for group in commands.chunk_by(|a, b| a.group == b.group) {
             let rows: Vec<_> = group
                 .iter()
-                .filter(|command| kept(&title(command, cx), &command.keys(shortcuts), &query))
-                .map(|command| self.shortcut(command, shortcuts, cx))
+                .filter(|command| {
+                    kept(
+                        &title(command, cx),
+                        &command.keys(shortcuts, &commands),
+                        &query,
+                    )
+                })
+                .map(|command| self.shortcut(command, shortcuts, &commands, cx))
                 .collect();
             if !rows.is_empty() {
                 let section = SettingsSection::new(text(cx, group[0].group, &[]));
@@ -73,6 +79,7 @@ impl SettingsWindow {
         &self,
         command: &Command,
         shortcuts: &Shortcuts,
+        commands: &[Command],
         cx: &Context<Self>,
     ) -> SettingsRow {
         let this = cx.entity();
@@ -81,7 +88,7 @@ impl SettingsWindow {
             .recording
             .as_ref()
             .is_some_and(|recording| recording.name == name);
-        let keys = command.keys(shortcuts);
+        let keys = command.keys(shortcuts, commands);
         let shown = div().flex().items_center().gap_2();
         let shown = if recording {
             shown.child(text(cx, "et.keys.press", &[]))

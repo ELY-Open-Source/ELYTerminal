@@ -50,11 +50,35 @@ pub struct Command {
 
 impl Command {
     /// Its keys: the settings', else its own.
-    pub fn keys(&self, shortcuts: &Shortcuts) -> Vec<String> {
+    pub fn keys(&self, shortcuts: &Shortcuts, commands: &[Command]) -> Vec<String> {
         match shortcuts.get(&self.name) {
             Some(keys) => keys.clone(),
-            None => self.own.iter().map(|key| key.to_string()).collect(),
+            None => self
+                .own
+                .iter()
+                .filter(|key| self.taker(key, shortcuts, commands).is_none())
+                .map(|key| key.to_string())
+                .collect(),
         }
+    }
+
+    /// The command the user gave `key` to, which this one's own key yields to.
+    fn taker<'a>(
+        &self,
+        key: &str,
+        shortcuts: &Shortcuts,
+        commands: &'a [Command],
+    ) -> Option<&'a Command> {
+        let stroke = |key: &str| Keystroke::parse(key).ok().map(|stroke| stroke.unparse());
+        let own = stroke(key)?;
+        commands.iter().find(|other| {
+            other.name != self.name
+                && self.meets(other)
+                && shortcuts.get(&other.name).is_some_and(|keys| {
+                    keys.iter()
+                        .any(|chosen| stroke(chosen).as_ref() == Some(&own))
+                })
+        })
     }
 
     /// Whether a key of both would run one of them only: they share a window.
@@ -341,7 +365,7 @@ pub fn check(shortcuts: &Shortcuts) -> anyhow::Result<()> {
     }
     let mut held: Vec<(String, &Command)> = Vec::new();
     for command in &commands {
-        for key in command.keys(shortcuts) {
+        for key in command.keys(shortcuts, &commands) {
             let stroke = Keystroke::parse(&key)
                 .with_context(|| format!("shortcuts: {}'s {key:?} is no key", command.name))?;
             // gpui reads any word as a key's name.
@@ -398,13 +422,23 @@ pub fn apply(cx: &mut App) {
     let mut bindings = cx.global::<Base>().0.clone();
     // Ely's focus keys reach the terminal's listeners.
     bindings.extend(FOCUS_KEYS.map(|key| KeyBinding::new(key, NoAction, Some(input::CONTEXT))));
-    for command in commands() {
+    let commands = commands();
+    for command in &commands {
+        for key in &command.own {
+            if let Some(taker) = command.taker(key, &shortcuts, &commands) {
+                log::info!(
+                    "keymap: {}'s own {key} yields to {}, which the settings give it",
+                    command.name,
+                    taker.name
+                );
+            }
+        }
         let context = command.context.map(|context| {
             KeyBindingContextPredicate::parse(context)
                 .expect("a command's context parses")
                 .into()
         });
-        for key in command.keys(&shortcuts) {
+        for key in command.keys(&shortcuts, &commands) {
             let action = command.action.boxed_clone();
             let binding = KeyBinding::load(
                 &key,

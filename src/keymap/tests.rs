@@ -31,7 +31,7 @@ fn full_screen_is_ctrl_cmd_f_on_macos_and_f11_elsewhere() {
     } else {
         "f11"
     };
-    assert_eq!(full.keys(&Shortcuts::new()), [own]);
+    assert_eq!(full.keys(&Shortcuts::new(), &commands()), [own]);
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn a_chosen_key_replaces_a_command_s_own() {
     let commands = commands();
     let keys = |name: &str| {
         let command = commands.iter().find(|command| command.name == name);
-        command.expect("a command").keys(&shortcuts)
+        command.expect("a command").keys(&shortcuts, &commands)
     };
     assert_eq!(keys("new_session"), ["ctrl-alt-n"]);
     assert!(keys("quit").is_empty());
@@ -49,29 +49,57 @@ fn a_chosen_key_replaces_a_command_s_own() {
 }
 
 #[test]
-fn a_key_two_commands_of_one_window_hold_is_refused() {
-    let find = commands()
-        .into_iter()
-        .find(|command| command.name == "find")
-        .expect("find");
-    let taken = find.keys(&Shortcuts::new())[0].clone();
-    let clash = check(&chosen(&[("clear", &[taken.as_str()])])).expect_err("find holds it");
-    assert!(format!("{clash:#}").contains("find"), "{clash:#}");
-    // The same key in another order of modifiers is the same key.
+fn a_key_chosen_twice_in_one_window_is_refused() {
     check(&chosen(&[
         ("clear", &["shift-ctrl-alt-x"]),
         ("copy", &["alt-ctrl-shift-x"]),
     ]))
     .expect_err("one key spelled twice");
     // Settings and the main window never hold focus together.
-    let close = commands()
-        .into_iter()
-        .find(|command| command.name == "close_session")
-        .expect("close_session");
-    let shared = close.keys(&Shortcuts::new())[0].clone();
-    check(&chosen(&[("close_settings", &[shared.as_str()])])).expect("apart");
+    check(&chosen(&[
+        ("close_settings", &["ctrl-alt-q"]),
+        ("clear", &["ctrl-alt-q"]),
+    ]))
+    .expect("apart");
     // An app-wide key meets both.
-    check(&chosen(&[("quit", &[shared.as_str()])])).expect_err("quit runs everywhere");
+    check(&chosen(&[
+        ("quit", &["ctrl-alt-q"]),
+        ("close_settings", &["ctrl-alt-q"]),
+    ]))
+    .expect_err("quit runs everywhere");
+}
+
+#[test]
+fn a_command_s_own_key_yields_to_one_the_settings_give_another() {
+    let commands = commands();
+    let own = |name: &str| {
+        let command = commands.iter().find(|command| command.name == name);
+        command
+            .expect("a command")
+            .keys(&Shortcuts::new(), &commands)[0]
+            .clone()
+    };
+    // A 0.2.4 file may give a key a newer release takes, as F11 or a pane's.
+    let (full, split) = (own("full_screen"), own("split_right"));
+    let shortcuts = chosen(&[("clear", &[full.as_str()]), ("copy", &[split.as_str()])]);
+    check(&shortcuts).expect("the settings' keys win");
+    let keys = |name: &str| {
+        let command = commands.iter().find(|command| command.name == name);
+        command.expect("a command").keys(&shortcuts, &commands)
+    };
+    assert_eq!(keys("clear"), [full]);
+    assert!(keys("full_screen").is_empty(), "{:?}", keys("full_screen"));
+    assert!(!keys("split_right").contains(&split));
+    // Another window's own key stays.
+    let close = own("close_session");
+    let apart = chosen(&[("close_settings", &[close.as_str()])]);
+    let command = commands
+        .iter()
+        .find(|command| command.name == "close_session");
+    assert_eq!(
+        command.expect("close_session").keys(&apart, &commands),
+        [close]
+    );
 }
 
 #[test]
