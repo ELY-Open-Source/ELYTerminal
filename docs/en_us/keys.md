@@ -2,7 +2,7 @@
 
 English / [中文](../zh_cn/keys.md)
 
-Settings › Terminal › Shortcuts lists them all, as this platform binds them, and changes any: Change takes the next key you press for that command, Escape keeps its keys, Backspace leaves it without one, and the arrow beside a changed one brings its own keys back. `shortcuts` in `settings.json` holds the same, a list of keys by command, such as `"shortcuts": {"clear": ["ctrl-alt-l"]}`. Tab, Shift-Tab, F6 and Shift-F6 cannot be taken: they move the focus, and in the terminal they go to the program.
+Settings › Terminal › Shortcuts lists them all, as this platform binds them, and changes any: Change takes the next key you press for that command, Escape keeps its keys, Backspace leaves it without one, and the arrow beside a changed one brings its own keys back. `shortcuts` in `settings.json` holds the same, a list of keys by command, such as `"shortcuts": {"clear": ["ctrl-alt-l"]}`. A key you give one command takes it from another command's own keys. Tab, Shift-Tab, F6 and Shift-F6 cannot be taken: they move the focus, and in the terminal they go to the program.
 
 | | macOS | Windows and Linux |
 |---|---|---|
