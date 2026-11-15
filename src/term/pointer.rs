@@ -243,6 +243,7 @@ impl TerminalView {
         }
         drop(term);
         self.pointer.selecting = true;
+        self.pointer.dragged = event.position;
         cx.notify();
     }
 
@@ -450,6 +451,10 @@ impl TerminalView {
             self.pty.write(arrow.repeat(steps.unsigned_abs() as usize));
         } else {
             self.pty.term.lock().scroll_display(Scroll::Delta(steps));
+            // A selection drag runs on under the scrolled view.
+            if self.pointer.selecting {
+                self.extend();
+            }
             cx.notify();
         }
     }
