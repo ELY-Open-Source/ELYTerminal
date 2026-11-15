@@ -226,7 +226,16 @@ pub fn launch(
             } else {
                 &previous
             };
-            let data = format!("{}:{rest}", dir.display());
+            #[cfg(not(windows))]
+            let ours = dir.display().to_string();
+            // MSYS2's fish reads its folders as its runtime names them.
+            #[cfg(windows)]
+            let ours = {
+                let (ours, cygpath) = posix(Path::new(&path), dir)?;
+                launch.env.push(("ELY_CYGPATH".into(), cygpath));
+                ours
+            };
+            let data = format!("{ours}:{rest}");
             launch.env.push(("XDG_DATA_DIRS".into(), data));
             launch.env.push(("ELY_FISH_XDG_DATA_DIRS".into(), previous));
         }
@@ -383,6 +392,40 @@ fn git_bash(sh: &Path) -> bool {
         })
         .and_then(Path::parent)
         .is_some_and(|root| root.join("usr").join("bin").join("bash.exe").is_file())
+}
+
+/// The integration folder and the `cygpath` beside `fish`, as that runtime names them.
+#[cfg(windows)]
+fn posix(fish: &Path, dir: &Path) -> anyhow::Result<(String, String)> {
+    let cygpath = fish.with_file_name("cygpath.exe");
+    anyhow::ensure!(
+        cygpath.is_file(),
+        "shell integration: no cygpath.exe beside {}, so fish's folders cannot be named",
+        fish.display()
+    );
+    let mut command = std::process::Command::new(&cygpath);
+    command.arg("-u").arg(dir).arg(&cygpath);
+    std::os::windows::process::CommandExt::creation_flags(
+        &mut command,
+        crate::git::CREATE_NO_WINDOW,
+    );
+    let out = command
+        .output()
+        .with_context(|| format!("shell integration: {} did not run", cygpath.display()))?;
+    anyhow::ensure!(
+        out.status.success(),
+        "shell integration: {} failed, {}: {}",
+        cygpath.display(),
+        out.status,
+        String::from_utf8_lossy(&out.stderr).trim()
+    );
+    let text =
+        String::from_utf8(out.stdout).context("shell integration: cygpath wrote no UTF-8")?;
+    let [ours, cygpath] = text.lines().collect::<Vec<_>>()[..] else {
+        anyhow::bail!("shell integration: cygpath named {text:?}, not two paths");
+    };
+    log::info!("shell integration: fish reads {ours}, and {cygpath} names its folders");
+    Ok((ours.to_string(), cygpath.to_string()))
 }
 
 /// Whether `path` lies in the folder Windows puts its App Execution Aliases in.

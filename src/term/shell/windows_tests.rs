@@ -261,6 +261,35 @@ fn git_bash_s_sh_reports_its_folder_as_windows_names_it() {
     std::fs::remove_dir_all(&root).expect("cleanup");
 }
 
+#[test]
+#[ignore = "needs MSYS2's fish, which ELY_MSYS_FISH names"]
+fn msys2_fish_loads_its_script_and_reports_its_folder_as_windows_names_it() {
+    let fish = std::env::var("ELY_MSYS_FISH").expect("ELY_MSYS_FISH names MSYS2's fish.exe");
+    // A space and letters past ASCII, as a user's folder may hold.
+    let name = format!("elyterminal-msys é 中 {}", std::process::id());
+    let root = std::env::temp_dir().join(name);
+    let (dir, start) = (root.join("integration"), root.join("start here"));
+    std::fs::create_dir_all(start.join("in ner")).expect("the folders");
+    install(&dir).expect("the scripts");
+    let launch = launch(&fish, &[], start.clone(), &dir).expect("a launch");
+    let (pty, mut events) =
+        spawn(&launch, (80, 24), (8, 16), config(&Settings::default())).expect("fish starts");
+    let first = next_folder(&mut events);
+    pty.write(&b"cd 'in ner'\r"[..]);
+    let second = next_folder(&mut events);
+    pty.write(&b"mkdir 'a*b'; and cd 'a*b'\r"[..]);
+    let star = next_folder(&mut events);
+    pty.write(&b"exit\r"[..]);
+    exited(&mut events);
+    let real = |path: &std::path::Path| path.canonicalize().expect("a real folder");
+    let inner = start.join("in ner");
+    assert_eq!(real(&first), real(&start));
+    assert_eq!(real(&second), real(&inner));
+    // MSYS keeps a star at U+F02A, the name Windows holds.
+    assert_eq!(real(&star), real(&inner.join("a\u{f02a}b")));
+    std::fs::remove_dir_all(&root).expect("cleanup");
+}
+
 /// The next folder reported, with the events before it.
 fn until_folder(events: &mut Events) -> (std::path::PathBuf, Vec<PtyEvent>) {
     let (deadline, mut seen) = (Instant::now() + Duration::from_secs(30), Vec::new());

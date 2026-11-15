@@ -5,10 +5,26 @@ else
     set -e XDG_DATA_DIRS
 end
 set -e ELY_FISH_XDG_DATA_DIRS
+if set -q ELY_CYGPATH
+    set -g _ely_cygpath $ELY_CYGPATH
+    set -e ELY_CYGPATH
+end
 if status is-interactive
     function _ely_prompt --on-event fish_prompt
         set -l dir $PWD
-        if set -q ELY_WSL
+        if set -q _ely_cygpath
+            # Under MSYS2 the folder goes as Windows names it; cygpath runs once per folder.
+            if test "$PWD" != "$_ely_cyg_pwd"
+                set -g _ely_cyg_pwd $PWD
+                set -g _ely_cyg_dir ($_ely_cygpath -m -- $PWD 2>/dev/null | string collect)
+                if string match -qr '^[A-Za-z]:' -- $_ely_cyg_dir
+                    set _ely_cyg_dir /$_ely_cyg_dir
+                else if not string match -qr '^//' -- $_ely_cyg_dir
+                    set _ely_cyg_dir
+                end
+            end
+            set dir $_ely_cyg_dir
+        else if set -q ELY_WSL
             # Under WSL the folder goes as Windows names it: a drive's, or the distribution's share.
             set dir (wslpath -w $PWD 2>/dev/null | string replace -a '\\' / | string collect)
             if string match -qr '^[A-Za-z]:' -- $dir

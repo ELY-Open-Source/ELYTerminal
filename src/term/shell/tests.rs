@@ -16,6 +16,7 @@ use crate::{
     },
 };
 
+mod msys;
 mod resize;
 mod start;
 
