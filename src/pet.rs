@@ -31,7 +31,7 @@ use self::{
     look::{Act, EASE, Mood, Pose, blend, mood, pose},
     rig::Rig,
 };
-use crate::{settings::SettingsStore, workspace::Workspace};
+use crate::{sessions::orb::Look, settings::SettingsStore, workspace::Workspace};
 
 /// Her head's box, in points, and the room above it her hops take.
 const WIDTH: f32 = 112.0;
@@ -196,14 +196,6 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
         ..Default::default()
     };
     let workspace = main.entity(cx)?;
-    let feeling = |workspace: &Workspace, cx: &App| {
-        mood(
-            workspace
-                .sessions()
-                .iter()
-                .filter_map(|session| session.looks(cx)),
-        )
-    };
     let start = feeling(workspace.read(cx), cx);
     let pet = cx.open_window(options, |window, cx| {
         if skirt > 0.0 {
@@ -251,6 +243,19 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
         "pet: Ely peeks over the main window, {way}, on the pane's {edge} edge, feeling {start:?}"
     );
     Ok(pet)
+}
+
+/// The mood the session shown asks for; calm with none.
+fn feeling(workspace: &Workspace, cx: &App) -> Mood {
+    shown_mood(
+        workspace.sessions().iter().map(|session| session.looks(cx)),
+        workspace.shown(),
+    )
+}
+
+/// The mood of the session at `shown` among the sessions' looks; calm with none.
+fn shown_mood(mut looks: impl Iterator<Item = Option<Look>>, shown: usize) -> Mood {
+    looks.nth(shown).flatten().map_or(Mood::Calm, mood)
 }
 
 /// Keeps her window on `main`'s pane as it moves, comes forward and hides, and gives the edge she first stands on.

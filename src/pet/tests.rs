@@ -3,6 +3,7 @@ use std::time::Duration;
 use gpui::WindowId;
 
 use super::{look::Mark, *};
+use crate::sessions::orb::Look;
 
 /// Her, `mood` since `since`, come long before.
 fn ely(mood: Mood, since: Instant) -> Pet {
@@ -24,6 +25,24 @@ fn ely(mood: Mood, since: Instant) -> Pet {
         glue: None,
         _watch: Vec::new(),
     }
+}
+
+#[test]
+fn she_follows_the_session_shown_and_leaves_the_others_alone() {
+    let looks = |shown| {
+        shown_mood(
+            [Some(Look::Idle), Some(Look::Error), Some(Look::Waiting)].into_iter(),
+            shown,
+        )
+    };
+    assert_eq!(looks(0), Mood::Calm, "the session shown is calm");
+    assert_eq!(looks(1), Mood::Error, "the one shown frets her");
+    assert_eq!(looks(2), Mood::Waiting, "the one shown makes her wait");
+    assert_eq!(
+        shown_mood([None].into_iter(), 0),
+        Mood::Calm,
+        "a session with no mark"
+    );
 }
 
 #[test]

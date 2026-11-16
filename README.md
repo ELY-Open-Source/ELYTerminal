@@ -25,7 +25,7 @@ A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) c
 - Shell integration for zsh, bash, fish and PowerShell, so Files and Git follow the session's folder.
 - A session splits into panes, right or down, each its own terminal.
 - Profiles beside +: your own command lines, and the shells this system holds, WSL distributions and Git Bash among them.
-- Ely peeks over the window's edge and follows the sessions.
+- Ely peeks over the window's edge and follows the session you are in.
 - Every shortcut can be changed, and `elyterminal ctl` lets scripts and agents list, read and type into the running sessions, once Settings turns it on.
 - Images through kitty's graphics protocol, animations too, and the clipboard through kitty's OSC 5522, which asks you before a program reads what it holds, unless you allowed that program for the session or it answers a paste.
 - Background opacity from 0% and blur on macOS, Windows, Wayland and X11, and Mica on Windows 11; a background picture under the terminal or the whole window, sized, placed and tiled as CSS does, with a gradient over it, its own opacity and a mask.
