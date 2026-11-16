@@ -1,18 +1,13 @@
 use super::*;
 
 #[test]
-fn the_most_pressing_mark_sets_her_mood() {
-    assert_eq!(mood([]), Mood::Calm);
-    assert_eq!(mood([Look::Idle, Look::Done]), Mood::Done);
-    assert_eq!(
-        mood([Look::Done, Look::Working(Some(40)), Look::Idle]),
-        Mood::Working
-    );
-    assert_eq!(mood([Look::Working(None), Look::Error]), Mood::Error);
-    assert_eq!(
-        mood([Look::Error, Look::Waiting, Look::Done]),
-        Mood::Waiting
-    );
+fn each_mark_asks_her_mood() {
+    assert_eq!(mood(Look::Idle), Mood::Calm);
+    assert_eq!(mood(Look::Done), Mood::Done);
+    assert_eq!(mood(Look::Working(Some(40))), Mood::Working);
+    assert_eq!(mood(Look::Working(None)), Mood::Working);
+    assert_eq!(mood(Look::Error), Mood::Error);
+    assert_eq!(mood(Look::Waiting), Mood::Waiting);
 }
 
 /// Her pose `held` seconds into `mood`, long after she came, unpressed.

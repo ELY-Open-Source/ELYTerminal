@@ -12,8 +12,8 @@ use self::curves::{
 };
 use crate::sessions::orb::Look;
 
-/// What the sessions ask of her, least pressing first.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// What a mark asks of her.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mood {
     Calm,
     Done,
@@ -22,19 +22,15 @@ pub enum Mood {
     Waiting,
 }
 
-/// The most pressing of the marks' looks; calm with none.
-pub fn mood(looks: impl IntoIterator<Item = Look>) -> Mood {
-    looks
-        .into_iter()
-        .map(|look| match look {
-            Look::Waiting => Mood::Waiting,
-            Look::Error => Mood::Error,
-            Look::Working(_) => Mood::Working,
-            Look::Done => Mood::Done,
-            Look::Idle => Mood::Calm,
-        })
-        .max()
-        .unwrap_or(Mood::Calm)
+/// The mood a mark's look asks for.
+pub fn mood(look: Look) -> Mood {
+    match look {
+        Look::Waiting => Mood::Waiting,
+        Look::Error => Mood::Error,
+        Look::Working(_) => Mood::Working,
+        Look::Done => Mood::Done,
+        Look::Idle => Mood::Calm,
+    }
 }
 
 /// Seconds she cheers a program that finished, and calm lasts, from her mood's start or the last press, before she dozes.

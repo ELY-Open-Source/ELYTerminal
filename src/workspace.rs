@@ -257,6 +257,11 @@ impl Workspace {
         &self.sessions
     }
 
+    /// The session shown, at its place in the sessions' rows.
+    pub fn shown(&self) -> usize {
+        self.active
+    }
+
     /// What the shown session is called.
     fn title(&self) -> &str {
         self.sessions.get(self.active).map_or(TITLE, Session::named)
