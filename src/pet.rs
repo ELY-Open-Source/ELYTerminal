@@ -17,8 +17,9 @@ use std::{cell::RefCell, rc::Rc, time::Instant};
 use gpui::{
     App, AppContext as _, Bounds, ContentMask, Context, DispatchPhase, InteractiveElement,
     IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement, Pixels,
-    Point, Render, Styled, Subscription, Window, WindowBackgroundAppearance, WindowBounds,
-    WindowHandle, WindowKind, WindowOptions, canvas, div, point, popup, px, size,
+    Point, Render, StatefulInteractiveElement as _, Styled, Subscription, Window,
+    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions, canvas, div,
+    point, popup, px, size,
 };
 
 #[cfg(target_os = "macos")]
@@ -28,7 +29,7 @@ use self::windows as platform;
 #[cfg(target_os = "linux")]
 use self::x11 as platform;
 use self::{
-    look::{Act, EASE, Mood, Pose, blend, mood, pose},
+    look::{Act, EASE, LOW, Mood, Pose, blend, mood, pose},
     rig::Rig,
 };
 use crate::{sessions::orb::Look, settings::SettingsStore, workspace::Workspace};
@@ -66,6 +67,9 @@ pub struct Pet {
     /// How far in from the pane's left edge she stands, and a drag under way: the pointer's x where it began and where she stood then.
     at: f32,
     drag: Option<(f32, f32)>,
+    /// The pointer is over her window, and she sinks to her hair while the settings ask and it is not.
+    hovered: bool,
+    low: bool,
     main: WindowHandle<Workspace>,
     /// What keeps her window on the main window's edge, where the platform does not.
     glue: Option<platform::Glue>,
@@ -225,6 +229,8 @@ fn show(main: WindowHandle<Workspace>, cx: &mut App) -> anyhow::Result<WindowHan
                 anchor: wayland.then_some(spot),
                 at: kept,
                 drag: None,
+                hovered: false,
+                low: false,
                 main,
                 glue: None,
                 _watch: vec![feel],
@@ -335,6 +341,9 @@ impl Pet {
             since(self.shown),
             self.petted.map(since),
         );
+        if self.low {
+            pose.lift -= LOW;
+        }
         if pose.act != self.act {
             log::debug!("pet: Ely goes from {:?} to {:?}", self.act, pose.act);
             self.act = pose.act;
@@ -435,6 +444,14 @@ impl Pet {
 
 impl Render for Pet {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Windows' mouse leave sends gpui no exit, so there the window's own hover gates hers.
+        let over = self.hovered && (cfg!(not(windows)) || window.is_window_hovered());
+        let low = SettingsStore::get(cx).ely_low && !over;
+        if low != self.low {
+            log::debug!("pet: Ely peeks {}", if low { "low" } else { "whole" });
+            self.low = low;
+            self.ease(Instant::now());
+        }
         let pose = self.pose(Instant::now());
         // gpui gives a hidden window no frames, so she rests while unseen.
         window.request_animation_frame();
@@ -465,13 +482,18 @@ impl Render for Pet {
                 });
             },
         );
-        div().size_full().child(drawn.size_full()).on_mouse_down(
-            MouseButton::Left,
-            cx.listener(|pet, event: &MouseDownEvent, window, cx| {
-                pet.press(Instant::now());
-                pet.grab(event.position.x, window.scale_factor());
-                cx.notify();
-            }),
-        )
+        div()
+            .id("ely")
+            .size_full()
+            .child(drawn.size_full())
+            .on_hover(cx.listener(|pet, hovered: &bool, _, _| pet.hovered = *hovered))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|pet, event: &MouseDownEvent, window, cx| {
+                    pet.press(Instant::now());
+                    pet.grab(event.position.x, window.scale_factor());
+                    cx.notify();
+                }),
+            )
     }
 }

@@ -41,6 +41,8 @@ const PETTED: f32 = 1.5;
 /// Seconds she takes to rise from behind the edge, from as deep as she is tall.
 const RISE: f32 = 0.6;
 const DEPTH: f32 = 280.0;
+/// Units she sinks while she peeks low: her brows under the edge, at her highest hop too.
+pub const LOW: f32 = 188.0;
 /// Seconds she takes to ease from one act into the next.
 pub const EASE: f32 = 0.3;
 

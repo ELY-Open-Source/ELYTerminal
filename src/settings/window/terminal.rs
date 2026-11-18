@@ -124,6 +124,9 @@ impl SettingsWindow {
             |settings, on| settings.confirm_quit = on,
         );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
+        let low = switch(&this, "ely_low", settings.ely_low, |settings, on| {
+            settings.ely_low = on
+        });
         let drag = switch(
             &this,
             "drag_sessions",
@@ -175,6 +178,11 @@ impl SettingsWindow {
                 SettingsRow::new(word("et.terminal.ely"))
                     .description(word("et.terminal.ely_hint"))
                     .control(ely),
+            )
+            .row(
+                SettingsRow::new(word("et.terminal.ely_low"))
+                    .description(word("et.terminal.ely_low_hint"))
+                    .control(low),
             )
             .row(
                 SettingsRow::new(word("et.terminal.auto_updates"))

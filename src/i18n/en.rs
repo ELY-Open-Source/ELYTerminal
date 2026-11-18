@@ -231,6 +231,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.ely_hint",
         "Peeks over the window, her face as the session shown is",
     ),
+    ("et.terminal.ely_low", "Peek low"),
+    (
+        "et.terminal.ely_low_hint",
+        "Only her hair and ahoge show until the pointer comes over her",
+    ),
     (
         "et.terminal.auto_updates",
         "Check for updates automatically",

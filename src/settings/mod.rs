@@ -198,6 +198,8 @@ pub struct Settings {
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
     pub ely_left: f32,
+    /// Ely shows only her hair and ahoge until the pointer comes over her.
+    pub ely_low: bool,
     /// A check for a newer release at start and once a day.
     pub check_updates: bool,
     /// Whether `elyterminal ctl` may read and type into sessions.
@@ -284,6 +286,7 @@ impl Default for Settings {
             confirm_quit: true,
             ely: true,
             ely_left: 140.0,
+            ely_low: false,
             check_updates: true,
             control: false,
             show_sessions: true,
