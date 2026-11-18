@@ -1,3 +1,4 @@
+mod edges;
 mod glyphs;
 
 use std::{rc::Rc, sync::Arc};
@@ -92,9 +93,7 @@ pub fn grid(
             drop_pictures(stale, window);
             let top = |index: usize| origin + point(px(0.), cell.height * index as f32);
             paint_pictures(&pictures, Layer::Under, origin, cell, window);
-            for (index, row) in frame.rows.iter().enumerate() {
-                paint_grounds(row, top(index), &look, window);
-            }
+            edges::paint(&frame, bounds, origin, &look, window);
             paint_pictures(&pictures, Layer::Between, origin, cell, window);
             for (index, row) in frame.rows.iter().enumerate() {
                 paint_text(row, top(index), &look, window);
@@ -236,16 +235,6 @@ fn grounds(row: &super::frame::Row) -> Vec<(usize, usize, Hsla)> {
         .into_iter()
         .filter_map(|(column, columns, style)| Some((column, columns, style.bg?)))
         .collect()
-}
-
-/// A row's grounds, under every row's text.
-fn paint_grounds(row: &super::frame::Row, top: Point<Pixels>, look: &Look, window: &mut Window) {
-    let cell = look.cell;
-    for (column, columns, bg) in grounds(row) {
-        let corner = top + point(cell.width * column as f32, px(0.));
-        let width = cell.width * columns as f32;
-        window.paint_quad(fill(Bounds::new(corner, size(width, cell.height)), bg));
-    }
 }
 
 /// A row's text and decorations.
