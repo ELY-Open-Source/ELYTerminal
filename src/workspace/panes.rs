@@ -1,14 +1,14 @@
 //! Panes inside the shown session: split, closed, stepped through and drawn.
 
-use ely_gpui_component::theme::ActiveTheme;
+use ely_gpui_component::{layout::SplitPane, theme::ActiveTheme};
 use gpui::{
     AnyElement, App, AppContext, Axis, Context, EntityId, Focusable, IntoElement, ParentElement,
-    Styled, Window, div, prelude::FluentBuilder,
+    SharedString, Styled, WeakEntity, Window, div, prelude::FluentBuilder,
 };
 
 use super::Workspace;
 use crate::{
-    sessions::{Layout, Pane, Program, Session},
+    sessions::{Layout, Pane, Program, Session, Toward},
     term::{Events, Launch, Pty, TerminalView, shell::Start},
 };
 
@@ -171,6 +171,41 @@ impl Workspace {
         cx.notify();
     }
 
+    /// Session `id`'s split whose parts start with panes `key` takes the first's `share`, as a drag on its line leaves it.
+    fn resize_split(
+        &mut self,
+        id: EntityId,
+        key: (EntityId, EntityId),
+        share: f32,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(session) = self.sessions.iter_mut().find(|session| session.id == id) else {
+            return log::error!("app: a split of session {id:?}, which is gone, resized");
+        };
+        if !session.layout.resize(key, share) {
+            return log::error!("app: no split of session {id:?} starts with panes {key:?}");
+        }
+        log::debug!("app: a split of session {id:?} gives its first part {share:.3}");
+        cx.notify();
+    }
+
+    /// The shown pane trades places with its neighbor `toward` that side, the keys going with it.
+    pub(super) fn move_pane(&mut self, toward: Toward, cx: &mut Context<Self>) {
+        let Some(session) = self.sessions.get_mut(self.active) else {
+            return;
+        };
+        let shown = session.pane().id();
+        let Some(other) = session.layout.neighbor(shown, toward) else {
+            return log::debug!("app: no pane lies {toward:?} of the shown one");
+        };
+        session.layout.swap(shown, other);
+        log::info!(
+            "app: session {}'s shown pane moves {toward:?}",
+            self.active + 1
+        );
+        cx.notify();
+    }
+
     /// Files and Git show the shown pane's folder.
     pub(super) fn show_folder(&mut self, cx: &mut Context<Self>) {
         let folder = self.sessions[self.active].pane().folder.clone();
@@ -179,8 +214,14 @@ impl Workspace {
     }
 }
 
-/// The session's panes as its layout splits them; with several, the focused one's border stands out.
-pub(super) fn draw(layout: &Layout, session: &Session, cx: &App) -> AnyElement {
+/// The session's panes as its layout splits them, each split's line dragged by the workspace `this`; with several, the focused one's border stands out.
+pub(super) fn draw(
+    layout: &Layout,
+    session: &Session,
+    this: &WeakEntity<Workspace>,
+    window: &Window,
+    cx: &App,
+) -> AnyElement {
     let colors = &cx.theme().colors;
     let many = session.panes.len() > 1;
     match layout {
@@ -205,16 +246,23 @@ pub(super) fn draw(layout: &Layout, session: &Session, cx: &App) -> AnyElement {
                 .child(pane.terminal.clone())
                 .into_any_element()
         }
-        Layout::Split(axis, first, second) => div()
-            .flex()
-            .size_full()
-            .flex_1()
-            .min_w_0()
-            .min_h_0()
-            .when(*axis == Axis::Horizontal, |split| split.flex_row())
-            .when(*axis == Axis::Vertical, |split| split.flex_col())
-            .child(draw(first, session, cx))
-            .child(draw(second, session, cx))
-            .into_any_element(),
+        Layout::Split(axis, share, first, second) => {
+            let key = (first.order()[0], second.order()[0]);
+            let name = format!("split-{}-{}", key.0.as_u64(), key.1.as_u64());
+            let least = cx.theme().pane_min().to_pixels(window.rem_size());
+            let (weak, id) = (this.clone(), session.id);
+            SplitPane::new(SharedString::from(name), *axis, least)
+                .sizes(&[*share, 1.0 - share])
+                .on_resize(move |shares, _, cx| {
+                    let resized =
+                        weak.update(cx, |this, cx| this.resize_split(id, key, shares[0], cx));
+                    if let Err(error) = resized {
+                        log::error!("app: a split's drag outlived its window: {error:#}");
+                    }
+                })
+                .pane(draw(first, session, this, window, cx))
+                .pane(draw(second, session, this, window, cx))
+                .into_any_element()
+        }
     }
 }

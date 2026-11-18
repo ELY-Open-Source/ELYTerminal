@@ -58,6 +58,11 @@ actions!(
     ]
 );
 
+/// Swaps the shown pane with its neighbor toward a side, as Windows Terminal's `swapPane`.
+#[derive(Clone, Debug, PartialEq, Action)]
+#[action(namespace = elyterminal, no_json)]
+pub struct MovePane(pub crate::sessions::Toward);
+
 /// Shows the session at this place, from 0; past the last one, the key goes on to the program.
 #[derive(Clone, Debug, PartialEq, Action)]
 #[action(namespace = elyterminal, no_json)]
@@ -334,10 +339,9 @@ impl Render for Workspace {
                     window.remove_window();
                 }
             });
-        let shown = self
-            .sessions
-            .get(self.active)
-            .map(|session| panes::draw(&session.layout, session, cx));
+        let weak = cx.entity().downgrade();
+        let shown = (self.sessions.get(self.active))
+            .map(|session| panes::draw(&session.layout, session, &weak, window, cx));
         let mut terminal = ShellColumn::new("terminal")
             .title(self.title().to_string())
             .child(
@@ -443,6 +447,9 @@ impl Render for Workspace {
             )
             .on_action(
                 cx.listener(|this, _: &PreviousPane, window, cx| this.step_pane(false, window, cx)),
+            )
+            .on_action(
+                cx.listener(|this, MovePane(toward): &MovePane, _, cx| this.move_pane(*toward, cx)),
             )
             .on_action(cx.listener(|this, _: &LastSession, window, cx| {
                 this.select(this.sessions.len().saturating_sub(1), window, cx)

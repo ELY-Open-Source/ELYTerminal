@@ -11,13 +11,14 @@ use gpui::{
 
 use crate::{
     menus::{self, Bigger, Minimize, Quit, ResetSize, Smaller, ToggleFullScreen},
+    sessions::Toward,
     settings::{
         SettingsStore,
         window::{self, CloseSettings, OpenSettings},
     },
     term::input::{self, Clear, Find, FindNewer, NextPrompt, PreviousPrompt},
     workspace::{
-        self, CloseSession, LastSession, NewSession, NextPane, NextSession, PreviousPane,
+        self, CloseSession, LastSession, MovePane, NewSession, NextPane, NextSession, PreviousPane,
         PreviousSession, SelectSession, SplitDown, SplitRight, TogglePanel, ToggleSessions,
     },
 };
@@ -220,6 +221,26 @@ pub fn commands() -> Vec<Command> {
             on(&["cmd-["], &["ctrl-shift-p"]),
             Box::new(PreviousPane),
         ),
+    ]);
+    #[rustfmt::skip]
+    let moves = [
+        (Toward::Left, "move_pane_left", "et.keys.move_pane_left", "cmd-alt-left", "ctrl-shift-alt-left"),
+        (Toward::Right, "move_pane_right", "et.keys.move_pane_right", "cmd-alt-right", "ctrl-shift-alt-right"),
+        (Toward::Up, "move_pane_up", "et.keys.move_pane_up", "cmd-alt-up", "ctrl-shift-alt-up"),
+        (Toward::Down, "move_pane_down", "et.keys.move_pane_down", "cmd-alt-down", "ctrl-shift-alt-down"),
+    ];
+    all.extend(moves.map(|(toward, name, label, mac_key, key)| {
+        let keys = on(&[mac_key], &[key]);
+        command(
+            name,
+            sessions,
+            label,
+            main,
+            keys,
+            Box::new(MovePane(toward)),
+        )
+    }));
+    all.extend([
         command("copy", edit, "et.keys.copy", term, copy, Box::new(Copy)),
         command("paste", edit, "et.keys.paste", term, paste, Box::new(Paste)),
         command(
