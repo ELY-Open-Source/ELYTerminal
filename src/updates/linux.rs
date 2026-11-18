@@ -1,4 +1,4 @@
-//! On Linux an AppImage in its file's place, or a tarball's binary in this copy's place.
+//! On Linux an AppImage in its file's place, a tarball's binary in this copy's place, or a package through the system's own tool.
 
 use std::{
     ffi::OsStr,
@@ -42,13 +42,33 @@ pub fn kind() -> anyhow::Result<Kind> {
     })
 }
 
-/// The name of `version`'s file for `kind`.
-pub fn wanted(kind: &Kind, version: &str) -> anyhow::Result<String> {
+/// How `target` was installed: this copy's AppImage, a file named so, a package's binary in `/usr/bin`, else a tarball's.
+fn kind_of(target: &Path) -> anyhow::Result<Kind> {
+    let image = matches!(kind()?, Kind::AppImage(own) if own == target)
+        || target.extension() == Some(OsStr::new("AppImage"));
+    let file = target.to_path_buf();
+    Ok(
+        match (image, target.parent() == Some(Path::new("/usr/bin"))) {
+            (true, _) => Kind::AppImage(file),
+            (false, true) => Kind::Package(file),
+            (false, false) => Kind::Tarball(file),
+        },
+    )
+}
+
+/// The name of `version`'s file for the copy at `target`.
+pub fn wanted(version: &str, target: &Path) -> anyhow::Result<String> {
     let arch = std::env::consts::ARCH;
-    Ok(match kind {
+    Ok(match kind_of(target)? {
         Kind::AppImage(_) => format!("ELYTerminal-{version}-linux-{arch}.AppImage"),
         Kind::Tarball(_) => format!("ELYTerminal-{version}-linux-{arch}.tar.gz"),
-        Kind::Package(exe) => bail!("updates: {} came from a package", exe.display()),
+        Kind::Package(binary) => match package::manager(&binary)? {
+            package::Manager::Deb => {
+                let arch = if arch == "x86_64" { "amd64" } else { "arm64" };
+                format!("elyterminal_{version}_{arch}.deb")
+            }
+            package::Manager::Rpm => format!("elyterminal-{version}-1.{arch}.rpm"),
+        },
     })
 }
 
@@ -56,7 +76,8 @@ pub fn wanted(kind: &Kind, version: &str) -> anyhow::Result<String> {
 pub fn target() -> anyhow::Result<PathBuf> {
     let file = match kind()? {
         Kind::AppImage(file) | Kind::Tarball(file) => file,
-        Kind::Package(exe) => bail!("updates: {} came from a package", exe.display()),
+        // The system's own tool writes it, as root.
+        Kind::Package(binary) => return Ok(binary),
     };
     let folder = file
         .parent()
@@ -68,8 +89,11 @@ pub fn target() -> anyhow::Result<PathBuf> {
     Ok(file)
 }
 
-/// Puts the release in `file`, an AppImage or a tarball, at `target`.
+/// Puts the release in `file`, an AppImage, a tarball or a package, at `target`.
 pub fn place(file: &Path, target: &Path) -> anyhow::Result<()> {
+    if let Kind::Package(binary) = kind_of(target)? {
+        return package::install(file, &binary);
+    }
     let name = file.file_name().and_then(OsStr::to_str).unwrap_or_default();
     let staged = sibling(target, &format!(".elyterminal-new-{}", std::process::id()));
     if name.ends_with(".AppImage") {
@@ -123,6 +147,8 @@ pub fn place(file: &Path, target: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+mod package;
+
 fn sibling(target: &Path, suffix: &str) -> PathBuf {
     let mut name = target.as_os_str().to_os_string();
     name.push(suffix);
@@ -136,14 +162,12 @@ mod tests {
     #[test]
     fn each_install_takes_its_own_file() {
         let arch = std::env::consts::ARCH;
-        let image = Kind::AppImage("/x".into());
         assert_eq!(
-            wanted(&image, "1.2.3").expect("one"),
+            wanted("1.2.3", Path::new("/x.AppImage")).expect("one"),
             format!("ELYTerminal-1.2.3-linux-{arch}.AppImage")
         );
-        let tarball = Kind::Tarball("/x".into());
         assert_eq!(
-            wanted(&tarball, "1.2.3").expect("one"),
+            wanted("1.2.3", Path::new("/home/a/bin/elyterminal")).expect("one"),
             format!("ELYTerminal-1.2.3-linux-{arch}.tar.gz")
         );
     }

@@ -18,7 +18,8 @@ fn main() -> anyhow::Result<()> {
         .parent()
         .context("update: the copy lies in no folder")?
         .join("update-download");
-    let file = updates::install::fetch(&release.assets, tag.trim_start_matches('v'), &folder)?;
+    let name = updates::install::wanted(tag.trim_start_matches('v'), &target)?;
+    let file = updates::install::fetch(&release.assets, &name, &folder)?;
     updates::install::put(&file, &target)?;
     log::info!("update: {} holds {tag}", target.display());
     Ok(())

@@ -22,8 +22,10 @@ pub struct Asset {
     pub digest: Option<String>,
 }
 
-/// The name of `version`'s file this system's copy takes.
-pub fn wanted(version: &str) -> anyhow::Result<String> {
+/// The name of `version`'s file the copy at `target` takes.
+pub fn wanted(version: &str, target: &Path) -> anyhow::Result<String> {
+    #[cfg(not(target_os = "linux"))]
+    let _ = target;
     #[cfg(target_os = "macos")]
     return Ok(format!("ELYTerminal-{version}.dmg"));
     #[cfg(windows)]
@@ -32,21 +34,20 @@ pub fn wanted(version: &str) -> anyhow::Result<String> {
         std::env::consts::ARCH
     ));
     #[cfg(target_os = "linux")]
-    return super::linux::wanted(&super::linux::kind()?, version);
+    return super::linux::wanted(version, target);
 }
 
-/// Downloads `version`'s file among `assets` into `folder` and checks its digest.
-pub fn fetch(assets: &[Asset], version: &str, folder: &Path) -> anyhow::Result<PathBuf> {
-    let name = wanted(version)?;
+/// Downloads the file `name` among `assets` into `folder` and checks its digest.
+pub fn fetch(assets: &[Asset], name: &str, folder: &Path) -> anyhow::Result<PathBuf> {
     let asset = (assets.iter())
         .find(|asset| asset.name == name)
-        .with_context(|| format!("updates: {version} has no {name}"))?;
+        .with_context(|| format!("updates: the release has no {name}"))?;
     let digest = (asset.digest.as_deref())
         .and_then(|digest| digest.strip_prefix("sha256:"))
         .with_context(|| format!("updates: GitHub lists no SHA-256 for {name}"))?;
     std::fs::create_dir_all(folder)
         .with_context(|| format!("updates: cannot create {}", folder.display()))?;
-    let file = folder.join(&name);
+    let file = folder.join(name);
     log::info!(
         "updates: downloading {} to {}",
         asset.browser_download_url,
@@ -101,12 +102,6 @@ fn sha256(file: &Path) -> anyhow::Result<String> {
         .collect())
 }
 
-/// Puts the release in `file` in this copy's place, then removes `file`.
-pub fn place(file: &Path) -> anyhow::Result<()> {
-    put(file, &target()?)?;
-    std::fs::remove_file(file).with_context(|| format!("updates: cannot remove {}", file.display()))
-}
-
 /// This copy's place, refused where it cannot be replaced.
 pub fn target() -> anyhow::Result<PathBuf> {
     #[cfg(target_os = "macos")]
@@ -147,7 +142,13 @@ pub fn update(cx: &mut App) {
     cx.set_global(Updates::Fetching(version.clone()));
     let task = cx.background_executor().spawn({
         let version = version.clone();
-        async move { fetch(&assets, &version, &folder).and_then(|file| place(&file)) }
+        async move {
+            let target = target()?;
+            let file = fetch(&assets, &wanted(&version, &target)?, &folder)?;
+            put(&file, &target)?;
+            std::fs::remove_file(&file)
+                .with_context(|| format!("updates: cannot remove {}", file.display()))
+        }
     });
     cx.spawn(async move |cx| {
         let done = task.await;
@@ -207,18 +208,16 @@ mod tests {
 
     #[test]
     fn a_release_without_this_system_s_file_or_its_digest_is_refused() {
-        let Ok(name) = wanted("9.9.9") else {
-            return;
-        };
+        let name = "ELYTerminal-9.9.9.dmg".to_string();
         let folder = std::env::temp_dir().join("ely-never-written");
-        let error = fetch(&[], "9.9.9", &folder).expect_err("no file");
+        let error = fetch(&[], &name, &folder).expect_err("no file");
         assert!(format!("{error:#}").contains(&name), "{error:#}");
         let bare = Asset {
             name,
             browser_download_url: "https://example.invalid/x".into(),
             digest: None,
         };
-        let error = fetch(&[bare], "9.9.9", &folder).expect_err("no digest");
+        let error = fetch(&[bare], "ELYTerminal-9.9.9.dmg", &folder).expect_err("no digest");
         assert!(format!("{error:#}").contains("no SHA-256"), "{error:#}");
     }
 }
