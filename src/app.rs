@@ -51,6 +51,8 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     SettingsStore::init(cx)?;
     i18n::init(cx);
     crate::interface::init(cx);
+    #[cfg(windows)]
+    updates::windows::sweep();
     updates::start(cx);
     ShellIntegration::init(cx)?;
     settings::window::init(cx);

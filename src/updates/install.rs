@@ -26,7 +26,12 @@ pub struct Asset {
 pub fn wanted(version: &str) -> anyhow::Result<String> {
     #[cfg(target_os = "macos")]
     return Ok(format!("ELYTerminal-{version}.dmg"));
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    return Ok(format!(
+        "ELYTerminal-{version}-windows-{}.zip",
+        std::env::consts::ARCH
+    ));
+    #[cfg(target_os = "linux")]
     bail!("updates: this system's copy takes no file of {version} yet")
 }
 
@@ -106,7 +111,9 @@ pub fn place(file: &Path) -> anyhow::Result<()> {
 pub fn target() -> anyhow::Result<PathBuf> {
     #[cfg(target_os = "macos")]
     return super::macos::bundle();
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    return super::windows::folder();
+    #[cfg(target_os = "linux")]
     bail!("updates: this system installs no update yet")
 }
 
@@ -114,7 +121,9 @@ pub fn target() -> anyhow::Result<PathBuf> {
 pub fn put(file: &Path, target: &Path) -> anyhow::Result<()> {
     #[cfg(target_os = "macos")]
     return super::macos::place(file, target);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    return super::windows::place(file, target);
+    #[cfg(target_os = "linux")]
     bail!(
         "updates: this system installs no update yet: {} at {}",
         file.display(),
@@ -161,9 +170,15 @@ pub fn update(cx: &mut App) {
 }
 
 /// Runs `program` with `args`, its failure naming it with what it wrote.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 pub(super) fn run(program: &str, args: &[&std::ffi::OsStr]) -> anyhow::Result<String> {
-    let output = Command::new(program)
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(
+        &mut command,
+        crate::git::CREATE_NO_WINDOW,
+    );
+    let output = command
         .args(args)
         .stdin(Stdio::null())
         .output()

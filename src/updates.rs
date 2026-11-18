@@ -16,6 +16,8 @@ use crate::{settings::SettingsStore, workspace::TITLE};
 pub mod install;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(windows)]
+pub mod windows;
 
 pub use install::{Asset, update};
 
