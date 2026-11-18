@@ -18,6 +18,8 @@ pub enum Leave {
     Window,
     /// The app quits.
     Quit,
+    /// The app quits and starts again, into an update.
+    Restart,
     /// Session `0` closes, or only its pane `1`; the window goes with its last.
     Close(usize, Option<usize>),
 }
@@ -80,6 +82,10 @@ impl Workspace {
             Leave::Quit => {
                 log::info!("app: quitting");
                 cx.quit();
+            }
+            Leave::Restart => {
+                log::info!("app: restarting");
+                cx.restart();
             }
             Leave::Close(index, Some(pane)) => self.close_pane(index, pane, window, cx),
             Leave::Close(index, None) => self.close(index, window, cx),

@@ -89,21 +89,21 @@ pub fn menus(cx: &App) -> Vec<Menu> {
 pub fn init(cx: &mut App) {
     cx.set_global(zoom::Enlarged::default());
     // A key's Quit comes inside its window's update, which another update of that window would fail.
-    cx.on_action(|_: &Quit, cx| cx.defer(quit));
+    cx.on_action(|_: &Quit, cx| cx.defer(|cx| leave(Leave::Quit, cx)));
     cx.on_action(|_: &Bigger, cx| zoom::step(Some(1.0), cx));
     cx.on_action(|_: &Smaller, cx| zoom::step(Some(-1.0), cx));
     cx.on_action(|_: &ResetSize, cx| zoom::step(None, cx));
 }
 
-/// Quits unless a window asks first.
-fn quit(cx: &mut App) {
-    log::info!("app: quit asked");
+/// Quits, or restarts, unless a window asks first.
+pub fn leave(leave: Leave, cx: &mut App) {
+    log::info!("app: {leave:?} asked");
     for handle in cx.windows() {
         let Some(workspace) = handle.downcast::<Workspace>() else {
             continue;
         };
         let asked = workspace.update(cx, |this, window, cx| {
-            let asked = this.asks(Leave::Quit, cx);
+            let asked = this.asks(leave, cx);
             if asked {
                 window.activate_window();
             }
@@ -119,7 +119,10 @@ fn quit(cx: &mut App) {
             }
         }
     }
-    cx.quit();
+    match leave {
+        Leave::Restart => cx.restart(),
+        _ => cx.quit(),
+    }
 }
 
 /// Minimize, Zoom and full screen, which only a window answers.

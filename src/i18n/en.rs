@@ -288,9 +288,18 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.updates.newer",
         "ELYTerminal {version} is out; this is {current}",
     ),
-    ("et.updates.failed", "The check failed: {why}"),
+    (
+        "et.updates.fetching",
+        "Downloading and installing {version}…",
+    ),
+    (
+        "et.updates.ready",
+        "{version} is installed; restart to run it",
+    ),
+    ("et.updates.failed", "Failed: {why}"),
     ("et.updates.check", "Check now"),
-    ("et.updates.download", "Download"),
+    ("et.updates.update", "Update"),
+    ("et.updates.restart", "Restart"),
     (
         "et.updates.notice",
         "ELYTerminal {version} is out. Press to open its page.",

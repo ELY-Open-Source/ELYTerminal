@@ -238,7 +238,7 @@ fn auto_check(this: &Entity<SettingsWindow>, on: bool) -> Switch {
     })
 }
 
-/// What the last check found, a button that checks now, and one that opens a newer release's page.
+/// What the last check found, a button that checks now, one that installs a newer release, and one that restarts into it.
 fn updates_row(cx: &App) -> SettingsRow {
     let found = cx.global::<Updates>();
     let status = match found {
@@ -250,25 +250,30 @@ fn updates_row(cx: &App) -> SettingsRow {
             "et.updates.newer",
             &[("version", version), ("current", VERSION)],
         ),
+        Updates::Fetching(version) => text(cx, "et.updates.fetching", &[("version", version)]),
+        Updates::Ready(version) => text(cx, "et.updates.ready", &[("version", version)]),
         Updates::Failed(why) => text(cx, "et.updates.failed", &[("why", why)]),
-    };
-    let page = match found {
-        Updates::Newer { page, .. } => Some(page.clone()),
-        _ => None,
     };
     let check = Button::new("check-updates", text(cx, "et.updates.check", &[]))
         .size(ControlSize::Sm)
         .loading(*found == Updates::Checking)
         .on_click(|_, _, cx| updates::check(false, cx));
-    let open = page.map(|page| {
-        Button::new("open-update", text(cx, "et.updates.download", &[]))
-            .primary()
-            .size(ControlSize::Sm)
-            .on_click(move |_, _, cx| {
-                log::info!("updates: Settings opens {page}");
-                cx.open_url(&page);
-            })
-    });
+    let open = match found {
+        Updates::Newer { .. } | Updates::Fetching(_) => Some(
+            Button::new("install-update", text(cx, "et.updates.update", &[]))
+                .primary()
+                .size(ControlSize::Sm)
+                .loading(matches!(found, Updates::Fetching(_)))
+                .on_click(|_, _, cx| updates::update(cx)),
+        ),
+        Updates::Ready(_) => Some(
+            Button::new("restart-update", text(cx, "et.updates.restart", &[]))
+                .primary()
+                .size(ControlSize::Sm)
+                .on_click(|_, _, cx| crate::menus::leave(crate::workspace::Leave::Restart, cx)),
+        ),
+        _ => None,
+    };
     let control = div()
         .flex()
         .items_center()

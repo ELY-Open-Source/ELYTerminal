@@ -1,4 +1,4 @@
-//! Checks for a newer release through curl and GitHub's API: at start and once a day while the settings ask, and whenever Settings asks at once.
+//! Checks for a newer release through curl and GitHub's API: at start and once a day while the settings ask, and whenever Settings asks at once; installs it when asked.
 
 use std::{
     collections::HashMap,
@@ -12,6 +12,12 @@ use gpui::{App, Global, SystemNotification};
 use serde::Deserialize;
 
 use crate::{settings::SettingsStore, workspace::TITLE};
+
+pub mod install;
+#[cfg(target_os = "macos")]
+mod macos;
+
+pub use install::{Asset, update};
 
 /// The latest published release.
 const LATEST: &str = "https://api.github.com/repos/ELY-Open-Source/ELYTerminal/releases/latest";
@@ -28,7 +34,15 @@ pub enum Updates {
     Unchecked,
     Checking,
     Latest,
-    Newer { version: String, page: String },
+    Newer {
+        version: String,
+        page: String,
+        assets: Vec<Asset>,
+    },
+    /// The newer release downloads and installs.
+    Fetching(String),
+    /// It is in this copy's place; a restart runs it.
+    Ready(String),
     Failed(String),
 }
 
@@ -42,9 +56,10 @@ impl Global for Pages {}
 
 /// The fields of a release the check reads.
 #[derive(Debug, Deserialize)]
-struct Release {
-    tag_name: String,
-    html_url: String,
+pub struct Release {
+    pub tag_name: String,
+    pub html_url: String,
+    pub assets: Vec<Asset>,
 }
 
 /// Checks at once and then once a day, each time the settings ask for it.
@@ -65,12 +80,15 @@ pub fn start(cx: &mut App) {
 
 /// Asks for the latest release off the main thread; when `auto`, a newer one posts a notification.
 pub fn check(auto: bool, cx: &mut App) {
-    if *cx.global::<Updates>() == Updates::Checking {
+    if matches!(
+        cx.global::<Updates>(),
+        Updates::Checking | Updates::Fetching(_) | Updates::Ready(_)
+    ) {
         return;
     }
     log::info!("updates: checking for a release newer than {VERSION}");
     cx.set_global(Updates::Checking);
-    let fetched = cx.background_executor().spawn(async { latest() });
+    let fetched = cx.background_executor().spawn(async { release(None) });
     cx.spawn(async move |cx| {
         let found = fetched.await.and_then(newer);
         cx.update(|cx| finish(found, auto, cx));
@@ -79,9 +97,9 @@ pub fn check(auto: bool, cx: &mut App) {
 }
 
 /// Keeps what the check found, and tells of a newer release it found by itself.
-fn finish(found: anyhow::Result<Option<(String, String)>>, auto: bool, cx: &mut App) {
+fn finish(found: anyhow::Result<Option<(String, String, Vec<Asset>)>>, auto: bool, cx: &mut App) {
     let found = match found {
-        Ok(Some((version, page))) => {
+        Ok(Some((version, page, assets))) => {
             log::info!("updates: {version} is out, newer than {VERSION}, at {page}");
             let tag = format!("{TAG}{version}");
             cx.default_global::<Pages>()
@@ -95,7 +113,11 @@ fn finish(found: anyhow::Result<Option<(String, String)>>, auto: bool, cx: &mut 
                     actions: Vec::new(),
                 });
             }
-            Updates::Newer { version, page }
+            Updates::Newer {
+                version,
+                page,
+                assets,
+            }
         }
         Ok(None) => {
             log::info!("updates: {VERSION} is the latest");
@@ -129,8 +151,12 @@ pub fn pressed(tag: &str, cx: &mut App) -> bool {
     true
 }
 
-/// The latest release, which curl fetches from GitHub's API.
-fn latest() -> anyhow::Result<Release> {
+/// The latest release, or the one `tag` names, which curl fetches from GitHub's API.
+pub fn release(tag: Option<&str>) -> anyhow::Result<Release> {
+    let url = match tag {
+        Some(tag) => LATEST.replace("/latest", &format!("/tags/{tag}")),
+        None => LATEST.to_string(),
+    };
     let mut command = Command::new("curl");
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(
@@ -139,7 +165,7 @@ fn latest() -> anyhow::Result<Release> {
     );
     let output = command
         .args(["--fail", "--silent", "--show-error", "--location"])
-        .args(["--max-time", "30", LATEST])
+        .args(["--max-time", "30", &url])
         .stdin(Stdio::null())
         .output()
         .context("updates: curl did not start")?;
@@ -151,11 +177,12 @@ fn latest() -> anyhow::Result<Release> {
     serde_json::from_slice(&output.stdout).context("updates: the latest release does not read")
 }
 
-/// The release's version and page when it is newer than this one.
-fn newer(release: Release) -> anyhow::Result<Option<(String, String)>> {
+/// The release's version, page and files when it is newer than this one.
+fn newer(release: Release) -> anyhow::Result<Option<(String, String, Vec<Asset>)>> {
     let latest = version(&release.tag_name)?;
     let shown = release.tag_name.trim_start_matches('v').to_string();
-    Ok((latest > version(VERSION)?).then_some((shown, release.html_url)))
+    let found = (shown, release.html_url, release.assets);
+    Ok((latest > version(VERSION)?).then_some(found))
 }
 
 /// `tag`'s three numbers, from `v0.1.6` or `0.1.6`.
@@ -186,12 +213,14 @@ mod tests {
         let release = |tag: &str| Release {
             tag_name: tag.into(),
             html_url: format!("https://example.org/{tag}"),
+            assets: Vec::new(),
         };
         let [major, minor, patch] = version(VERSION).expect("this version");
         let later = format!("v{major}.{minor}.{}", patch + 1);
         let found = newer(release(&later)).expect("reads");
         let shown = later.trim_start_matches('v').to_string();
-        assert_eq!(found, Some((shown, format!("https://example.org/{later}"))));
+        let page = format!("https://example.org/{later}");
+        assert_eq!(found, Some((shown, page, Vec::new())));
         assert_eq!(
             newer(release(&format!("v{VERSION}"))).expect("reads"),
             None,
@@ -205,7 +234,7 @@ mod tests {
         assert_eq!(
             newer(release(&format!("v{}.0.0", major + 1)))
                 .expect("reads")
-                .map(|(v, _)| v),
+                .map(|(v, ..)| v),
             Some(format!("{}.0.0", major + 1)),
             "by its numbers, not as text"
         );
