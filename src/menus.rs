@@ -88,28 +88,38 @@ pub fn menus(cx: &App) -> Vec<Menu> {
 /// Answers the app's commands; the keymap sets the menu bar.
 pub fn init(cx: &mut App) {
     cx.set_global(zoom::Enlarged::default());
-    cx.on_action(|_: &Quit, cx| {
-        log::info!("app: quit asked");
-        for handle in cx.windows() {
-            let Some(workspace) = handle.downcast::<Workspace>() else {
-                continue;
-            };
-            let asked = workspace.update(cx, |this, window, cx| {
-                let asked = this.asks(Leave::Quit, cx);
-                if asked {
-                    window.activate_window();
-                }
-                asked
-            });
-            if asked.expect("a listed window updates") {
-                return;
-            }
-        }
-        cx.quit();
-    });
+    // A key's Quit comes inside its window's update, which another update of that window would fail.
+    cx.on_action(|_: &Quit, cx| cx.defer(quit));
     cx.on_action(|_: &Bigger, cx| zoom::step(Some(1.0), cx));
     cx.on_action(|_: &Smaller, cx| zoom::step(Some(-1.0), cx));
     cx.on_action(|_: &ResetSize, cx| zoom::step(None, cx));
+}
+
+/// Quits unless a window asks first.
+fn quit(cx: &mut App) {
+    log::info!("app: quit asked");
+    for handle in cx.windows() {
+        let Some(workspace) = handle.downcast::<Workspace>() else {
+            continue;
+        };
+        let asked = workspace.update(cx, |this, window, cx| {
+            let asked = this.asks(Leave::Quit, cx);
+            if asked {
+                window.activate_window();
+            }
+            asked
+        });
+        match asked {
+            Ok(true) => return,
+            Ok(false) => {}
+            Err(error) => {
+                return log::error!(
+                    "app: quit stops; a window that would ask does not read: {error:#}"
+                );
+            }
+        }
+    }
+    cx.quit();
 }
 
 /// Minimize, Zoom and full screen, which only a window answers.
