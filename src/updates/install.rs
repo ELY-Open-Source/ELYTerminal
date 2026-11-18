@@ -32,7 +32,7 @@ pub fn wanted(version: &str) -> anyhow::Result<String> {
         std::env::consts::ARCH
     ));
     #[cfg(target_os = "linux")]
-    bail!("updates: this system's copy takes no file of {version} yet")
+    return super::linux::wanted(&super::linux::kind()?, version);
 }
 
 /// Downloads `version`'s file among `assets` into `folder` and checks its digest.
@@ -114,7 +114,7 @@ pub fn target() -> anyhow::Result<PathBuf> {
     #[cfg(windows)]
     return super::windows::folder();
     #[cfg(target_os = "linux")]
-    bail!("updates: this system installs no update yet")
+    return super::linux::target();
 }
 
 /// Puts the release in `file` at `target`.
@@ -124,11 +124,7 @@ pub fn put(file: &Path, target: &Path) -> anyhow::Result<()> {
     #[cfg(windows)]
     return super::windows::place(file, target);
     #[cfg(target_os = "linux")]
-    bail!(
-        "updates: this system installs no update yet: {} at {}",
-        file.display(),
-        target.display()
-    )
+    return super::linux::place(file, target);
 }
 
 /// Downloads and installs the newer release the last check found, off the main thread.
@@ -170,7 +166,6 @@ pub fn update(cx: &mut App) {
 }
 
 /// Runs `program` with `args`, its failure naming it with what it wrote.
-#[cfg(any(target_os = "macos", windows))]
 pub(super) fn run(program: &str, args: &[&std::ffi::OsStr]) -> anyhow::Result<String> {
     let mut command = Command::new(program);
     #[cfg(windows)]

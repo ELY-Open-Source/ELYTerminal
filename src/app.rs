@@ -53,6 +53,9 @@ pub fn start(cx: &mut App) -> anyhow::Result<()> {
     crate::interface::init(cx);
     #[cfg(windows)]
     updates::windows::sweep();
+    // An AppImage's mount goes with it, and an update renames over a binary, so a restart's path is taken now.
+    #[cfg(target_os = "linux")]
+    cx.set_restart_path(updates::linux::restart_path()?);
     updates::start(cx);
     ShellIntegration::init(cx)?;
     settings::window::init(cx);
