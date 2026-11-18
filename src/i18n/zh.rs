@@ -215,7 +215,10 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "右键名称可打开或复制；右键“文件”标签可展开新建会话选项",
     ),
     ("et.terminal.ely", "Ely"),
-    ("et.terminal.ely_hint", "她从窗口上方探出头，表情随会话变化"),
+    (
+        "et.terminal.ely_hint",
+        "她从窗口上方探出头，表情随当前会话变化",
+    ),
     ("et.terminal.auto_updates", "自动检查更新"),
     ("et.terminal.auto_updates_hint", "启动时及每天一次"),
     ("et.terminal.control", "命令行控制"),

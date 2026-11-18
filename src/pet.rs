@@ -47,7 +47,7 @@ enum Edge {
 /// The window she shows in, which the settings open and close.
 type Shown = Rc<RefCell<Option<WindowHandle<Pet>>>>;
 
-/// Ely in her window: she moves all the time, her acts follow the sessions' marks, and a press pets her.
+/// Ely in her window: she moves all the time, her acts follow the shown session's mark, and a press pets her.
 pub struct Pet {
     rig: Rc<Rig>,
     mood: Mood,

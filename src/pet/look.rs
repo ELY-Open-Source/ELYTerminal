@@ -1,4 +1,4 @@
-//! What Ely feels from the sessions' marks, and her pose at each moment of it, moving as the films move her.
+//! What Ely feels from the shown session's mark, and her pose at each moment of it, moving as the films move her.
 
 mod curves;
 #[cfg(test)]

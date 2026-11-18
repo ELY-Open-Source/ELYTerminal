@@ -229,7 +229,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.terminal.ely", "Ely"),
     (
         "et.terminal.ely_hint",
-        "Peeks over the window, her face as your sessions are",
+        "Peeks over the window, her face as the session shown is",
     ),
     (
         "et.terminal.auto_updates",
