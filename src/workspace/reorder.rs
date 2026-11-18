@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use ely_gpui_component::{lists::List, motion::Reorder};
-use gpui::{AnyElement, Context, IntoElement, ParentElement, Styled, div};
+use gpui::{AnyElement, Context, IntoElement, ParentElement, SharedString, Styled, div};
 
 use crate::sessions;
 
@@ -21,7 +21,7 @@ pub fn after_move(active: usize, from: usize, to: usize) -> usize {
 }
 
 impl Workspace {
-    /// The sessions' rows; only a drag needs Reorder, and List keeps its own gap.
+    /// The sessions' rows, block by block under each group's header; only a drag needs Reorder, which moves a row inside its block, and List keeps its own gap.
     pub(super) fn session_list(
         &self,
         drag: bool,
@@ -30,31 +30,45 @@ impl Workspace {
     ) -> AnyElement {
         let workspace = cx.entity();
         let home = dirs::home_dir();
-        let rows: Vec<(String, AnyElement)> = self
-            .sessions
-            .iter()
-            .enumerate()
-            .map(|(index, session)| {
-                let active = index == self.active;
-                let row =
-                    sessions::row(&workspace, index, session, active, home.as_deref(), now, cx);
-                (session.id.to_string(), row.into_any_element())
-            })
+        let groups: Vec<(u64, String)> = (self.groups.iter())
+            .map(|group| (group.id, group.name.clone()))
             .collect();
-        if drag {
-            rows.into_iter()
-                .fold(
-                    Reorder::new("session-rows").on_reorder(move |from, to, _, cx| {
-                        workspace.update(cx, |this, cx| this.reorder(from, to, cx))
-                    }),
-                    |list, (key, row)| list.row(key, div().pb_0p5().child(row)),
-                )
-                .into_any_element()
-        } else {
-            List::new()
-                .children(rows.into_iter().map(|(_, row)| row))
-                .into_any_element()
+        let mut list = div().flex().flex_col().w_full();
+        for (group, places) in self.blocks() {
+            if let Some(found) = group.and_then(|id| self.groups.iter().find(|each| each.id == id))
+            {
+                list = list.child(self.header(found, cx));
+            }
+            let start = places.start;
+            let rows: Vec<(String, AnyElement)> = places
+                .map(|index| {
+                    let session = &self.sessions[index];
+                    let at = (index, index == self.active);
+                    let row =
+                        sessions::row(&workspace, at, session, home.as_deref(), now, &groups, cx);
+                    (session.id.to_string(), row.into_any_element())
+                })
+                .collect();
+            let block = if drag {
+                let key = format!("session-rows-{}", group.unwrap_or(0));
+                let workspace = workspace.clone();
+                let reorder =
+                    Reorder::new(SharedString::from(key)).on_reorder(move |from, to, _, cx| {
+                        workspace.update(cx, |this, cx| this.reorder(start + from, start + to, cx))
+                    });
+                rows.into_iter()
+                    .fold(reorder, |list, (key, row)| {
+                        list.row(key, div().pb_0p5().child(row))
+                    })
+                    .into_any_element()
+            } else {
+                List::new()
+                    .children(rows.into_iter().map(|(_, row)| row))
+                    .into_any_element()
+            };
+            list = list.child(block);
         }
+        list.into_any_element()
     }
 
     /// Moves session `from` to place `to`, both inside the list.
@@ -66,7 +80,12 @@ impl Workspace {
 
     /// Moves session `from` to place `to`, as a drag asks.
     pub fn reorder(&mut self, from: usize, to: usize, cx: &mut Context<Self>) {
-        if from == to || from >= self.sessions.len() || to >= self.sessions.len() {
+        let block = self
+            .blocks()
+            .into_iter()
+            .find(|(_, places)| places.contains(&from));
+        let inside = block.is_some_and(|(_, places)| places.contains(&to));
+        if from == to || !inside {
             return;
         }
         log::info!("app: session {} moves to {}", from + 1, to + 1);

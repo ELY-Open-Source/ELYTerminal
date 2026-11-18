@@ -27,6 +27,7 @@ use crate::{
 mod control;
 mod events;
 mod folder;
+mod groups;
 mod leave;
 mod panel;
 mod panes;
@@ -94,6 +95,8 @@ pub struct Workspace {
     folder_actions: bool,
     /// A close that waits for the user's word, and the programs it would end.
     leaving: Option<(Leave, Vec<String>)>,
+    /// The sessions' groups, in the order their rows show.
+    groups: Vec<groups::Group>,
     _settings: Subscription,
     _acted: Subscription,
     _here: Subscription,
@@ -136,6 +139,7 @@ impl Workspace {
             choosing_folder: false,
             folder_actions: false,
             leaving: None,
+            groups: Vec::new(),
             _settings: cx.observe_global_in::<SettingsStore>(window, |this, window, cx| {
                 this.background.follow(window, SettingsStore::get(cx));
                 let settings = SettingsStore::get(cx);
@@ -163,6 +167,8 @@ impl Workspace {
         let pane = self.pane(started, program, window, cx);
         let id = pane.id();
         log::info!("app: session {} opens", self.sessions.len() + 1);
+        // A new session joins the shown one's group.
+        let group = self.sessions.get(self.active).and_then(|shown| shown.group);
         self.sessions.push(Session {
             id,
             panes: vec![pane],
@@ -173,6 +179,7 @@ impl Workspace {
             bell: false,
             waiting: false,
             look: None,
+            group,
         });
     }
 
@@ -250,6 +257,7 @@ impl Workspace {
         }
         let shown = index == self.active;
         self.active = sessions::after_close(self.active, index, self.sessions.len());
+        self.prune_groups(window, cx);
         if shown {
             self.select(self.active, window, cx);
         } else {
