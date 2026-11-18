@@ -9,6 +9,7 @@ use elyterminal::{
     settings::{self, SettingsStore, StartIn},
     term::shell::{ShellIntegration, Start, command, launch},
 };
+use futures::StreamExt as _;
 use gpui::App;
 
 /// A Linux app with no display server fails at start instead of running headless.
@@ -22,7 +23,8 @@ fn application() -> gpui::Application {
     gpui_platform::application()
 }
 
-fn run(cx: &mut App) -> anyhow::Result<()> {
+/// Starts the app; on macOS a folder `dropped` on the icon before it started names the first session's.
+fn run(dropped: &mut Vec<String>, cx: &mut App) -> anyhow::Result<()> {
     #[cfg(windows)]
     if app::args::embedded(std::env::args_os().skip(1)) {
         log::info!("app: COM started this copy for a console session");
@@ -30,7 +32,17 @@ fn run(cx: &mut App) -> anyhow::Result<()> {
         elyterminal::defterm::listen(cx)?;
         return wait_for_handoff(cx);
     }
-    let asked = app::args::parse(std::env::args_os().skip(1))?;
+    let mut asked = app::args::parse(std::env::args_os().skip(1))?;
+    if asked.folder.is_none() && !dropped.is_empty() {
+        let url = dropped.remove(0);
+        match app::dropped_folder(&url) {
+            Ok(folder) => {
+                log::info!("app: starts in {}, dropped on the icon", folder.display());
+                asked.folder = Some(folder);
+            }
+            Err(error) => log::error!("{error:#}"),
+        }
+    }
     app::start(cx)?;
     #[cfg(windows)]
     if let Err(error) = elyterminal::defterm::listen(cx) {
@@ -97,11 +109,35 @@ fn main() {
         env_logger::Env::default().default_filter_or("elyterminal=info,ely_gpui_component=info"),
     )
     .init();
-    application().with_assets(Assets).run(|cx: &mut App| {
+    let application = application().with_assets(Assets);
+    // AppKit hands a folder dropped on the icon over before the app starts, and while it runs.
+    let (send, mut urls) = futures::channel::mpsc::unbounded::<String>();
+    application.on_open_urls(move |dropped| {
+        for url in dropped {
+            if let Err(error) = send.unbounded_send(url) {
+                log::error!("app: a folder dropped on the icon is lost: {error}");
+            }
+        }
+    });
+    application.run(move |cx: &mut App| {
         ely_gpui_component::init(cx).expect("Ely failed to start");
-        if let Err(error) = run(cx) {
+        let mut dropped = Vec::new();
+        while let Ok(url) = urls.try_recv() {
+            dropped.push(url);
+        }
+        if let Err(error) = run(&mut dropped, cx) {
             log::error!("{error:#}");
             std::process::exit(1);
         }
+        cx.spawn(async move |cx| {
+            let later = futures::stream::iter(dropped).chain(urls);
+            futures::pin_mut!(later);
+            while let Some(url) = later.next().await {
+                if let Err(error) = cx.update(|cx| app::dropped(&url, cx)) {
+                    log::error!("{error:#}");
+                }
+            }
+        })
+        .detach();
     });
 }

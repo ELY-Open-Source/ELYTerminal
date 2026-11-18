@@ -49,6 +49,7 @@ pub use pty::{Events, Launch, Listener, Pty, PtyEvent, config, fit, spawn};
 #[cfg(windows)]
 pub use pty::{Raw, adopt};
 pub use status::{Kind, Record, Records, State};
+pub(crate) use tap::folder::file_uri;
 pub use view::{BLINK, TerminalEvent, TerminalView};
 #[cfg(windows)]
 pub use wheel::keep as keep_wheel;

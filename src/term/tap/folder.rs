@@ -32,7 +32,7 @@ fn reported_on(body: &[u8], windows: bool) -> Option<PathBuf> {
 }
 
 /// A `file://` URI's local path; Unix names keep their bytes.
-pub(in crate::term) fn file_uri(body: &[u8]) -> Option<PathBuf> {
+pub(crate) fn file_uri(body: &[u8]) -> Option<PathBuf> {
     path_on(body, cfg!(windows), true)
 }
 
