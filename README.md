@@ -23,7 +23,8 @@ A [release on GitHub](https://github.com/ELY-Open-Source/ELYTerminal/releases) c
 
 - Sessions sit on the left, the terminal in the middle, Git or Files on the right.
 - Shell integration for zsh, bash, fish and PowerShell, so Files and Git follow the session's folder.
-- A session splits into panes, right or down, each its own terminal.
+- A session splits into panes, right or down, each its own terminal; a drag resizes them and a key swaps them.
+- Sessions gather in named groups and open again at the next start.
 - Profiles beside +: your own command lines, and the shells this system holds, WSL distributions and Git Bash among them.
 - Ely peeks over the window's edge and follows the session you are in.
 - Every shortcut can be changed, and `elyterminal ctl` lets scripts and agents list, read and type into the running sessions, once Settings turns it on.
@@ -48,7 +49,7 @@ A file that does not parse, or holds a value out of range, stops the start with 
 
 Settings › Appearance › Language shows the interface in English or 简体中文.
 
-Settings › Terminal checks for a newer release at start and once a day, or at once with Check now; a newer one shows a Download button that opens its page. The check runs `curl`, which macOS and Windows ship.
+Settings › Terminal checks for a newer release at start and once a day, or at once with Check now; a newer one shows Update, which downloads and installs it in the app, its SHA-256 checked, then Restart. The check and the download run `curl`, which macOS and Windows ship.
 
 ## Build
 

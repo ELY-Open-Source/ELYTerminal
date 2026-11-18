@@ -10,6 +10,7 @@ Settings › Terminal › Shortcuts lists them all, as this platform binds them,
 | Close the pane, or the session with its last | Cmd-W | Ctrl-Shift-W |
 | Split right, split down | Cmd-D, Cmd-Shift-D | Ctrl-Shift-E, Ctrl-Shift-O |
 | Next, previous pane | Cmd-], Cmd-[ | Ctrl-Shift-N, Ctrl-Shift-P |
+| Move the pane left, right, up, down | Cmd-Option-arrows | Ctrl-Shift-Alt-arrows |
 | Session 1 to 8, last | Cmd-1 to Cmd-8, Cmd-9 | Alt-1 to Alt-8, Alt-9 |
 | Next, previous session | Ctrl-Tab, Ctrl-Shift-Tab | Ctrl-Tab, Ctrl-Shift-Tab |
 | Sessions column | Cmd-B | Ctrl-Shift-B |
