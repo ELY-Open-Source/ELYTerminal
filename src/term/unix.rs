@@ -63,6 +63,8 @@ pub(super) fn foreground(master: &File) -> io::Result<Option<i32>> {
 mod process;
 #[cfg(all(test, target_os = "linux"))]
 pub(super) use process::installed;
+#[cfg(target_os = "macos")]
+pub(super) use process::parent;
 #[cfg(all(test, target_os = "macos"))]
 pub(super) use process::procargs;
 pub(super) use process::{args, inner, launch, lone, name, owner, path};

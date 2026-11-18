@@ -183,6 +183,17 @@ pub(crate) fn owner(pid: i32) -> io::Result<u32> {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn owner(pid: i32) -> io::Result<u32> {
+    Ok(bsd(pid)?.pbi_uid)
+}
+
+/// The process that started `pid`.
+#[cfg(target_os = "macos")]
+pub(crate) fn parent(pid: i32) -> io::Result<i32> {
+    i32::try_from(bsd(pid)?.pbi_ppid).map_err(io::Error::other)
+}
+
+#[cfg(target_os = "macos")]
+fn bsd(pid: i32) -> io::Result<libc::proc_bsdinfo> {
     let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
     let size = std::mem::size_of::<libc::proc_bsdinfo>() as i32;
     // SAFETY: `info` holds `size` bytes.
@@ -191,7 +202,7 @@ pub(crate) fn owner(pid: i32) -> io::Result<u32> {
     if read != size {
         return Err(io::Error::last_os_error());
     }
-    Ok(info.pbi_uid)
+    Ok(info)
 }
 
 /// The name process `pid` runs, where its executable does not read.

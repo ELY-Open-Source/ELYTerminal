@@ -92,6 +92,9 @@ pub struct Pty {
     notifier: Notifier,
     #[cfg(unix)]
     master: std::fs::File,
+    /// macOS's `login` runs it, whose child is the session's shell.
+    #[cfg(target_os = "macos")]
+    pub(super) login: bool,
     /// A handed session's launcher, which may exit while the console lives on.
     #[cfg(windows)]
     pub(super) launcher: Option<std::os::windows::io::OwnedHandle>,
@@ -178,7 +181,13 @@ pub fn spawn(
         launch.program,
         launch.cwd.display()
     );
-    run(raw, pid, launch.quote, size, cell, config)
+    #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
+    let (mut pty, events) = run(raw, pid, launch.quote, size, cell, config)?;
+    #[cfg(target_os = "macos")]
+    {
+        pty.login = launch.program.is_none();
+    }
+    Ok((pty, events))
 }
 
 /// A session Windows handed over: its program and its folder unknown, home stands for both.
@@ -262,6 +271,8 @@ fn run(
             notifier,
             #[cfg(unix)]
             master,
+            #[cfg(target_os = "macos")]
+            login: false,
             #[cfg(windows)]
             launcher: None,
         },
