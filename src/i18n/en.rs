@@ -211,6 +211,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.confirm_quit_hint",
         "Quitting, closing the window or closing the last session asks first while a session runs a program.",
     ),
+    ("et.terminal.restore", "Restore sessions"),
+    (
+        "et.terminal.restore_hint",
+        "The next start opens the sessions, panes, folders, names and groups left, unless it is given a folder or a program.",
+    ),
     ("et.terminal.drag_sessions", "Drag sessions to reorder"),
     (
         "et.terminal.drag_sessions_hint",

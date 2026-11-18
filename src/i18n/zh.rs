@@ -199,6 +199,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "et.terminal.confirm_quit_hint",
         "会话仍在运行程序时，退出、关闭窗口或关闭最后一个会话先询问。",
     ),
+    ("et.terminal.restore", "恢复会话"),
+    (
+        "et.terminal.restore_hint",
+        "下次启动时打开上次留下的会话、窗格、目录、名称和分组；指定了目录或程序时除外。",
+    ),
     ("et.terminal.drag_sessions", "拖动会话以排序"),
     (
         "et.terminal.drag_sessions_hint",

@@ -26,6 +26,7 @@ use crate::{
 pub mod menu;
 pub mod orb;
 mod panes;
+pub mod saved;
 
 pub use panes::{Layout, Pane, Program, Toward};
 

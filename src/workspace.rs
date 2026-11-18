@@ -33,12 +33,14 @@ mod panel;
 mod panes;
 mod rename;
 mod reorder;
+mod restore;
 mod session;
 mod toggles;
 mod wallpaper;
 mod widths;
 
 pub use leave::Leave;
+pub use restore::Keeps;
 use toggles::column_toggle;
 use widths::{Dragged, Side};
 
@@ -97,6 +99,7 @@ pub struct Workspace {
     leaving: Option<(Leave, Vec<String>)>,
     /// The sessions' groups, in the order their rows show.
     groups: Vec<groups::Group>,
+    kept: restore::Kept,
     _settings: Subscription,
     _acted: Subscription,
     _here: Subscription,
@@ -140,6 +143,7 @@ impl Workspace {
             folder_actions: false,
             leaving: None,
             groups: Vec::new(),
+            kept: restore::Kept::at_quit(cx),
             _settings: cx.observe_global_in::<SettingsStore>(window, |this, window, cx| {
                 this.background.follow(window, SettingsStore::get(cx));
                 let settings = SettingsStore::get(cx);
@@ -252,6 +256,7 @@ impl Workspace {
         }
         if self.sessions.is_empty() {
             log::info!("app: no session left; the window closes");
+            self.flush(cx);
             window.remove_window();
             return;
         }
@@ -301,6 +306,7 @@ impl Render for Workspace {
         self.background.fit(window);
         let now = Instant::now();
         self.tick(now, cx);
+        self.keep(cx);
         let settings = SettingsStore::get(cx).clone();
         let base = cx.theme().colors.bg;
         let workspace = cx.entity();
@@ -344,6 +350,7 @@ impl Render for Workspace {
             .glass()
             .on_close(move |window, cx| {
                 if !this.update(cx, |this, cx| this.asks(Leave::Window, cx)) {
+                    this.update(cx, |this, cx| this.flush(cx));
                     window.remove_window();
                 }
             });

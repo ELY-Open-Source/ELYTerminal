@@ -194,6 +194,8 @@ pub struct Settings {
     pub paste_protection: bool,
     /// Closing a window or quitting asks first while a session runs a program.
     pub confirm_quit: bool,
+    /// The next start opens the sessions this one left.
+    pub restore_sessions: bool,
     /// Ely peeks over the main window's top edge.
     pub ely: bool,
     /// How far in from the pane's left edge she stands, in points, as a drag left her.
@@ -284,6 +286,7 @@ impl Default for Settings {
             right_click_paste: cfg!(windows),
             paste_protection: true,
             confirm_quit: true,
+            restore_sessions: true,
             ely: true,
             ely_left: 140.0,
             ely_low: false,

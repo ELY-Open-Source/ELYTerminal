@@ -81,6 +81,14 @@ pub(super) fn running(pty: &Pty) -> io::Result<Option<String>> {
 }
 
 impl TerminalView {
+    /// Windows handed it over, as the default terminal.
+    pub fn handed(&self) -> bool {
+        #[cfg(windows)]
+        return self.pty.launcher.is_some();
+        #[cfg(not(windows))]
+        false
+    }
+
     /// What closing it would end: a program past its shell, or one that reports work or waits.
     pub fn busy(&self) -> Option<String> {
         match running(&self.pty) {

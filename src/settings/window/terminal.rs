@@ -123,6 +123,12 @@ impl SettingsWindow {
             settings.confirm_quit,
             |settings, on| settings.confirm_quit = on,
         );
+        let restore = switch(
+            &this,
+            "restore_sessions",
+            settings.restore_sessions,
+            |settings, on| settings.restore_sessions = on,
+        );
         let ely = switch(&this, "ely", settings.ely, |settings, on| settings.ely = on);
         let low = switch(&this, "ely_low", settings.ely_low, |settings, on| {
             settings.ely_low = on
@@ -158,6 +164,11 @@ impl SettingsWindow {
                 SettingsRow::new(word("et.terminal.confirm_quit"))
                     .description(word("et.terminal.confirm_quit_hint"))
                     .control(quit),
+            )
+            .row(
+                SettingsRow::new(word("et.terminal.restore"))
+                    .description(word("et.terminal.restore_hint"))
+                    .control(restore),
             )
             .row(
                 SettingsRow::new(word("et.terminal.drag_sessions"))

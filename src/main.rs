@@ -5,9 +5,13 @@ use anyhow::Context as _;
 use ely_gpui_component::Assets;
 use elyterminal::{
     app,
-    sessions::Program,
+    sessions::{
+        Program,
+        saved::{self, Saved},
+    },
     settings::{self, SettingsStore, StartIn},
     term::shell::{ShellIntegration, Start, command, launch},
+    workspace::Keeps,
 };
 use futures::StreamExt as _;
 use gpui::App;
@@ -48,6 +52,42 @@ fn run(dropped: &mut Vec<String>, cx: &mut App) -> anyhow::Result<()> {
     if let Err(error) = elyterminal::defterm::listen(cx) {
         log::error!("{error:#}");
     }
+    // A run given a folder or a program neither opens the sessions left nor keeps its own.
+    let keeps = asked.folder.is_none() && asked.command.is_none();
+    let left = match keeps.then(|| left(cx)).transpose() {
+        Ok(left) => left.flatten(),
+        Err(error) => {
+            log::error!("{error:#}; this run keeps no sessions");
+            cx.set_global(Keeps(false));
+            None
+        }
+    };
+    cx.try_global::<Keeps>()
+        .is_none()
+        .then(|| cx.set_global(Keeps(keeps)));
+    if let Some((saved, first)) = left {
+        match launch(
+            first.0.as_str(),
+            &first.1,
+            Start::In(first.2),
+            &cx.global::<ShellIntegration>().0,
+        ) {
+            Ok(started) => {
+                let program = Program {
+                    shell: first.0,
+                    args: first.1,
+                    written: false,
+                };
+                let main = app::open(started, program, cx)?;
+                main.update(cx, |workspace, window, cx| {
+                    workspace.restore(saved, window, cx)
+                })?;
+                cx.activate(true);
+                return Ok(());
+            }
+            Err(error) => log::error!("sessions: the first pane left does not start: {error:#}"),
+        }
+    }
     let settings = SettingsStore::get(cx);
     let (launch, program) = if let Some((shell, args)) = asked.command {
         let folder = match asked.folder {
@@ -83,6 +123,25 @@ fn run(dropped: &mut Vec<String>, cx: &mut App) -> anyhow::Result<()> {
     app::open(launch, program, cx)?;
     cx.activate(true);
     Ok(())
+}
+
+/// The sessions the last run left, while the settings ask for them, and their first pane's program, arguments and folder.
+#[allow(clippy::type_complexity)]
+fn left(cx: &App) -> anyhow::Result<Option<(Saved, (String, Vec<String>, std::path::PathBuf))>> {
+    // Read whatever the setting says, so a file that does not read is never written over.
+    let Some(saved) = saved::load(&saved::path()?)? else {
+        return Ok(None);
+    };
+    if !SettingsStore::get(cx).restore_sessions {
+        return Ok(None);
+    }
+    let Some(saved) = saved.kept(|folder| folder.is_dir()) else {
+        log::info!("sessions: none left opens");
+        return Ok(None);
+    };
+    let (shell, args, folder) = saved.sessions[0].layout.panes()[0];
+    let first = (shell.to_string(), args.to_vec(), folder.to_path_buf());
+    Ok(Some((saved, first)))
 }
 
 /// A copy COM started that gets no session in 30 seconds stops.
