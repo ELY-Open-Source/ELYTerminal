@@ -126,10 +126,12 @@ fn a_shell_names_a_program_or_none() {
         );
         assert!(shell("/bin/sh").validate().is_ok());
         assert!(shell("/bin").validate().is_err(), "a folder");
-        assert!(
-            shell("/etc/hosts").validate().is_err(),
-            "a file that does not run"
-        );
+        // A file of its own, since a machine's /etc/hosts may carry an execute bit.
+        let plain = std::env::temp_dir().join(format!("ely-plain-{}", std::process::id()));
+        std::fs::write(&plain, "text").expect("a plain file");
+        let refused = shell(plain.to_str().expect("UTF-8")).validate().is_err();
+        std::fs::remove_file(&plain).expect("the file goes");
+        assert!(refused, "a file that does not run");
     }
 }
 

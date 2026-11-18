@@ -42,6 +42,23 @@ fn first_run(pty: &Pty) -> Option<String> {
     None
 }
 
+/// What the terminal runs once it is `want`, within 10 seconds; a job between its fork and exec still bears the shell's name.
+fn runs(pty: &Pty, want: &str) -> Option<String> {
+    let start = Instant::now();
+    let mut seen = None;
+    while start.elapsed() < Duration::from_secs(10) {
+        seen = running(pty).expect("the foreground reads");
+        if seen
+            .as_deref()
+            .is_some_and(|name| name.eq_ignore_ascii_case(want))
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+    seen
+}
+
 #[test]
 fn a_program_the_shell_runs_is_running() {
     #[cfg(unix)]
@@ -51,7 +68,7 @@ fn a_program_the_shell_runs_is_running() {
         launched("cmd.exe", &["/c", "ping -n 20 127.0.0.1 >nul"]),
         "PING.EXE",
     );
-    let name = first_run(&pty).expect("the program runs");
+    let name = runs(&pty, want).expect("the program runs");
     assert!(name.eq_ignore_ascii_case(want), "{name}");
 }
 
@@ -61,7 +78,7 @@ fn a_program_the_terminal_runs_itself_is_running() {
     let (pty, want) = (launched("/bin/sleep", &["20"]), "sleep");
     #[cfg(windows)]
     let (pty, want) = (launched("PING.EXE", &["-n", "20", "127.0.0.1"]), "PING.EXE");
-    let name = first_run(&pty).expect("the program runs");
+    let name = runs(&pty, want).expect("the program runs");
     assert!(name.eq_ignore_ascii_case(want), "{name}");
 }
 
@@ -126,7 +143,7 @@ fn the_login_shell_at_its_prompt_runs_nothing() {
 fn a_program_or_a_shell_inside_the_login_shell_runs() {
     let (pty, dotdir) = login();
     pty.write(&b"sleep 20\n"[..]);
-    assert_eq!(first_run(&pty).as_deref(), Some("sleep"), "a program");
+    assert_eq!(runs(&pty, "sleep").as_deref(), Some("sleep"), "a program");
     let (inner, dotdir2) = login();
     inner.write(&b"/bin/sh\n"[..]);
     let name = first_run(&inner).expect("a shell inside it runs");
