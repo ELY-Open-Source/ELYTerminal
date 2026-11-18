@@ -6,7 +6,7 @@ use anyhow::{Context as _, bail, ensure};
 use ely_gpui_component::forms::{Copy, Paste, SelectAll};
 use gpui::{
     Action, App, DummyKeyboardMapper, Global, KeyBinding, KeyBindingContextPredicate, Keystroke,
-    NoAction,
+    Modifiers, NoAction,
 };
 
 use crate::{
@@ -400,10 +400,19 @@ struct Base(Vec<KeyBinding>);
 
 impl Global for Base {}
 
+/// The modifiers of the last key pressed, read before bindings run, since an action carries no key.
+#[derive(Clone, Copy, Default)]
+pub struct Pressed(pub Modifiers);
+
+impl Global for Pressed {}
+
 /// Keeps Ely's bindings, then binds every command as the settings say.
 pub fn init(cx: &mut App) {
     let base = cx.key_bindings().borrow().bindings().cloned().collect();
     cx.set_global(Base(base));
+    cx.set_global(Pressed::default());
+    cx.intercept_keystrokes(|event, _, cx| cx.set_global(Pressed(event.keystroke.modifiers)))
+        .detach();
     apply(cx);
     let mut bound = SettingsStore::get(cx).shortcuts.clone();
     cx.observe_global::<SettingsStore>(move |cx| {
