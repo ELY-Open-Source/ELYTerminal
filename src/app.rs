@@ -158,16 +158,36 @@ pub fn adopt(handoff: crate::defterm::Handoff, cx: &mut App) -> anyhow::Result<(
         .into_iter()
         .find_map(|window| window.downcast::<Workspace>());
     log::info!("app: a handed session, titled {title:?}, opens");
-    match main {
-        Some(main) => main.update(cx, |workspace, window, cx| {
-            workspace.adopt(started, window, cx);
-            window.activate_window();
-        })?,
-        None => {
-            open_started(started, Program::default(), cx)?;
+    let main = match main {
+        Some(main) => {
+            main.update(cx, |workspace, window, cx| {
+                workspace.adopt(started, window, cx)
+            })?;
+            main
         }
-    }
+        None => open_started(started, Program::default(), cx)?,
+    };
+    main.update(cx, |_, window, _| window.activate_window())?;
     cx.activate(true);
+    // A copy COM started may lack Windows' leave to take the front.
+    cx.spawn(async move |cx| {
+        cx.background_executor().timer(SETTLE).await;
+        let front = main.update(cx, |_, window, _| {
+            let front = window.is_window_active();
+            if !front {
+                window.request_attention();
+            }
+            front
+        });
+        match front {
+            Ok(true) => log::info!("app: a handed session's window is in front"),
+            Ok(false) => {
+                log::warn!("app: Windows kept a handed session's window behind; it flashes")
+            }
+            Err(error) => log::error!("app: a handed session's window went: {error:#}"),
+        }
+    })
+    .detach();
     Ok(())
 }
 

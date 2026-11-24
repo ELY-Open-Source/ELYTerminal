@@ -95,7 +95,7 @@ Ghostty is the bar for what the terminal does, 1.4's kitty graphics, clipboard, 
 - `elyterminal [-d FOLDER] -e PROGRAM [ARG...]` runs PROGRAM as the first session, without shell integration; its exit closes its pane, the last pane its session, and the last session the window.
 - Quit, closing the window and closing the last session or pane ask first while a pane runs a program past its shell or reports work, a shell at its prompt, macOS's login shell among them, asking nothing; Cmd-Q quits without a crash; Settings › Terminal › Ask before closing running sessions, on by default.
 - Toggle Full Screen: Ctrl-Cmd-F on macOS, F11 elsewhere. Full screen draws no title bar; the columns' headers come back as it leaves.
-- On Windows, Settings › Terminal › Default terminal makes ELYTerminal open console programs started without a terminal, through the console delegation interfaces, for the current user; Restore gives the choice back.
+- On Windows, Settings › Terminal › Default terminal makes ELYTerminal open console programs started without a terminal, through the console delegation interfaces, for the current user; the session's window comes to the front, restored if minimized, and flashes where Windows keeps it behind; Restore gives the choice back.
 - Off macOS the right column draws at 240 px or more, and a drag takes it no narrower, room for its toggle, the gear and the window's buttons; a window too narrow for both columns still squeezes it, and the toggle leads the gear, so the gear clips first.
 
 
