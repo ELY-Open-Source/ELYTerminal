@@ -43,6 +43,8 @@ pub struct Row {
     pub runs: Vec<(usize, Style)>,
     /// Cells painted on their own at their column: combining clusters and drawn characters.
     pub alone: Vec<(usize, String, Style)>,
+    /// Its ground stays inside its cells, as Ghostty's `neverExtendBg` says.
+    pub keeps: bool,
 }
 
 /// The cursor where it shows: its cell, shape, and what the cell holds.
@@ -99,6 +101,8 @@ pub fn frame<T: EventListener>(
         let (point, cell) = (indexed.point, indexed.cell);
         let row = (point.line.0 + offset) as usize;
         let mut look = style(cell, ink, content.colors);
+        rows[row].keeps |=
+            look.bg.is_none() || super::prompts::part(cell).is_some() || powerline(cell.c);
         let covers = |contains: &dyn Fn(Point) -> bool| {
             let (line, column) = (point.line, point.column);
             contains(point)
@@ -164,6 +168,11 @@ pub fn frame<T: EventListener>(
         cursor,
         caret,
     }
+}
+
+/// Ghostty's powerline glyphs, whose rows keep their ground.
+fn powerline(c: char) -> bool {
+    matches!(c, '\u{E0B0}'..='\u{E0C8}' | '\u{E0CA}' | '\u{E0CC}'..='\u{E0D2}' | '\u{E0D4}')
 }
 
 fn push(row: &mut Row, shown: char, style: Style) {
@@ -236,6 +245,18 @@ mod tests {
         parser.advance(&mut term, bytes);
         let ink = Ink::new(themes::find("dracula").expect("dracula"), term.colors());
         (frame(&term, &ink, &[], None), ink)
+    }
+
+    #[test]
+    fn a_row_keeps_its_ground_with_a_default_cell_a_powerline_glyph_or_a_prompt() {
+        let full = "\x1b[44m\x1b[2K\x1b[0m\r\n";
+        let part = "\x1b[44mab\x1b[0m\r\n";
+        let arrow = "\x1b[44m\x1b[2K\u{e0b0}\x1b[0m";
+        let (frame, _) = shown(format!("{full}{part}{arrow}").as_bytes());
+        let keeps: Vec<bool> = frame.rows.iter().map(|row| row.keeps).collect();
+        assert_eq!(keeps, [false, true, true]);
+        let (frame, _) = shown(b"\x1b[44m\x1b]8;id=\x7f1;\x7f\x07xxxxxxxxxxxx\x1b]8;;\x07");
+        assert!(frame.rows[0].keeps, "a prompt's row");
     }
 
     #[test]

@@ -20,6 +20,7 @@ fn spans_count_columns_not_bytes() {
         text: "中 ab".into(),
         runs: vec![(4, style), (2, bold)],
         alone: Vec::new(),
+        keeps: false,
     };
     let spans: Vec<_> = spans(&row).into_iter().map(|(at, n, _)| (at, n)).collect();
     assert_eq!(spans, [(0, 2), (2, 2)]);
