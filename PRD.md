@@ -165,7 +165,7 @@ Cmd-, opens it; on Windows and Linux, which have no menu bar, so does a gear in 
   - Restore sessions: a switch, on by default.
   - Check for updates automatically: a switch, on by default, which checks at start and once a day.
   - Updates: what the last check found, and Check now; a newer release brings Update, which downloads this copy's file of it, checks its SHA-256 against GitHub's, and installs it in place: on macOS the app from the disk image, its signature and team checked; on Windows the zip's files, files in use moved aside until the next start; on Linux the AppImage, the tarball's binary, or the DEB or RPM through `apt-get` or `dnf` as root through `pkexec`; then Restart, which asks first while a program runs. One an automatic check finds posts a notification.
-  - Explorer menu (Windows only): adds or removes Open in ELYTerminal on a folder's and a folder background's right-click menu, for the current user, and says which copy it opens.
+  - Explorer menu (Windows only): adds or removes Open in ELYTerminal on a folder's and a folder background's right-click menu, and this copy's folder on the user's PATH, so `elyterminal .` in Explorer's address bar opens a session there, for the current user, and says which copy it opens; the installer's uninstaller takes its folder off PATH.
   - Command line control: a switch, off by default, that opens the door `elyterminal ctl` asks through.
   - Shortcuts: every command with its keys, a search, Change, which takes the next key pressed for that command, and its own keys back; `shortcuts` in the settings holds the chosen keys.
 

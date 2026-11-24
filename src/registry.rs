@@ -68,6 +68,11 @@ pub fn text(key: &str, name: Option<&str>) -> anyhow::Result<Option<OsString>> {
 
 /// Sets `key`'s `name`, or its default, to `value`.
 pub fn set(key: &str, name: Option<&str>, value: &OsStr) -> anyhow::Result<()> {
+    set_kind(key, name, value, REG_SZ)
+}
+
+/// Sets `key`'s `name`, or its default, to `value` of `kind`, `REG_SZ` or `REG_EXPAND_SZ`.
+pub fn set_kind(key: &str, name: Option<&str>, value: &OsStr, kind: u32) -> anyhow::Result<()> {
     let path = wide(key.as_ref());
     let mut handle: HKEY = std::ptr::null_mut();
     // SAFETY: `path` outlives the call; `handle` is written.
@@ -95,7 +100,7 @@ pub fn set(key: &str, name: Option<&str>, value: &OsStr) -> anyhow::Result<()> {
             handle,
             name.as_ref().map_or(std::ptr::null(), |name| name.as_ptr()),
             0,
-            REG_SZ,
+            kind,
             data.as_ptr().cast(),
             (data.len() * 2) as u32,
         );

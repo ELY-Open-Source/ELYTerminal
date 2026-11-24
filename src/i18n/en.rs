@@ -255,11 +255,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.explorer.open", "Open in ELYTerminal"),
     (
         "et.explorer.added",
-        "A folder's right-click menu opens it here; on Windows 11, under Show more options.",
+        "A folder's right-click menu opens it here, on Windows 11 under Show more options, and `elyterminal .` in Explorer's address bar.",
     ),
     (
         "et.explorer.absent",
-        "Adds Open in ELYTerminal to a folder's right-click menu, for you alone.",
+        "Adds Open in ELYTerminal to a folder's right-click menu, and its folder to your PATH, so `elyterminal .` in Explorer's address bar opens there, for you alone.",
     ),
     (
         "et.explorer.other",

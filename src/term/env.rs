@@ -154,7 +154,7 @@ fn dedupe(value: &str, held: Option<&str>) -> String {
 }
 
 /// `value` with each `%NAME%` replaced once from `env`, as `til::env::expand_environment_strings` does; a name `env` lacks stays.
-fn expand(value: &str, env: &Env) -> String {
+pub(crate) fn expand(value: &str, env: &Env) -> String {
     let mut out = String::with_capacity(value.len());
     let mut rest = value;
     while let Some(open) = rest.find('%') {

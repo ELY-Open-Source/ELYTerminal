@@ -240,11 +240,11 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.explorer.open", "在 ELYTerminal 中打开"),
     (
         "et.explorer.added",
-        "文件夹的右键菜单可在此打开；Windows 11 中位于“显示更多选项”下。",
+        "文件夹的右键菜单可在此打开，Windows 11 中位于“显示更多选项”下；在资源管理器地址栏输入 `elyterminal .` 也可打开。",
     ),
     (
         "et.explorer.absent",
-        "为当前用户在文件夹的右键菜单中加入“在 ELYTerminal 中打开”。",
+        "为当前用户在文件夹的右键菜单中加入“在 ELYTerminal 中打开”，并把程序所在文件夹加入 PATH，在资源管理器地址栏输入 `elyterminal .` 即在该文件夹打开。",
     ),
     ("et.explorer.other", "菜单打开的是另一份程序：{command}"),
     ("et.explorer.add", "添加"),

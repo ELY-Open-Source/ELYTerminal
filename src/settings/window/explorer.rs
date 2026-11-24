@@ -2,7 +2,7 @@ use ely_gpui_component::{buttons::Button, i18n::text, settings::SettingsRow, the
 use gpui::{App, Entity, SharedString};
 
 use super::SettingsWindow;
-use crate::explorer::{self, CLASSES, Entry};
+use crate::explorer::{self, Entry, KEYS};
 
 /// What Explorer's menu opens, and a button to change it.
 pub(super) fn row(this: &Entity<SettingsWindow>, cx: &App) -> SettingsRow {
@@ -14,7 +14,7 @@ pub(super) fn row(this: &Entity<SettingsWindow>, cx: &App) -> SettingsRow {
             return title.description(format!("explorer: no path to this program: {error}"));
         }
     };
-    let entry = match explorer::read(CLASSES, &exe) {
+    let entry = match explorer::read(&KEYS, &exe) {
         Ok(entry) => entry,
         Err(error) => return title.description(format!("{error:#}")),
     };
@@ -33,9 +33,9 @@ pub(super) fn row(this: &Entity<SettingsWindow>, cx: &App) -> SettingsRow {
         .size(ControlSize::Sm)
         .on_click(move |_, _, cx| {
             let done = if add {
-                explorer::add(CLASSES, &exe, &label)
+                explorer::add(&KEYS, &exe, &label)
             } else {
-                explorer::remove(CLASSES)
+                explorer::remove(&KEYS, &exe)
             };
             this.update(cx, |window, cx| {
                 window.failed = done.err().map(|error| {

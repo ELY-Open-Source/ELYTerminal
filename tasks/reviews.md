@@ -204,3 +204,8 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T232
 
 - Round 1, working tree before its commit: PASS. No findings.
+
+## T233
+
+- Round 1, working tree: FAIL. The uninstaller put `$INSTDIR` inside a single-quoted PowerShell string, so a folder with `'` broke it; PATH entries compared as written, so `%LOCALAPPDATA%\Programs\ELYTerminal` was not this copy's; Add trimmed trailing empty entries. The folder now reaches PowerShell through `ELY_FOLDER`, entries compare expanded through `term::env::expand` over `fresh()`, and Add appends without trimming.
+- Round 2: PASS.

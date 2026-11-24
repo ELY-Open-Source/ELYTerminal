@@ -2,6 +2,7 @@
 Unicode true
 ManifestDPIAware true
 !include "MUI2.nsh"
+!include "WinMessages.nsh"
 
 !ifndef VERSION
   !error "pass /DVERSION"
@@ -123,6 +124,17 @@ Section "Uninstall"
   ; Explorer's entries go when they name this copy; the settings stay.
   !insertmacro ElyMenu "${CLASSES}\shell\ELYTerminal"
   !insertmacro ElyMenu "${CLASSES}\Background\shell\ELYTerminal"
+  ; Explorer menu's PATH entry goes, the folder passed by the environment so no quote reaches PowerShell's parser.
+  System::Call 'kernel32::SetEnvironmentVariable(t "ELY_FOLDER", t "$INSTDIR")i.r0'
+  StrCmp $0 0 0 +3
+    MessageBox MB_ICONSTOP "$(Unremoved) PATH" /SD IDOK
+    Abort
+  nsExec::ExecToLog `powershell -NoProfile -ExecutionPolicy Bypass -Command "$$d = $$env:ELY_FOLDER.TrimEnd('\'); $$k = Get-Item 'HKCU:\Environment'; $$p = $$k.GetValue('Path', '', 'DoNotExpandEnvironmentNames'); if ($$p) { $$n = ($$p -split ';' | Where-Object { [Environment]::ExpandEnvironmentVariables($$_).Trim().TrimEnd('\') -ne $$d }) -join ';'; if ($$n -ne $$p) { Set-ItemProperty 'HKCU:\Environment' -Name Path -Value $$n -Type ($$k.GetValueKind('Path')) } }; exit [int]!$$?"`
+  Pop $0
+  StrCmp $0 0 +3
+    MessageBox MB_ICONSTOP "$(Unremoved) PATH" /SD IDOK
+    Abort
+  SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
   ; The default terminal goes when it is this copy, as Settings' Restore takes it.
   ; A 32-bit installer sees COM's classes through WOW64 unless told.
   SetRegView 64
