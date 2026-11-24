@@ -22,7 +22,8 @@ impl Profile {
         anyhow::ensure!(!self.name.trim().is_empty(), "a profile has no name");
         let name = &self.name;
         let words = words(&self.command).with_context(|| format!("profile {name}"))?;
-        program_path(&words[0]).with_context(|| format!("profile {name}"))?;
+        let program = program_path(&words[0]).with_context(|| format!("profile {name}"))?;
+        super::program::console(&program).with_context(|| format!("profile {name}"))?;
         if !self.folder.is_empty() {
             start_folder(&self.folder).with_context(|| format!("profile {name}"))?;
         }

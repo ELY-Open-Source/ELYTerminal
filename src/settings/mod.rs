@@ -387,7 +387,7 @@ impl Settings {
             "font_fallbacks holds an empty family"
         );
         if !self.shell.is_empty() {
-            program_path(&self.shell)?;
+            program::console(&program_path(&self.shell)?).context("shell")?;
         }
         if !self.start_folder.is_empty() {
             start_folder(&self.start_folder)?;
