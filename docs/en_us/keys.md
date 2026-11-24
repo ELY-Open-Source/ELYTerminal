@@ -20,7 +20,7 @@ Settings › Terminal › Shortcuts lists them all, as this platform binds them,
 | Select all | Cmd-A | Ctrl-Shift-A |
 | Find | Cmd-F | Ctrl-Shift-F |
 | Clear the history and the screen above the prompt | Cmd-K | Ctrl-Shift-K; on Windows the history alone |
-| Bigger, smaller, reset size | Cmd-=, Cmd-minus, Cmd-0 | Ctrl-=, Ctrl-minus, Ctrl-0 |
+| Bigger, smaller, reset size | Cmd-=, Cmd-minus, Cmd-0; Ctrl with the wheel | Ctrl-=, Ctrl-minus, Ctrl-0; Ctrl with the wheel |
 | Open a link, underlined while the pointer is over it | Cmd-press | Ctrl-press |
 | Full screen | Ctrl-Cmd-F | F11 |
 | Settings | Cmd-, | Ctrl-, |

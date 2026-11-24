@@ -87,3 +87,12 @@ The zip holds only `elyterminal.exe`, `LICENSE-conpty`, and Microsoft's signed
 `conpty.dll` and `OpenConsole.exe` from NuGet's
 `Microsoft.Windows.Console.ConPTY`, and `OpenConsoleProxy.dll` from Windows
 Terminal 1.25.3131.0's MIT zips.
+
+# A start that fails
+
+A start that fails, a settings file it cannot read among them, shows the error
+in a dialog and quits when you answer it. A settings file a newer version wrote
+stops an older one, and the dialog names the field the older one does not know.
+To go back, remove that field from `settings.json`, or move the file away to
+start from the defaults. The file lies in `~/Library/Application Support/ELYTerminal`
+on macOS, `%APPDATA%\ELYTerminal` on Windows and `$XDG_CONFIG_HOME/ELYTerminal` on Linux, `~/.config/ELYTerminal` while that is unset.

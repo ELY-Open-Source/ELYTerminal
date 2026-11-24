@@ -20,7 +20,7 @@
 | 全选 | Cmd-A | Ctrl-Shift-A |
 | 查找 | Cmd-F | Ctrl-Shift-F |
 | 清空历史和提示符以上的屏幕 | Cmd-K | Ctrl-Shift-K；在 Windows 上只清空历史 |
-| 放大、缩小、重置大小 | Cmd-=、Cmd-minus、Cmd-0 | Ctrl-=、Ctrl-minus、Ctrl-0 |
+| 放大、缩小、重置大小 | Cmd-=、Cmd-minus、Cmd-0；Ctrl 加滚轮 | Ctrl-=、Ctrl-minus、Ctrl-0；Ctrl 加滚轮 |
 | 打开链接（指针在上面时显示下划线） | Cmd-点按 | Ctrl-点按 |
 | 全屏 | Ctrl-Cmd-F | F11 |
 | 设置 | Cmd-, | Ctrl-, |

@@ -37,6 +37,8 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Every field has a default; a missing file or field means its default | T02 | `settings::tests`, `settings::store` tests | Pass |
 | A bad file or value stops the start, naming file and field; never overwritten | T02 | `a_bad_file_is_an_error_naming_it`, `a_bad_value_is_an_error_naming_the_field` | Pass |
 | Temp file in the same folder, then rename; one writer | T02 | T02 rounds 1–2 | Pass |
+| A start that fails shows its error in the system's dialog and quits; a newer version's settings file names the field it adds (issue #122) | T221 | macOS `NSAlert` and the Windows release build's task dialog named `from_newer`; a close quit | Pass |
+| On Windows Shell and a profile refuse a program that opens a window of its own, naming Git's `bin\bash.exe` (issue #126) | T234 | `settings::program` test; on the Windows PC a settings file naming `git-bash.exe` stopped the start naming `bin\bash.exe` | Pass |
 
 ## 4. Themes
 
@@ -125,6 +127,9 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | A paste holding a line break asks first while bracketed paste is off (issue #97) | T190 | `term::pointer::guard` tests; macOS `shot` right-click pasted two lines, the dialog showed, Paste sent 18 characters; lib tests on all three systems | Pass |
 | A Copy key of Ctrl alone goes to the program while nothing is selected (issue #112) | T204 | `copy` unit test; macOS `shot` with Copy on Ctrl-C drew `^CGOT-INT`, and over a selection copied it; not driven on Windows, the reporter's system | Partial |
 | Text on a see-through window draws as on an opaque one and as Windows Terminal's grayscale (issue #102) | T203 | Windows PC at 100%: coverage 17.45%, 17.44% and 17.37% on one line; no change | Pass |
+| Windows sessions run on ConPTY 1.24.261001001, which passes herdr's kitty graphics whole (issue #119) | T222 | herdr 0.9.5 and the reporter's probe on the Windows PC: three of three images on 1.24, none on either 1.25; `term::` tests on 1.24 | Pass |
+| Natural text editing on by default on macOS; a saved `false` stays (issue #117) | T223 | settings test; macOS `shot` read `1b 7f` for a real Option-Backspace | Pass |
+| The bottom row's ground stays in its cells on a prompt, default-ground or powerline row, as Ghostty's `neverExtendBg` (issue #118) | T225 | `edges` and `frame` tests; macOS `shot` at padding 30 | Pass |
 
 ## 6. Main window and layout
 
@@ -154,6 +159,9 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Ely's face follows the session shown (PR #109) | T205 | pet tests; macOS `shot`: a second session's failure fretted her, a switch back calmed her | Pass |
 | A folder dropped on the macOS icon opens a session there, the app running or not (issue #107) | T207 | running: the bundle took `open -a` with folders named with a space and Chinese letters as sessions whose shells reported them; not running: the folder was taken for the first session, then macOS's privacy prompt for the new signature held the start, so no session opened | Partial |
 | Cmd-Q quits without a crash; an idle login shell asks nothing at close (issue #106) | T208, T209 | macOS, Omarchy and Windows key presses quit with no panic, the old handler panicking; `busy` tests through `login` | Pass |
+| On X11 Ely hides with a minimized window that `_NET_WM_STATE_HIDDEN` marks (issue #125) | T226 | gpui-pre-linux `785b93a`; under Xvfb the property hid her and its clearing showed her; GNOME itself unrun | Partial |
+| Full screen draws no title bar and no column headers; leaving it draws them again (issue #123) | T227 | Ely `ColumnShell::headers` tests; openbox on Xvfb; macOS's own full screen uncaptured | Partial |
+| A session Windows hands over brings its window to the front, a cold start's too (issue #128) | T228 | on the Windows PC two cold starts held the front, a minimized window restored; the address bar itself undriven | Pass |
 
 ## 7. Sessions panel
 
@@ -171,6 +179,8 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | A drag on the line between panes resizes them; Move pane swaps the focused pane with its neighbor (issue #114) | T220 | `sessions::panes` tests; macOS `shot` dragged the line to 0.442 and moved a pane left | Pass |
 | Named session groups, made, joined, left, renamed and ungrouped from the menus (issue #110) | T210 | `groups` test; macOS `shot` made, renamed and left a group, and a grouped session's exit while its name was edited kept the keys on the shown terminal | Pass |
 | Sessions restore at the next start, panes, folders, names and groups, not a pane `-e` started nor a session Windows handed over; a start given a folder keeps none (issue #110) | T211 | `saved` and `restore` tests; the macOS binary restored a hand-written file and saved it back, saved an empty list at the last session's exit, and left a bad file and a folder start's file alone; the save at quit and a GUI restore on Windows and Linux not driven | Partial |
+| Several panes stand apart in their borders with gaps and no line; the gap drags the split (issue #123) | T229 | Ely `SplitPane::edges` test; macOS `shot` of three panes | Pass |
+| Rename session in a row's menu and in the terminal title's menu (issue #127) | T230 | Ely `ShellColumn::title_menu` test; macOS `shot` renamed through both; a posted right press on Windows' caption opened Ely's menu | Pass |
 
 ## 8. Right panel: Files
 
@@ -184,6 +194,7 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | With Files menu on, a right press on the Files tab expands a folder-choice row above the tree, pushing it down; blank space opens no menu | T148 | `workspace::folder::tests`; Windows checks and release build pass. Ely's `SegmentedControl` hears the right press through `on_context`, whose test keeps the focus put; the row is Ely's `Collapsible` in the column's flow, and the action gives the terminal its focus before choosing. On Windows its author tried a build against Ely's local branch and found no problem; Ely PR #10 merged as `294a832`, which the pin names; on macOS `shot` right-pressed the Files tab, the row showed and pushed the tree down, a second press, Git, a hidden column and Files menu off each closed it, keys typed after went to the terminal; a probe opened the system's chooser once, cancelled it with no session started, and showed a failed start's error in a dialog; the chooser's confirmed pick and Linux went undriven | Partial |
 | Open folders read again each second while Files shows | T132 | `files::tests`; macOS `shot`: a file made 3 s in with no prompt showed, where 0.2.0's did not; an edit, a new file and a file in an unopened folder showed M, U and a dot | Pass |
 | A Files row dropped on the terminal gives it the focus | T175 | on macOS `shot` dragged a row onto zsh, then pressed `a` with no click: typed with the change, nowhere without | Pass |
+| Inside ssh, Files lists the remote folder a remote OSC 7 names, through an ssh of its own that asks no password; no Git marks there (issue #129) | T231 | `ssh`, `tap::folder` and pty tests; on Omarchy `ssh localhost` listed `/etc`'s 176 entries and `exit` brought the local folder back | Pass |
 
 ## 9. Right panel: Git
 
@@ -227,6 +238,8 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Background picture: scope, size, position and repeat, clipped to its box | T163, T164 | `workspace::wallpaper` and `settings::picture` tests; macOS `shot`: a gradient filled the terminal column under the terminal scope and the window below the title bar under the window scope, `25% auto`, `right top` and `repeat_x` drew four tiles across the top, a 2000 by 200 and a 200 by 2000 picture under cover stayed inside their boxes; under Hyprland, floated, both scopes met the column borders and the pane's edges | Pass |
 | Padding at 0: a program's background reaches the bottom and right edges (issue #113) | T219 | `edges` test; macOS `shot` with a blue screen at two widths; on Windows a ConPTY capture drew striped rows before and after, uninvestigated, so the fix is shown on macOS alone | Partial |
 | Update installs a newer release in the app: macOS's disk image, Windows' zip, Linux's AppImage, tarball, DEB or RPM; Restart asks first | T212–T215 | `install`, `windows`, `linux` tests; `examples/update` took a 0.2.4 copy to v0.2.5 on macOS, on the Windows PC with it running, on Omarchy as an AppImage and a tarball, and in Debian and Fedora containers as a DEB and an RPM. Not driven: the Settings buttons, a restart, and pkexec's polkit prompt | Partial |
+| Picture scope's window covers the title bar too; the title bar keeps its 38 px (issue #123) | T232 | `wallpaper` test; macOS `shot` of a red picture from the title bar's top | Pass |
+| Explorer menu's Add puts this copy's folder on the user's PATH, so `elyterminal .` from Explorer's address bar opens there; the uninstaller takes it off (issue #116) | T233 | `explorer` tests on the Windows PC; ShellExecute of `elyterminal .` from `C:\Windows` opened a session there; an install to a folder with `'` and its uninstall left PATH as it was; the address bar undriven | Pass |
 
 ## 11. Background blur
 
@@ -249,6 +262,7 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Every shortcut may be changed, in Settings or the settings file; the menu bar follows | T178 | `keymap` tests: the table clashes nowhere, a chosen key replaces a command's own, a key two commands of one window hold is refused, as are a key that names none and Ely's focus keys; on macOS `shot` recorded Cmd-E for Clear, which then cleared while Cmd-K did nothing, refused Cmd-1 on the row, kept the keys at Escape, left none at Backspace, brought Cmd-K back, and the menu bar showed `New Session ["n"]` for a file binding Cmd-N; clippy and the tests pass on Linux and Windows | Pass |
 | A key the settings give one command takes it from another's own, so a settings file from before a new own key starts | T199 | `keymap` tests on all three systems; on macOS a settings file giving Clear Cmd-D stopped the start before and starts now, logging split_right's yield | Pass |
 | Edit › Clear | T172 | the menu's item runs the terminal's Clear | Pass |
+| Ctrl with the wheel zooms the font a point a notch, unsaved (issue #124) | T224 | `wheel` test on three systems; macOS `shot` real Ctrl-scroll 13 to 15 and back | Pass |
 
 ## 13. Acceptance
 

@@ -82,3 +82,11 @@ winget install ELYOpenSource.ELYTerminal
 
 zip 里只有 `elyterminal.exe`、`LICENSE-conpty`，以及来自 NuGet
 `Microsoft.Windows.Console.ConPTY` 的微软签名 `conpty.dll` 和 `OpenConsole.exe`，以及来自 Windows Terminal 1.25.3131.0 MIT zip 的 `OpenConsoleProxy.dll`。
+
+# 启动失败
+
+启动失败时（包括读不了设置文件），错误显示在对话框里，回答后退出。新版本写下的
+设置文件会让旧版本无法启动，对话框会指出旧版本不认识的字段。要回退，从
+`settings.json` 删去该字段，或把文件移走，以默认设置启动。文件位于 macOS 的
+`~/Library/Application Support/ELYTerminal`、Windows 的 `%APPDATA%\ELYTerminal`、
+Linux 的 `$XDG_CONFIG_HOME/ELYTerminal`（未设置时为 `~/.config/ELYTerminal`）。

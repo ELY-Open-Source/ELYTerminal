@@ -27,7 +27,7 @@ Chapters run in build order. `TASKS.md` follows them line by line.
 
 - One JSON file, `settings.json`, in the platform config folder (`dirs::config_dir()/ELYTerminal`).
 - Every field has a default. A missing file means defaults. A missing field means its default.
-- A file that does not parse, or a value out of range, stops the start with an error naming the file and the field. The app never overwrites a file it could not read.
+- A file that does not parse, or a value out of range, stops the start with an error naming the file and the field, shown in the system's dialog, which quits when answered; a field a newer version wrote is named so. The app never overwrites a file it could not read.
 - Writes go to a temp file in the same folder, then rename. One writer: the app's settings entity.
 - Fields: see chapter 10.
 
