@@ -32,7 +32,8 @@ use crate::settings::{CursorStyle, Settings};
 #[derive(Debug)]
 pub enum PtyEvent {
     Term(Event),
-    Folder(PathBuf),
+    /// A folder, and the host it lies on when another.
+    Folder(PathBuf, Option<String>),
     Mouse(MouseMode),
     /// An OSC 133 mark, and who held the terminal then.
     Mark(Mark, Holder),

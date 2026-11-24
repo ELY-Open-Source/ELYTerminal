@@ -27,8 +27,14 @@ impl Workspace {
                 );
                 pane.title.clone_from(title);
             }
-            TerminalEvent::Folder(folder) => {
-                pane.folder.clone_from(folder);
+            TerminalEvent::Folder(folder, host) => {
+                match host {
+                    Some(host) => pane.there = Some((host.clone(), folder.clone())),
+                    None => {
+                        pane.folder.clone_from(folder);
+                        pane.there = None;
+                    }
+                }
                 pane.reports = true;
                 if shown {
                     self.show_folder(cx);
@@ -52,10 +58,11 @@ impl Workspace {
                     return;
                 }
                 let terminal = pane.terminal.clone();
+                let remote = self.files.read(cx).remote().is_some();
                 match self.files.read(cx).path(key) {
                     Some(path) => {
                         log::info!("app: {} dragged onto the terminal", path.display());
-                        terminal.update(cx, |view, cx| view.type_paths(&[path], cx));
+                        terminal.update(cx, |view, cx| view.type_paths(&[path], remote, cx));
                         window.focus(&terminal.focus_handle(cx), cx);
                     }
                     None => log::warn!("app: a tree drag of {key} types nothing"),

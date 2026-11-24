@@ -1,10 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
-    ffi::OsString,
-    fs, io,
     path::{Path, PathBuf},
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 use ely_gpui_component::{
@@ -23,52 +21,20 @@ use crate::{
     settings::{PanelTab, SettingsStore},
 };
 
+mod list;
 mod marks;
 mod menu;
+mod remote;
+
+#[cfg(test)]
+use list::Entry;
+use list::{Listing, list};
+pub use remote::Remote;
 
 use marks::{Marked, mark_key, remark};
 
 /// How often Files reads its open folders again.
 const POLL: Duration = Duration::from_secs(1);
-
-/// A folder's entry: name, whether a folder, and modified time.
-#[derive(Debug, PartialEq)]
-struct Entry {
-    name: OsString,
-    folder: bool,
-    modified: SystemTime,
-}
-
-/// A folder's entries, or why it could not be read.
-type Listing = Result<Vec<Entry>, String>;
-
-/// Reads `folder`: folders first, then files, each by name ignoring case.
-fn list(folder: &Path) -> Listing {
-    let read = || -> io::Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-        for entry in fs::read_dir(folder)? {
-            let entry = entry?;
-            // An entry gone since the folder listed it is gone.
-            let meta = match entry.metadata() {
-                Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
-                meta => meta?,
-            };
-            let kind = meta.file_type();
-            entries.push(Entry {
-                folder: kind.is_dir() || (kind.is_symlink() && entry.path().is_dir()),
-                name: entry.file_name(),
-                modified: meta.modified()?,
-            });
-        }
-        Ok(entries)
-    };
-    let mut entries = read().map_err(|error| error.to_string())?;
-    entries.sort_by_cached_key(|entry| {
-        let name = entry.name.to_string_lossy().to_lowercase();
-        (!entry.folder, name, entry.name.clone())
-    });
-    Ok(entries)
-}
 
 /// Git's mark on a node: its letter and tint; a dot on a folder that holds changes.
 fn badge(node: TreeNode, mark: Option<GitStatus>, dirty: bool) -> TreeNode {
@@ -143,6 +109,8 @@ pub struct Files {
     marking: (bool, bool),
     polling: Task<()>,
     menu: Option<MenuAsk>,
+    /// The host the root lies on, listed through its ssh.
+    remote: Option<Arc<Remote>>,
 }
 
 impl EventEmitter<Here> for Files {}
@@ -164,6 +132,7 @@ impl Files {
             marking: (false, false),
             polling: Task::ready(()),
             menu: None,
+            remote: None,
         }
     }
 
@@ -223,10 +192,12 @@ impl Files {
         }
     }
 
-    /// Shows `folder`, read afresh with its marks; a new folder starts a new tree.
-    pub fn show(&mut self, folder: &Path, cx: &mut Context<Self>) {
-        if folder != self.root {
-            log::info!("files: the tree shows {}", folder.display());
+    /// Shows `folder`, on `remote`'s host when given, read afresh with its marks; a new folder starts a new tree.
+    pub fn show(&mut self, folder: &Path, remote: Option<Arc<Remote>>, cx: &mut Context<Self>) {
+        let host = |remote: &Option<Arc<Remote>>| remote.as_ref().map(|remote| remote.host.clone());
+        if folder != self.root || host(&remote) != host(&self.remote) {
+            let on = host(&remote).map_or(String::new(), |host| format!(" on {host}"));
+            log::info!("files: the tree shows {}{on}", folder.display());
             let polling = std::mem::replace(&mut self.polling, Task::ready(()));
             *self = Self {
                 generation: self.generation + 1,
@@ -234,12 +205,22 @@ impl Files {
                 ..Self::new(folder.to_path_buf())
             };
         }
+        self.remote = remote;
         self.read(cx);
         self.check(cx);
     }
 
+    /// The host the tree lies on, when another.
+    pub fn remote(&self) -> Option<&Arc<Remote>> {
+        self.remote.as_ref()
+    }
+
     /// Reads Git's marks in the background, one at a time.
     fn check(&mut self, cx: &mut Context<Self>) {
+        // Git runs on this host alone.
+        if self.remote.is_some() {
+            return;
+        }
         if self.marking.0 {
             self.marking.1 = true;
             return;
@@ -289,9 +270,13 @@ impl Files {
 
     /// Reads the root and open folders off the main thread.
     fn read(&mut self, cx: &mut Context<Self>) {
-        let folders = self.shown();
+        let (folders, remote) = (self.shown(), self.remote.clone());
         let read = cx.background_spawn(async move {
-            let read = folders.into_iter().map(|folder| (list(&folder), folder));
+            let listed = |folder: &Path| match &remote {
+                Some(remote) => remote.list(folder),
+                None => list(folder),
+            };
+            let read = folders.into_iter().map(|folder| (listed(&folder), folder));
             read.collect::<Vec<_>>()
         });
         self.busy = true;
@@ -470,6 +455,12 @@ impl Render for Files {
             })
         })
         .on_activate(move |key, _, cx| match open.read(cx).path(key) {
+            Some(path) if open.read(cx).remote.is_some() => {
+                log::info!(
+                    "files: {} lies on another host; it opens nowhere here",
+                    path.display()
+                )
+            }
             Some(path) => {
                 log::info!("files: opening {}", path.display());
                 cx.open_with_system(&path)
@@ -482,7 +473,10 @@ impl Render for Files {
         let tree = tree
             .on_context(move |key, at, _, cx| asked.update(cx, |files, cx| files.ask(key, at, cx)));
         let items = match &self.menu {
-            Some(ask) => menu::row(&cx.entity(), ask.path.clone(), ask.here.clone(), cx),
+            Some(ask) => {
+                let here = self.remote.is_none().then(|| ask.here.clone());
+                menu::row(&cx.entity(), ask.path.clone(), here, cx)
+            }
             None => Menu::new(),
         };
         let request = self.request();

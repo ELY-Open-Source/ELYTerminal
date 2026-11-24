@@ -55,7 +55,7 @@ const GLIDE: Duration = Duration::from_millis(90);
 #[derive(Clone, Debug, PartialEq)]
 pub enum TerminalEvent {
     Title(String),
-    Folder(PathBuf),
+    Folder(PathBuf, Option<String>),
     Bell,
     /// The state its row shows changed, to this one.
     Shows(Option<State>),

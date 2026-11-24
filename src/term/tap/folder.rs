@@ -2,8 +2,48 @@
 use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 
+use crate::term::PtyEvent;
+
+/// The event a folder report makes, a remote folder's with its host; `last` keeps this host's.
+pub(super) fn event(body: &[u8], last: &mut Option<PathBuf>, pid: u32) -> Option<PtyEvent> {
+    if let Some(folder) = reported(body) {
+        if last.as_ref() == Some(&folder) {
+            log::debug!("pty {pid}: folder {} again", folder.display());
+        } else {
+            log::info!("pty {pid}: folder {}", folder.display());
+            *last = Some(folder.clone());
+        }
+        return Some(PtyEvent::Folder(folder, None));
+    }
+    let (host, folder) = there(body)?;
+    log::debug!("pty {pid}: folder {} on {host}", folder.display());
+    *last = None;
+    Some(PtyEvent::Folder(folder, Some(host)))
+}
+
+/// The host and POSIX path of an OSC 7 that names another host.
+fn there(body: &[u8]) -> Option<(String, PathBuf)> {
+    let rest = body.strip_prefix(b"7;file://")?;
+    let slash = rest.iter().position(|&byte| byte == b'/')?;
+    let host = std::str::from_utf8(&rest[..slash]).ok()?;
+    let local = gethostname::gethostname();
+    let here = host.is_empty()
+        || host.eq_ignore_ascii_case("localhost")
+        || local
+            .to_str()
+            .is_some_and(|name| host.eq_ignore_ascii_case(name));
+    if here {
+        return None;
+    }
+    let Ok(path) = String::from_utf8(decode(&rest[slash..])) else {
+        log::warn!("pty: host {host}'s folder is not UTF-8");
+        return None;
+    };
+    Some((host.to_string(), PathBuf::from(path)))
+}
+
 /// The folder OSC 7's URI or ConEmu's OSC 9;9 names.
-pub(super) fn reported(body: &[u8]) -> Option<PathBuf> {
+fn reported(body: &[u8]) -> Option<PathBuf> {
     reported_on(body, cfg!(windows))
 }
 

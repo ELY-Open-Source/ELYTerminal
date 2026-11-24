@@ -1,5 +1,7 @@
 //! Panes inside the shown session: split, closed, stepped through and drawn.
 
+use std::sync::Arc;
+
 use ely_gpui_component::{layout::SplitPane, theme::ActiveTheme};
 use gpui::{
     AnyElement, App, AppContext, Axis, Context, EntityId, Focusable, IntoElement, ParentElement,
@@ -8,6 +10,7 @@ use gpui::{
 
 use super::Workspace;
 use crate::{
+    files::Remote,
     sessions::{Layout, Pane, Program, Session, Toward},
     term::{Events, Launch, Pty, TerminalView, shell::Start},
 };
@@ -38,6 +41,7 @@ impl Workspace {
             folder: launch.cwd,
             program,
             reports: launch.reports,
+            there: None,
             _events: [events, focused],
         }
     }
@@ -206,11 +210,45 @@ impl Workspace {
         cx.notify();
     }
 
-    /// Files and Git show the shown pane's folder.
+    /// Files and Git show the shown pane's folder; Files one on another host through its ssh.
     pub(super) fn show_folder(&mut self, cx: &mut Context<Self>) {
-        let folder = self.sessions[self.active].pane().folder.clone();
-        self.files.update(cx, |files, cx| files.show(&folder, cx));
+        let pane = self.sessions[self.active].pane();
+        let folder = pane.folder.clone();
+        let there = (pane.there.clone())
+            .and_then(|(host, there)| Some((there, self.lister(&host, pane, cx)?)));
+        self.files.update(cx, |files, cx| match there {
+            Some((there, remote)) => files.show(&there, Some(remote), cx),
+            None => files.show(&folder, None, cx),
+        });
         self.git.update(cx, |git, cx| git.show(&folder, cx));
+    }
+
+    /// A lister for `host`, as `pane`'s ssh reaches it; none, logged, without one.
+    fn lister(&self, host: &str, pane: &Pane, cx: &App) -> Option<Arc<Remote>> {
+        let reach = match pane.terminal.read(cx).reach() {
+            Ok(Some(reach)) => reach,
+            Ok(None) => {
+                log::warn!(
+                    "files: a folder on {host}, but no ssh leads the pane; Files stays here"
+                );
+                return None;
+            }
+            Err(error) => {
+                log::error!("files: the ssh to {host} does not read: {error:#}");
+                return None;
+            }
+        };
+        let kept = self.files.read(cx).remote();
+        if let Some(remote) = kept.filter(|remote| remote.reaches(host, &reach)) {
+            return Some(remote.clone());
+        }
+        match Remote::open(host.to_string(), reach) {
+            Ok(remote) => Some(Arc::new(remote)),
+            Err(error) => {
+                log::error!("{error:#}");
+                None
+            }
+        }
     }
 }
 

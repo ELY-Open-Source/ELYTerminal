@@ -50,7 +50,10 @@ fn run(script: &str, size: (usize, usize)) -> Ran {
         );
         while let Some(event) = events.next().await {
             match event {
-                PtyEvent::Folder(folder) => folders.push(folder),
+                PtyEvent::Folder(folder, None) => folders.push(folder),
+                PtyEvent::Folder(folder, Some(host)) => {
+                    said.push(format!("{} on {host}", folder.display()))
+                }
                 PtyEvent::Mark(mark, _) => marks.push(mark),
                 PtyEvent::Status(status, _) => statuses.push(Some(status)),
                 PtyEvent::Reset => {
@@ -151,6 +154,7 @@ fn osc_7_reaches_the_session_as_a_folder() {
         (40, 4),
     );
     assert_eq!(ran.folders, [PathBuf::from("/tmp/a b")]);
+    assert!(ran.said.contains(&"/c on elsewhere.invalid".to_string()));
     assert_eq!(ran.text, "x");
 }
 

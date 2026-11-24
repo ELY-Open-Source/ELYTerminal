@@ -121,7 +121,7 @@ impl Run {
                 self.screen()
             );
             match self.events.try_recv() {
-                Ok(PtyEvent::Folder(folder)) => self.folders.push(folder),
+                Ok(PtyEvent::Folder(folder, _)) => self.folders.push(folder),
                 Ok(PtyEvent::Title(title)) => self.titles.push(title),
                 Ok(PtyEvent::Mark(mark, _)) => self.marks.push(mark),
                 Ok(PtyEvent::Term(Event::PtyWrite(reply))) => self.pty.write(reply.into_bytes()),

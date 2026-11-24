@@ -204,7 +204,7 @@ fn next_folder(events: &mut Events) -> std::path::PathBuf {
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {
         match events.try_recv() {
-            Ok(PtyEvent::Folder(folder)) => return folder,
+            Ok(PtyEvent::Folder(folder, _)) => return folder,
             Ok(_) => {}
             Err(TryRecvError::Closed) => {
                 panic!("the session ended before it reported a folder")
@@ -295,7 +295,7 @@ fn until_folder(events: &mut Events) -> (std::path::PathBuf, Vec<PtyEvent>) {
     let (deadline, mut seen) = (Instant::now() + Duration::from_secs(30), Vec::new());
     loop {
         match events.try_recv() {
-            Ok(PtyEvent::Folder(folder)) => return (folder, seen),
+            Ok(PtyEvent::Folder(folder, _)) => return (folder, seen),
             Ok(event) => seen.push(event),
             Err(TryRecvError::Empty) if Instant::now() < deadline => {
                 std::thread::sleep(Duration::from_millis(50))

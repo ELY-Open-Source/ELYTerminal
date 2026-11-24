@@ -16,6 +16,8 @@ pub struct Pane {
     pub program: Program,
     /// Its shell has integration, or it reported a folder anyway.
     pub reports: bool,
+    /// The host and folder a shell over ssh reports, while it lasts.
+    pub there: Option<(String, PathBuf)>,
     pub _events: [Subscription; 2],
 }
 

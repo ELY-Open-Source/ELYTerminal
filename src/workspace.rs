@@ -117,7 +117,12 @@ impl Workspace {
         // A change the Git panel made shows in Files' marks too.
         let acted = cx.subscribe(&git, |this, _, _: &Acted, cx| {
             let folder = this.sessions[this.active].pane().folder.clone();
-            this.files.update(cx, |files, cx| files.show(&folder, cx));
+            this.files.update(cx, |files, cx| {
+                // Git marks this host's folder alone.
+                if files.remote().is_none() {
+                    files.show(&folder, None, cx)
+                }
+            });
         });
         let files = cx.new(|cx| {
             let mut files = Files::new(launch.cwd.clone());

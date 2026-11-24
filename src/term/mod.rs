@@ -30,6 +30,7 @@ mod pty;
 mod reports;
 mod scrollbar;
 pub mod shell;
+pub mod ssh;
 mod status;
 mod tap;
 mod titles;

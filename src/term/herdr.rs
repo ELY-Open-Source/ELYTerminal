@@ -132,7 +132,7 @@ pub fn follow(cx: &mut Context<TerminalView>) -> Task<()> {
                 if still {
                     view.agents(&agents, cx);
                     if let Some(folder) = report.clone() {
-                        cx.emit(TerminalEvent::Folder(folder));
+                        cx.emit(TerminalEvent::Folder(folder, None));
                     }
                 }
                 still

@@ -39,9 +39,9 @@ impl TerminalView {
                 self.records.mark(mark, *holder);
             }
             match event {
-                PtyEvent::Folder(folder) => {
+                PtyEvent::Folder(folder, host) => {
                     self.reports += 1;
-                    cx.emit(TerminalEvent::Folder(folder));
+                    cx.emit(TerminalEvent::Folder(folder, host));
                 }
                 PtyEvent::Term(event) => self.term_event(event, cx),
                 PtyEvent::Mouse(mode) => self.mouse = mode,

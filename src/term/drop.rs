@@ -73,7 +73,7 @@ pub fn typed(paths: &[PathBuf], quote: Quote) -> anyhow::Result<String> {
 impl TerminalView {
     /// Types the dropped paths at the cursor as a paste; a path it cannot type stops the drop.
     pub(super) fn drop_paths(&mut self, dropped: &ExternalPaths, cx: &mut Context<Self>) {
-        self.type_paths(dropped.paths(), cx);
+        self.type_paths(dropped.paths(), false, cx);
     }
 
     /// A Files node's drag landed here; its owner resolves the key to a path.
@@ -81,9 +81,9 @@ impl TerminalView {
         cx.emit(TerminalEvent::Dragged(drag.key().clone()));
     }
 
-    /// Types `paths` at the cursor as a paste; a path the session's shell cannot take typed stops it.
-    pub fn type_paths(&mut self, paths: &[PathBuf], cx: &mut Context<Self>) {
-        let quote = self.pty.quote;
+    /// Types `paths` at the cursor as a paste, for the session's shell, or a POSIX shell's when they lie on the host ssh reaches; one it cannot take typed stops it.
+    pub fn type_paths(&mut self, paths: &[PathBuf], remote: bool, cx: &mut Context<Self>) {
+        let quote = if remote { Quote::Posix } else { self.pty.quote };
         match typed(paths, quote) {
             Ok(text) => {
                 log::info!(
