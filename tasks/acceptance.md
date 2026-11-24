@@ -161,7 +161,7 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Cmd-Q quits without a crash; an idle login shell asks nothing at close (issue #106) | T208, T209 | macOS, Omarchy and Windows key presses quit with no panic, the old handler panicking; `busy` tests through `login` | Pass |
 | On X11 Ely hides with a minimized window that `_NET_WM_STATE_HIDDEN` marks (issue #125) | T226 | gpui-pre-linux `785b93a`; under Xvfb the property hid her and its clearing showed her; GNOME itself unrun | Partial |
 | Full screen draws no title bar and no column headers; leaving it draws them again (issue #123) | T227 | Ely `ColumnShell::headers` tests; openbox on Xvfb; macOS's own full screen uncaptured | Partial |
-| A session Windows hands over brings its window to the front, a cold start's too (issue #128) | T228 | on the Windows PC two cold starts held the front, a minimized window restored; the address bar itself undriven | Pass |
+| A session Windows hands over brings its window to the front, a cold start's too (issue #128) | T228 | on the Windows PC two cold starts held the front, a minimized window restored; the address bar itself undriven | Partial |
 
 ## 7. Sessions panel
 
@@ -239,7 +239,7 @@ What no check reached: issue #29's physical keyboard and fcitx5's own forwarding
 | Padding at 0: a program's background reaches the bottom and right edges (issue #113) | T219 | `edges` test; macOS `shot` with a blue screen at two widths; on Windows a ConPTY capture drew striped rows before and after, uninvestigated, so the fix is shown on macOS alone | Partial |
 | Update installs a newer release in the app: macOS's disk image, Windows' zip, Linux's AppImage, tarball, DEB or RPM; Restart asks first | T212–T215 | `install`, `windows`, `linux` tests; `examples/update` took a 0.2.4 copy to v0.2.5 on macOS, on the Windows PC with it running, on Omarchy as an AppImage and a tarball, and in Debian and Fedora containers as a DEB and an RPM. Not driven: the Settings buttons, a restart, and pkexec's polkit prompt | Partial |
 | Picture scope's window covers the title bar too; the title bar keeps its 38 px (issue #123) | T232 | `wallpaper` test; macOS `shot` of a red picture from the title bar's top | Pass |
-| Explorer menu's Add puts this copy's folder on the user's PATH, so `elyterminal .` from Explorer's address bar opens there; the uninstaller takes it off (issue #116) | T233 | `explorer` tests on the Windows PC; ShellExecute of `elyterminal .` from `C:\Windows` opened a session there; an install to a folder with `'` and its uninstall left PATH as it was; the address bar undriven | Pass |
+| Explorer menu's Add puts this copy's folder on the user's PATH, so `elyterminal .` from Explorer's address bar opens there; the uninstaller takes it off (issue #116) | T233 | `explorer` tests on the Windows PC; ShellExecute of `elyterminal .` from `C:\Windows` opened a session there; an install to a folder with `'` and its uninstall left PATH as it was; the address bar undriven | Partial |
 
 ## 11. Background blur
 
