@@ -99,7 +99,7 @@ pub enum PanelTab {
     Files,
 }
 
-/// Where the background picture paints: the terminal's column or the window below the title bar.
+/// Where the background picture paints: the terminal's column or the whole window.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BackgroundScope {
@@ -133,7 +133,7 @@ pub struct Settings {
     pub custom_themes: Vec<themes::CustomTheme>,
     /// A picture under the terminal; empty for none.
     pub background_image: String,
-    /// Where the picture paints: the terminal's column or the window below the title bar.
+    /// Where the picture paints: the terminal's column or the whole window.
     pub background_scope: BackgroundScope,
     /// How the picture fills its box, as CSS's `background-size`.
     pub background_size: PictureSize,

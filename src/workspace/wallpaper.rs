@@ -10,7 +10,7 @@ use std::{
 use gpui::{
     AnyElement, App, Bounds, Hsla, ImageAssetLoader, IntoElement, ObjectFit, ParentElement, Pixels,
     RenderImage, Resource, Styled, StyledImage, Window, canvas, div, img, linear_color_stop,
-    linear_gradient, point, px, size,
+    linear_gradient, px,
 };
 
 use crate::settings::{BackgroundScope, PictureRepeat, Settings, color};
@@ -29,19 +29,16 @@ thread_local! {
     static FAILED: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
 }
 
-/// The picture's bounds inside `ground`: the terminal body, or all of it below the title bar.
+/// The picture's bounds inside `ground`: the terminal body, or all of it, the title bar too.
 fn box_of(scope: BackgroundScope, body: Bounds<Pixels>, ground: Bounds<Pixels>) -> Bounds<Pixels> {
     let shown = match scope {
         BackgroundScope::Terminal => body,
-        BackgroundScope::Window => Bounds::new(
-            point(ground.origin.x, body.origin.y),
-            size(ground.size.width, ground.bottom() - body.origin.y),
-        ),
+        BackgroundScope::Window => ground,
     };
     Bounds::new(shown.origin - ground.origin, shown.size)
 }
 
-/// A canvas that records the terminal body's bounds, so the window's picture starts below the title bar.
+/// A canvas that records the terminal body's bounds, which the terminal's picture fills.
 pub(super) fn ruler() -> impl IntoElement {
     measure(&TERMINAL)
 }
@@ -238,6 +235,8 @@ fn log_failure(path: &Arc<Path>, error: impl std::fmt::Display) {
 
 #[cfg(test)]
 mod tests {
+    use gpui::{point, size};
+
     use super::*;
 
     fn body() -> Bounds<Pixels> {
@@ -255,15 +254,14 @@ mod tests {
     }
 
     #[test]
-    fn the_window_scope_starts_below_the_title_bar_and_spans_the_window() {
+    fn the_window_scope_spans_the_window_with_its_title_bar() {
         let window = Bounds::new(point(px(0.0), px(0.0)), size(px(1200.0), px(700.0)));
         let bounds = box_of(BackgroundScope::Window, body(), window);
-        assert_eq!(bounds.origin, point(px(0.0), px(38.0)));
-        assert_eq!(bounds.size, size(px(1200.0), px(662.0)));
+        assert_eq!(bounds, window);
         let inset = Bounds::new(point(px(10.0), px(10.0)), size(px(1180.0), px(680.0)));
         let bounds = box_of(BackgroundScope::Window, body(), inset);
-        assert_eq!(bounds.origin, point(px(0.0), px(28.0)));
-        assert_eq!(bounds.size, size(px(1180.0), px(652.0)));
+        assert_eq!(bounds.origin, point(px(0.0), px(0.0)));
+        assert_eq!(bounds.size, size(px(1180.0), px(680.0)));
     }
 
     #[test]
