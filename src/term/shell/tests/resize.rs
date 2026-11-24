@@ -90,7 +90,10 @@ fn zsh_redraws_a_full_width_prompt_without_adding_it_to_history() {
         2,
         "growing added prompt copies to history:\n{grown}"
     );
-    assert!(grown.contains("OUTPUT\n"), "the command's output remains");
+    assert!(
+        grown.contains("OUTPUT\n"),
+        "the command's output remains:\n{grown}"
+    );
     run.finish();
 }
 
@@ -103,8 +106,13 @@ fn zsh_keeps_a_wrapped_command_through_prompt_resizes() {
     run.until("the wrapped command", |run| {
         text(run).replace('\n', "").contains(&value)
     });
+    let typed = format!("{value}\\n'");
     for columns in [70, 40, 30, 60, 100] {
         resize(&mut run, columns);
+        // zsh's redraw at one width must land before the next resize, or it lands at the next.
+        run.until("the redrawn command", |run| {
+            text(run).replace('\n', "").contains(&typed)
+        });
     }
     let before = run.marks.len();
     run.pty.write(b"\r".to_vec());
@@ -118,7 +126,10 @@ fn zsh_keeps_a_wrapped_command_through_prompt_resizes() {
         3,
         "the command left one prompt and printed one:\n{shown}"
     );
-    assert!(shown.contains("OUTPUT\n"), "earlier output remains");
+    assert!(
+        shown.contains("OUTPUT\n"),
+        "earlier output remains:\n{shown}"
+    );
     run.finish();
 }
 

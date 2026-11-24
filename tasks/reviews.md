@@ -218,3 +218,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 
 - Round 1, working tree: FAIL. The remote OSC 7 lines sent `$PWD` unescaped and zsh's `print -P` expanded `%`; the Linux settings folder ignored `XDG_CONFIG_HOME`; the shared-connection claim was held false under `ControlMaster=no`. The lines escape `%` through `printf`, the folder names `XDG_CONFIG_HOME`; the third stands, ssh_config(5) saying a session under `no` reuses an existing master.
 - Round 2: PASS.
+
+## T236
+
+- Round 1, working tree: PASS. No findings.
