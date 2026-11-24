@@ -25,33 +25,49 @@ fn conpty() {
     // Tests copy it beside themselves.
     println!("cargo:rustc-env=ELY_CONPTY={}", full.display());
     let out = PathBuf::from(env::var("OUT_DIR").expect("build: cargo names no OUT_DIR"));
+    let up = |n: usize| {
+        out.ancestors()
+            .nth(n)
+            .expect("build: OUT_DIR is too shallow")
+    };
     let named = |n: usize| out.ancestors().nth(n).and_then(|dir| dir.file_name());
-    let dirs = if named(2) == Some("build".as_ref()) {
-        // Cargo's own: PROFILE/build/PACKAGE-HASH/out.
-        let profile = out.ancestors().nth(3).expect("a profile folder");
-        vec![
-            profile.to_path_buf(),
-            profile.join("deps"),
-            profile.join("examples"),
-        ]
-    } else if named(3) == Some("build".as_ref()) {
+    let build = Some("build".as_ref());
+    let profile = if named(1) == Some("script".as_ref()) && named(2) == build {
+        // huacnlee's cargo: PROFILE/build/PACKAGE/HASH/build/script/out.
+        Some(up(6))
+    } else if named(2) == build {
+        None
+    } else if named(3) == build {
         // A shared one: PROFILE/build/PACKAGE/HASH/out.
-        let profile = out.ancestors().nth(4).expect("a profile folder");
-        let target = env::var("TARGET").expect("build: cargo names no TARGET");
-        let mut place = PathBuf::new();
-        if profile.parent().and_then(|dir| dir.file_name()) == Some(target.as_ref()) {
-            place.push(&target);
-        }
-        place.push(profile.file_name().expect("a profile name"));
-        // This cargo always uses ./target.
-        let manifest = env::var("CARGO_MANIFEST_DIR").expect("build: no manifest folder");
-        let profile = PathBuf::from(manifest).join("target").join(place);
-        vec![profile.clone(), profile.join("examples")]
+        Some(up(4))
     } else {
         panic!(
             "build: OUT_DIR {} lies under no PROFILE/build",
             out.display()
         )
+    };
+    let dirs = match profile {
+        // Cargo's own: PROFILE/build/PACKAGE-HASH/out.
+        None => {
+            let profile = up(3);
+            vec![
+                profile.to_path_buf(),
+                profile.join("deps"),
+                profile.join("examples"),
+            ]
+        }
+        Some(profile) => {
+            let target = env::var("TARGET").expect("build: cargo names no TARGET");
+            let mut place = PathBuf::new();
+            if profile.parent().and_then(|dir| dir.file_name()) == Some(target.as_ref()) {
+                place.push(&target);
+            }
+            place.push(profile.file_name().expect("a profile name"));
+            // This cargo always uses ./target.
+            let manifest = env::var("CARGO_MANIFEST_DIR").expect("build: no manifest folder");
+            let profile = PathBuf::from(manifest).join("target").join(place);
+            vec![profile.clone(), profile.join("examples")]
+        }
     };
     for dir in dirs {
         fs::create_dir_all(&dir)
