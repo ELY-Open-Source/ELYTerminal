@@ -281,7 +281,7 @@ impl Default for Settings {
             padding_y: 8.0,
             scrollback: 10_000,
             option_as_alt: OptionAsAlt::Off,
-            natural_text_editing: false,
+            natural_text_editing: cfg!(target_os = "macos"),
             copy_on_select: false,
             right_click_paste: cfg!(windows),
             paste_protection: true,

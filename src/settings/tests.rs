@@ -27,6 +27,15 @@ fn a_file_without_files_menu_leaves_it_off() {
 }
 
 #[test]
+fn natural_text_editing_is_on_by_default_on_macos_and_a_saved_false_stays() {
+    let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
+    assert_eq!(settings.natural_text_editing, cfg!(target_os = "macos"));
+    let settings: Settings =
+        serde_json::from_str(r#"{"natural_text_editing": false}"#).expect("a saved switch reads");
+    assert!(!settings.natural_text_editing);
+}
+
+#[test]
 fn a_backdrop_is_acrylic_unless_named() {
     let settings: Settings = serde_json::from_str("{}").expect("every field has a default");
     assert_eq!(settings.backdrop, Backdrop::Acrylic);
