@@ -252,6 +252,7 @@ pub(super) fn draw(
             let least = cx.theme().pane_min().to_pixels(window.rem_size());
             let (weak, id) = (this.clone(), session.id);
             SplitPane::new(SharedString::from(name), *axis, least)
+                .edges()
                 .sizes(&[*share, 1.0 - share])
                 .on_resize(move |shares, _, cx| {
                     let resized =

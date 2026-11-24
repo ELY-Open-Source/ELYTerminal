@@ -356,8 +356,13 @@ impl Render for Workspace {
                 }
             });
         let weak = cx.entity().downgrade();
-        let shown = (self.sessions.get(self.active))
-            .map(|session| panes::draw(&session.layout, session, &weak, window, cx));
+        let shown = (self.sessions.get(self.active)).map(|session| {
+            let many = session.panes.len() > 1;
+            div()
+                .size_full()
+                .when(many, |panes| panes.p(cx.theme().handle_hit()))
+                .child(panes::draw(&session.layout, session, &weak, window, cx))
+        });
         let mut terminal = ShellColumn::new("terminal")
             .title(self.title().to_string())
             .child(
