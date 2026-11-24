@@ -41,11 +41,44 @@ pub fn lines(
             }
         }
     };
+    whole(rest, travel, page, event)
+}
+
+/// Whole notches, a trackpad's lines among them, for the font's size; `rest` keeps parts.
+pub fn notches(
+    rest: &mut f32,
+    event: &ScrollWheelEvent,
+    height: Pixels,
+    settings: impl FnOnce() -> Option<(f32, f32)>,
+) -> Option<i32> {
+    let travel = match event.delta {
+        ScrollDelta::Pixels(delta) => delta.y / height,
+        ScrollDelta::Lines(delta) => {
+            let lines = if cfg!(windows) {
+                settings()?.0
+            } else if cfg!(target_os = "linux") {
+                LINUX
+            } else {
+                1.
+            };
+            if lines == 0. { 0. } else { delta.y / lines }
+        }
+    };
+    whole(rest, travel, ZOOM, event)
+}
+
+/// gpui's lines a Linux notch.
+const LINUX: f32 = 3.;
+/// Notches one event zooms at most.
+const ZOOM: f32 = 10.;
+
+/// `travel` added to `rest`, within `most`; the whole part taken out.
+fn whole(rest: &mut f32, travel: f32, most: f32, event: &ScrollWheelEvent) -> Option<i32> {
     if travel.is_nan() {
         log::error!("wheel: {:?} moves no number of lines", event.delta);
         return None;
     }
-    *rest = (*rest + travel).clamp(-page, page);
+    *rest = (*rest + travel).clamp(-most, most);
     // A notch's f32 parts can sum short of the line.
     if (*rest - rest.round()).abs() < 1e-3 {
         *rest = rest.round();
@@ -118,6 +151,26 @@ mod tests {
             delta,
             modifiers,
             ..ScrollWheelEvent::default()
+        }
+    }
+
+    #[test]
+    fn ctrl_s_wheel_zooms_a_point_a_notch_and_a_trackpad_a_point_a_line() {
+        let notch = if cfg!(target_os = "macos") { 1. } else { 3. };
+        let settings = || Some((3., 3.));
+        let mut rest = 0.;
+        let up = wheel(ScrollDelta::Lines(point(0., notch)), false);
+        assert_eq!(notches(&mut rest, &up, px(16.), settings), Some(1));
+        let half = wheel(ScrollDelta::Lines(point(0., -notch / 2.)), false);
+        assert_eq!(notches(&mut rest, &half, px(16.), settings), Some(0));
+        assert_eq!(notches(&mut rest, &half, px(16.), settings), Some(-1));
+        let pixels = wheel(ScrollDelta::Pixels(point(px(0.), px(40.))), false);
+        assert_eq!(notches(&mut rest, &pixels, px(16.), settings), Some(2));
+        assert_eq!(notches(&mut rest, &pixels, px(16.), settings), Some(3));
+        let fling = wheel(ScrollDelta::Pixels(point(px(0.), px(16000.))), false);
+        assert_eq!(notches(&mut rest, &fling, px(16.), settings), Some(10));
+        if cfg!(windows) {
+            assert_eq!(notches(&mut rest, &up, px(16.), || Some((0., 0.))), Some(0));
         }
     }
 

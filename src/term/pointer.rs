@@ -15,7 +15,7 @@ use super::{
     links::link_at,
     mouse::{self, Button, Gesture, MouseMode, Report, Tracking},
     view::TerminalView,
-    wheel,
+    wheel, zoom,
 };
 use crate::settings::SettingsStore;
 
@@ -42,6 +42,8 @@ pub struct Pointer {
     rest: f32,
     /// Windows mouse reporting keeps fractional notches apart from local lines.
     report_rest: f32,
+    /// Ctrl's wheel travel short of a notch.
+    zoom_rest: f32,
 }
 
 impl Pointer {
@@ -402,6 +404,17 @@ impl TerminalView {
             return;
         }
         cx.stop_propagation();
+        let held = &event.modifiers;
+        if held.control && !held.shift && !held.alt && !held.platform {
+            let rest = &mut self.pointer.zoom_rest;
+            if let Some(notches) = wheel::notches(rest, event, height, wheel::settings) {
+                log::debug!("terminal {}: Ctrl's wheel zooms {notches}", self.pty.pid);
+                if notches != 0 {
+                    zoom::step(Some(notches as f32), cx);
+                }
+            }
+            return;
+        }
         let rows = self.pty.term.lock().screen_lines();
         let tracking = self.tracking(&event.modifiers);
         // A touchpad's pixels stay lines.
