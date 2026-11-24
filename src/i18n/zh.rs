@@ -329,6 +329,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.group.rename", "重命名分组"),
     ("et.group.ungroup", "取消分组"),
     ("et.session.duplicate", "复制会话"),
+    ("et.session.rename", "重命名会话"),
     ("et.tip.hide_sessions", "隐藏会话"),
     ("et.tip.show_sessions", "显示会话"),
     ("et.tip.hide_panel", "隐藏 Git 和文件"),

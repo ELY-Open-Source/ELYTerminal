@@ -356,6 +356,7 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.group.rename", "Rename group"),
     ("et.group.ungroup", "Ungroup"),
     ("et.session.duplicate", "Duplicate session"),
+    ("et.session.rename", "Rename session"),
     ("et.tip.hide_sessions", "Hide sessions"),
     ("et.tip.show_sessions", "Show sessions"),
     ("et.tip.hide_panel", "Hide Git and Files"),

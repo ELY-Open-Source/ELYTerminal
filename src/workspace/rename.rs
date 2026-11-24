@@ -1,11 +1,37 @@
 //! A session renamed in place, as a double-click on its row asks.
 
-use ely_gpui_component::forms::{InputEvent, TextInput};
-use gpui::{AppContext, Context, EntityId, Focusable, Window};
+use ely_gpui_component::{
+    forms::{InputEvent, TextInput},
+    i18n::text,
+    menus::{Menu, MenuItem},
+    primitives::IconName,
+};
+use gpui::{App, AppContext, Context, Entity, EntityId, Focusable, Window};
 
 use super::Workspace;
+use crate::settings::SettingsStore;
+
+/// What a right press on the terminal's title offers: renaming the session shown.
+pub(super) fn header(workspace: &Entity<Workspace>, cx: &App) -> Menu {
+    let workspace = workspace.clone();
+    Menu::new().item(
+        MenuItem::new(text(cx, "et.session.rename", &[]))
+            .icon(IconName::Pencil)
+            .on_click(move |window, cx| {
+                workspace.update(cx, |this, cx| this.rename_shown(window, cx))
+            }),
+    )
+}
 
 impl Workspace {
+    /// Renames the session shown in its row, showing the sessions column first.
+    fn rename_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !SettingsStore::get(cx).show_sessions {
+            self.toggle(|settings| settings.show_sessions = true, cx);
+        }
+        self.rename(self.active, window, cx);
+    }
+
     /// Opens a field over session `index`'s title, what it is called selected.
     pub fn rename(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
         let Some(session) = self.sessions.get(index) else {

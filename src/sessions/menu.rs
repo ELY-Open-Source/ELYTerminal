@@ -15,7 +15,20 @@ pub fn row(
     cx: &App,
 ) -> Menu {
     let (duplicate, close, made) = (workspace.clone(), workspace.clone(), workspace.clone());
+    let rename = workspace.clone();
     let mut menu = Menu::new()
+        .item(
+            MenuItem::new(text(cx, "et.session.rename", &[]))
+                .icon(IconName::Pencil)
+                .on_click(move |window, cx| {
+                    rename.update(cx, |this, cx| {
+                        let found = this.sessions().iter().position(|session| session.id == id);
+                        if let Some(index) = found {
+                            this.rename(index, window, cx);
+                        }
+                    })
+                }),
+        )
         .item(
             MenuItem::new(text(cx, "et.session.duplicate", &[]))
                 .icon(IconName::Copy)

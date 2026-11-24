@@ -7,7 +7,7 @@ use ely_gpui_component::{
 use gpui::{App, Context, Entity, SharedString};
 
 use super::Workspace;
-use crate::settings::{PanelTab, Settings, SettingsStore};
+use crate::settings::{PanelTab, Settings, SettingsStore, window::OpenSettings};
 
 impl Workspace {
     /// Shows or hides a side column, as the settings keep it.
@@ -25,6 +25,17 @@ impl Workspace {
             Err(error) => log::error!("app: the columns stay: {error:#}"),
         }
     }
+}
+
+/// No menu bar off macOS: a gear opens Settings. A narrow header clips its end, so the gear goes first.
+pub(super) fn gear(cx: &App) -> Option<IconButton> {
+    (!cfg!(target_os = "macos")).then(|| {
+        IconButton::new("open-settings", IconName::Settings)
+            .variant(ButtonVariant::Ghost)
+            .size(ControlSize::Sm)
+            .tooltip(text(cx, "et.settings.title", &[]))
+            .on_click(|_, window, cx| window.dispatch_action(Box::new(OpenSettings), cx))
+    })
 }
 
 /// Shows Git or Files in the right column, as the settings keep it.
