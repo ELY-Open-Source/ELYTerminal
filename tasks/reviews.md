@@ -155,3 +155,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T170
 
 - v0.2.3 published at c82e206: CI passed on macOS, Linux, Windows and Windows ARM64 (run 42147003020); the Windows x86_64 zip from `scripts/windows-zip.ps1` on the owner's PC after its 447 tests (sha256 ad87763d…); the ARM64 zip from CI; the four Linux packages from run 42147003019, checked against its SHA-256 file; the disk image from Release run 42148683456, stapled and accepted by Gatekeeper as notarized Developer ID, its app 0.2.3. The version-less links resolve to it. #78 and #79 answered and closed; the tap holds 0.2.3; winget: microsoft/winget-pkgs#471905.
+
+## T221
+
+- Round 1, working tree before its commit: PASS. No findings.

@@ -340,6 +340,8 @@ pub const MESSAGES: &[(&str, &str)] = &[
     ("et.files.choose_folder", "选择文件夹新建会话…"),
     ("et.files.folder_failed", "无法在所选文件夹新建会话"),
     ("et.files.dismiss", "关闭"),
+    ("et.start.failed", "ELYTerminal 无法启动"),
+    ("et.start.quit", "退出"),
     ("et.files.copy_path", "复制路径"),
     ("et.panel.no_folder", "此 shell 不报告文件夹。"),
     ("et.status.line", "{state}：{said}"),

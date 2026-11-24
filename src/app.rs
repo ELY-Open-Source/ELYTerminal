@@ -20,6 +20,9 @@ use crate::{
 };
 
 pub mod args;
+mod refused;
+
+pub use refused::refused;
 
 /// How long the window's size holds before it is kept, so a drag saves once.
 const SETTLE: Duration = Duration::from_millis(500);

@@ -370,6 +370,8 @@ pub const MESSAGES: &[(&str, &str)] = &[
         "Cannot start a session in the selected folder",
     ),
     ("et.files.dismiss", "Close"),
+    ("et.start.failed", "ELYTerminal could not start"),
+    ("et.start.quit", "Quit"),
     ("et.files.copy_path", "Copy path"),
     ("et.panel.no_folder", "This shell reports no folder."),
     ("et.status.line", "{state}: {said}"),

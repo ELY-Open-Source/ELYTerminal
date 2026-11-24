@@ -185,8 +185,11 @@ fn main() {
             dropped.push(url);
         }
         if let Err(error) = run(&mut dropped, cx) {
-            log::error!("{error:#}");
-            std::process::exit(1);
+            if let Err(shown) = app::refused(&error, cx) {
+                log::error!("app: the refusal shows no dialog: {shown:#}");
+                std::process::exit(1);
+            }
+            return;
         }
         cx.spawn(async move |cx| {
             let later = futures::stream::iter(dropped).chain(urls);
