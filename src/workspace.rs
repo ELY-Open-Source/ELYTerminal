@@ -348,6 +348,7 @@ impl Render for Workspace {
         let this = cx.entity();
         let mut shell = ColumnShell::new("workspace")
             .glass()
+            .headers(!window.is_fullscreen())
             .on_close(move |window, cx| {
                 if !this.update(cx, |this, cx| this.asks(Leave::Window, cx)) {
                     this.update(cx, |this, cx| this.flush(cx));
