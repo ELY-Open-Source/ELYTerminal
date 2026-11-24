@@ -222,3 +222,7 @@ Reviews from here on run in Claude Code on Kimi K3.1 Pro High, in a herdr pane.
 ## T236
 
 - Round 1, working tree: PASS. No findings.
+
+## T237
+
+- Round 1, draft v0.2.7, its notes and the issue replies: PASS. No findings.
